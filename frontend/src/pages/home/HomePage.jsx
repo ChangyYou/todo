@@ -53,7 +53,7 @@ export default function HomePage({ user, onLoggedOut }) {
         <span>{user.username}</span>
         <button type="button" onClick={handleLogout}>退出</button>
       </div>
-      <aside className={`home-todo-drawer ${isTodoDrawerOpen ? 'open' : 'closed'}`} aria-label="每日 Todo">
+      <aside className={`home-todo-drawer ${isTodoDrawerOpen ? 'open' : 'closed'}`} aria-label="任务清单">
         <TodoListModule
           refreshSignal={todoRefreshSignal}
           focusTimerStatus={focusTimerStatus}
@@ -70,7 +70,7 @@ export default function HomePage({ user, onLoggedOut }) {
         onClick={() => setIsTodoDrawerOpen((isOpen) => !isOpen)}
       >
         <span className="home-todo-toggle-icon" aria-hidden="true" />
-        <span>{isTodoDrawerOpen ? '收起任务' : '今日任务'}</span>
+        <span>{isTodoDrawerOpen ? '收起任务' : '任务清单'}</span>
       </button>
       <PomodoroPage
         focusTodoRequest={focusTodoRequest}

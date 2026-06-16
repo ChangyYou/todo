@@ -33,7 +33,7 @@ export default function AuthPage({ onAuthenticated }) {
         <p className="auth-kicker">Todo Workspace</p>
         <h1>{isRegisterMode ? '创建账号' : '登录账号'}</h1>
         <p className="auth-copy">
-          {isRegisterMode ? '创建账号后，你的每日任务会保存到自己的列表。' : '登录后继续管理你的每日 Todo。'}
+          {isRegisterMode ? '创建账号后，你的任务清单会保存到自己的列表。' : '登录后继续管理你的任务清单。'}
         </p>
 
         <form className="auth-form" onSubmit={handleSubmit}>

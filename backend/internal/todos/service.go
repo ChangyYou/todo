@@ -11,6 +11,12 @@ import (
 
 var ErrInvalidTodo = errors.New("invalid todo")
 
+const (
+	priorityLow    = "low"
+	priorityMedium = "medium"
+	priorityHigh   = "high"
+)
+
 type Service struct {
 	db *sql.DB
 }
@@ -20,9 +26,23 @@ func NewService(database *sql.DB) *Service {
 }
 
 func (s *Service) List(userID int64, todoDate string) ([]models.Todo, error) {
-	todoDate = normalizeDate(todoDate)
-	if err := s.ensureHabitsForDate(userID, todoDate); err != nil {
+	todoDate = strings.TrimSpace(todoDate)
+	habitDate := todoDate
+	if habitDate == "" {
+		habitDate = time.Now().Format("2006-01-02")
+	} else {
+		habitDate = normalizeDate(habitDate)
+	}
+
+	if err := s.ensureHabitsForDate(userID, habitDate); err != nil {
 		return nil, err
+	}
+
+	filterClause := "todos.user_id = ? AND todos.completed = 0"
+	args := []interface{}{userID}
+	if todoDate != "" {
+		filterClause = "todos.user_id = ? AND todos.todo_date = ?"
+		args = append(args, habitDate)
 	}
 
 	rows, err := s.db.Query(
@@ -30,6 +50,7 @@ func (s *Service) List(userID int64, todoDate string) ([]models.Todo, error) {
 		        todos.title,
 		        todos.completed,
 		        todos.todo_date,
+		        todos.priority,
 		        todos.source_type,
 		        todos.habit_id,
 		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS focus_seconds,
@@ -37,11 +58,14 @@ func (s *Service) List(userID int64, todoDate string) ([]models.Todo, error) {
 		        todos.updated_at
 		 FROM todos
 		 LEFT JOIN focus_sessions ON focus_sessions.todo_id = todos.id AND focus_sessions.user_id = todos.user_id
-		 WHERE todos.user_id = ? AND todos.todo_date = ?
+		 WHERE `+filterClause+`
 		 GROUP BY todos.id
-		 ORDER BY todos.completed ASC, todos.source_type ASC, todos.id DESC`,
-		userID,
-		todoDate,
+		 ORDER BY todos.completed ASC,
+		          CASE todos.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END ASC,
+		          todos.todo_date ASC,
+		          todos.source_type ASC,
+		          todos.id DESC`,
+		args...,
 	)
 	if err != nil {
 		return nil, err
@@ -60,18 +84,20 @@ func (s *Service) List(userID int64, todoDate string) ([]models.Todo, error) {
 	return result, rows.Err()
 }
 
-func (s *Service) Create(userID int64, title, todoDate string) (models.Todo, error) {
+func (s *Service) Create(userID int64, title, todoDate, priority string) (models.Todo, error) {
 	title = strings.TrimSpace(title)
 	todoDate = normalizeDate(todoDate)
-	if title == "" {
+	priority = normalizePriority(priority)
+	if title == "" || priority == "" {
 		return models.Todo{}, ErrInvalidTodo
 	}
 
 	result, err := s.db.Exec(
-		`INSERT INTO todos (user_id, title, todo_date, source_type) VALUES (?, ?, ?, 'todo')`,
+		`INSERT INTO todos (user_id, title, todo_date, priority, source_type) VALUES (?, ?, ?, ?, 'todo')`,
 		userID,
 		title,
 		todoDate,
+		priority,
 	)
 	if err != nil {
 		return models.Todo{}, err
@@ -85,8 +111,8 @@ func (s *Service) Create(userID int64, title, todoDate string) (models.Todo, err
 	return s.byID(userID, todoID)
 }
 
-func (s *Service) Update(userID, todoID int64, title *string, completed *bool) (models.Todo, error) {
-	if title == nil && completed == nil {
+func (s *Service) Update(userID, todoID int64, title *string, completed *bool, todoDate *string, priority *string) (models.Todo, error) {
+	if title == nil && completed == nil && todoDate == nil && priority == nil {
 		return s.byID(userID, todoID)
 	}
 
@@ -108,12 +134,27 @@ func (s *Service) Update(userID, todoID int64, title *string, completed *bool) (
 		nextCompleted = *completed
 	}
 
+	nextTodoDate := current.TodoDate
+	if todoDate != nil {
+		nextTodoDate = normalizeDate(*todoDate)
+	}
+
+	nextPriority := current.Priority
+	if priority != nil {
+		nextPriority = normalizePriority(*priority)
+		if nextPriority == "" {
+			return models.Todo{}, ErrInvalidTodo
+		}
+	}
+
 	_, err = s.db.Exec(
 		`UPDATE todos
-		 SET title = ?, completed = ?, updated_at = CURRENT_TIMESTAMP
+		 SET title = ?, completed = ?, todo_date = ?, priority = ?, updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ? AND user_id = ?`,
 		nextTitle,
 		boolToInt(nextCompleted),
+		nextTodoDate,
+		nextPriority,
 		todoID,
 		userID,
 	)
@@ -135,6 +176,7 @@ func (s *Service) byID(userID, todoID int64) (models.Todo, error) {
 		        todos.title,
 		        todos.completed,
 		        todos.todo_date,
+		        todos.priority,
 		        todos.source_type,
 		        todos.habit_id,
 		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS focus_seconds,
@@ -152,8 +194,8 @@ func (s *Service) byID(userID, todoID int64) (models.Todo, error) {
 
 func (s *Service) ensureHabitsForDate(userID int64, todoDate string) error {
 	_, err := s.db.Exec(
-		`INSERT OR IGNORE INTO todos (user_id, title, todo_date, source_type, habit_id)
-		 SELECT user_id, title, ?, 'habit', id
+		`INSERT OR IGNORE INTO todos (user_id, title, todo_date, priority, source_type, habit_id)
+		 SELECT user_id, title, ?, 'medium', 'habit', id
 		 FROM habits
 		 WHERE user_id = ? AND active = 1 AND start_date <= ? AND (end_date IS NULL OR end_date >= ?)`,
 		todoDate,
@@ -170,6 +212,17 @@ func normalizeDate(value string) string {
 		return time.Now().Format("2006-01-02")
 	}
 	return value
+}
+
+func normalizePriority(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return priorityMedium
+	}
+	if value == priorityLow || value == priorityMedium || value == priorityHigh {
+		return value
+	}
+	return ""
 }
 
 func boolToInt(value bool) int {
@@ -192,6 +245,7 @@ func scanTodo(scanner todoScanner) (models.Todo, error) {
 		&todo.Title,
 		&completed,
 		&todo.TodoDate,
+		&todo.Priority,
 		&todo.SourceType,
 		&habitID,
 		&todo.FocusSeconds,
@@ -201,6 +255,9 @@ func scanTodo(scanner todoScanner) (models.Todo, error) {
 	todo.Completed = completed == 1
 	if todo.SourceType == "" {
 		todo.SourceType = "todo"
+	}
+	if todo.Priority == "" {
+		todo.Priority = priorityMedium
 	}
 	if habitID.Valid {
 		todo.HabitID = &habitID.Int64

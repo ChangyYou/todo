@@ -681,12 +681,6 @@ select {
   color: rgba(35, 66, 56, 0.78);
 }
 
-.daily-todo-form {
-  margin-top: 18px;
-  display: grid;
-  gap: 10px;
-}
-
 .daily-todo-field {
   display: grid;
   gap: 8px;
@@ -720,6 +714,8 @@ select {
 }
 
 .daily-todo-add-button {
+  width: 100%;
+  margin-top: 18px;
   min-height: 42px;
 }
 
@@ -791,6 +787,48 @@ select {
   font-size: 0.72rem;
   line-height: 1.2;
   color: rgba(42, 76, 62, 0.78);
+}
+
+.daily-todo-date-badge,
+.daily-todo-priority-badge {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-family: "Outfit", "Noto Sans SC", sans-serif;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.daily-todo-date-badge {
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.44);
+  color: rgba(43, 70, 61, 0.72);
+}
+
+.daily-todo-priority-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+.daily-todo-priority-badge.low {
+  background: rgba(76, 139, 98, 0.12);
+  border: 1px solid rgba(76, 139, 98, 0.18);
+  color: #397a52;
+}
+
+.daily-todo-priority-badge.medium {
+  background: rgba(199, 157, 63, 0.14);
+  border: 1px solid rgba(199, 157, 63, 0.2);
+  color: #8a6820;
+}
+
+.daily-todo-priority-badge.high {
+  background: rgba(202, 77, 67, 0.13);
+  border: 1px solid rgba(202, 77, 67, 0.22);
+  color: #a33b34;
 }
 
 .daily-todo-focus-badge {
@@ -892,34 +930,6 @@ select {
   height: 17px;
 }
 
-.daily-todo-edit-form {
-  width: 100%;
-  display: grid;
-  gap: 8px;
-}
-
-.daily-todo-edit-form input {
-  width: 100%;
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(69, 112, 92, 0.22);
-  background: rgba(255, 255, 255, 0.68);
-  color: #1f3a32;
-  outline: none;
-}
-
-.daily-todo-edit-form input:focus {
-  border-color: rgba(69, 112, 92, 0.46);
-  box-shadow: 0 0 0 3px rgba(69, 112, 92, 0.12);
-}
-
-.daily-todo-edit-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
 .daily-todo-text-button {
   min-height: 30px;
   padding: 0 12px;
@@ -933,6 +943,169 @@ select {
 .daily-todo-text-button.muted {
   background: rgba(255, 255, 255, 0.44);
   color: rgba(43, 70, 61, 0.72);
+}
+
+.task-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 42;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(22, 43, 36, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.task-modal {
+  width: min(420px, calc(100vw - 36px));
+  padding: 20px;
+  border-radius: 24px;
+  background: rgba(247, 250, 242, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow: 0 28px 70px rgba(75, 92, 78, 0.22);
+}
+
+.task-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.task-modal-header p {
+  margin: 0;
+  font-family: "Cormorant Garamond", "Noto Serif SC", serif;
+  font-size: 1.65rem;
+  line-height: 1;
+  color: #1f3c33;
+}
+
+.task-modal-close {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(47, 88, 72, 0.1);
+  color: #2f5848;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.task-modal-form {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.task-modal-field {
+  display: grid;
+  gap: 8px;
+  color: #28453d;
+  font-size: 0.9rem;
+}
+
+.task-modal-field span,
+.task-priority-field legend {
+  font-family: "Outfit", sans-serif;
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(43, 70, 61, 0.58);
+}
+
+.task-modal-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  background: rgba(255, 255, 255, 0.7);
+  color: #1f3a32;
+  outline: none;
+}
+
+.task-modal-field input:focus {
+  border-color: rgba(69, 112, 92, 0.4);
+  box-shadow: 0 0 0 3px rgba(69, 112, 92, 0.12);
+}
+
+.task-priority-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.task-priority-field legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.task-priority-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.task-priority-option {
+  min-width: 0;
+  cursor: pointer;
+}
+
+.task-priority-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.task-priority-option span {
+  min-height: 42px;
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  color: rgba(43, 70, 61, 0.74);
+}
+
+.task-priority-option svg {
+  width: 14px;
+  height: 14px;
+}
+
+.task-priority-option.low input:checked + span {
+  background: rgba(76, 139, 98, 0.16);
+  border-color: rgba(76, 139, 98, 0.24);
+  color: #397a52;
+}
+
+.task-priority-option.medium input:checked + span {
+  background: rgba(199, 157, 63, 0.18);
+  border-color: rgba(199, 157, 63, 0.26);
+  color: #8a6820;
+}
+
+.task-priority-option.high input:checked + span {
+  background: rgba(202, 77, 67, 0.16);
+  border-color: rgba(202, 77, 67, 0.28);
+  color: #a33b34;
+}
+
+.task-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.task-modal-submit {
+  min-height: 38px;
+  padding-inline: 18px;
 }
 
 .meta-label,
@@ -2224,10 +2397,6 @@ select {
   .daily-todo-panel {
     padding: 18px;
     border-radius: 22px;
-  }
-
-  .daily-todo-form {
-    grid-template-columns: 1fr;
   }
 
   .daily-todo-add-button {

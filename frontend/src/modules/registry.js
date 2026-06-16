@@ -2,9 +2,9 @@ export const moduleRegistry = [
   {
     slug: 'todolist',
     path: '/',
-    title: 'Daily Todo',
+    title: 'Task List',
     kicker: 'Planning Utility',
-    description: 'Todo 工作区里的每日任务列表模块。',
+    description: 'Todo 工作区里的任务清单模块。',
     status: 'Demo',
   },
   {

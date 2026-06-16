@@ -20,11 +20,14 @@ type TodoHandler struct {
 type createTodoRequest struct {
 	Title    string `json:"title"`
 	TodoDate string `json:"todoDate"`
+	Priority string `json:"priority"`
 }
 
 type updateTodoRequest struct {
 	Title     *string `json:"title"`
 	Completed *bool   `json:"completed"`
+	TodoDate  *string `json:"todoDate"`
+	Priority  *string `json:"priority"`
 }
 
 func NewTodoHandler(todoService *todos.Service) *TodoHandler {
@@ -60,7 +63,7 @@ func (h *TodoHandler) Create(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	todo, err := h.todos.Create(user.ID, request.Title, request.TodoDate)
+	todo, err := h.todos.Create(user.ID, request.Title, request.TodoDate, request.Priority)
 	if err != nil {
 		writeTodoError(ctx, c, err)
 		return
@@ -88,7 +91,7 @@ func (h *TodoHandler) Update(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	todo, err := h.todos.Update(user.ID, todoID, request.Title, request.Completed)
+	todo, err := h.todos.Update(user.ID, todoID, request.Title, request.Completed, request.TodoDate, request.Priority)
 	if err != nil {
 		writeTodoError(ctx, c, err)
 		return

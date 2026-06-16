@@ -11,6 +11,7 @@ type Todo struct {
 	Title        string `json:"title"`
 	Completed    bool   `json:"completed"`
 	TodoDate     string `json:"todoDate"`
+	Priority     string `json:"priority"`
 	SourceType   string `json:"sourceType"`
 	FocusSeconds int64  `json:"focusSeconds"`
 	HabitID      *int64 `json:"habitId,omitempty"`

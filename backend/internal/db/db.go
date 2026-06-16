@@ -55,6 +55,7 @@ func migrate(database *sql.DB) error {
 			title TEXT NOT NULL,
 			completed INTEGER NOT NULL DEFAULT 0,
 			todo_date TEXT NOT NULL,
+			priority TEXT NOT NULL DEFAULT 'medium',
 			source_type TEXT NOT NULL DEFAULT 'todo',
 			habit_id INTEGER,
 			created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -107,6 +108,9 @@ func migrate(database *sql.DB) error {
 		return err
 	}
 	if err := ensureColumn(database, "todos", "habit_id", `ALTER TABLE todos ADD COLUMN habit_id INTEGER`); err != nil {
+		return err
+	}
+	if err := ensureColumn(database, "todos", "priority", `ALTER TABLE todos ADD COLUMN priority TEXT NOT NULL DEFAULT 'medium'`); err != nil {
 		return err
 	}
 	if err := ensureColumn(database, "habits", "end_date", `ALTER TABLE habits ADD COLUMN end_date TEXT`); err != nil {

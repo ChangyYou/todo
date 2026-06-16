@@ -48,14 +48,15 @@ export async function logout() {
 }
 
 export async function listTodos(todoDate) {
-  const payload = await request(`/api/todos?date=${encodeURIComponent(todoDate)}`);
+  const query = todoDate ? `?date=${encodeURIComponent(todoDate)}` : '';
+  const payload = await request(`/api/todos${query}`);
   return payload.todos ?? [];
 }
 
-export async function createTodo({ title, todoDate }) {
+export async function createTodo({ title, todoDate, priority }) {
   const payload = await request('/api/todos', {
     method: 'POST',
-    body: { title, todoDate },
+    body: { title, todoDate, priority },
   });
   return payload.todo;
 }

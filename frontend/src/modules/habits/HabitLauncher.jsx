@@ -194,7 +194,7 @@ export default function HabitLauncher({ onHabitCreated }) {
         <section className="habit-panel" role="dialog" aria-label="每日习惯面板">
           <div className="habit-panel-header">
             <p className="habit-panel-title">每日习惯</p>
-            <p className="habit-panel-subtitle">管理会出现在今日任务里的习惯。</p>
+            <p className="habit-panel-subtitle">管理会出现在任务清单里的习惯。</p>
           </div>
 
           {errorMessage ? <p className="habit-error" role="alert">{errorMessage}</p> : null}

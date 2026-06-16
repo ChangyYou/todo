@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { createTodo, deleteTodo, listTodos, updateTodo } from '../../lib/api';
 
+const PRIORITY_OPTIONS = [
+  { value: 'low', label: '低', tone: 'low' },
+  { value: 'medium', label: '中', tone: 'medium' },
+  { value: 'high', label: '高', tone: 'high' },
+];
+
 function getTodayDate() {
   const date = new Date();
   const year = date.getFullYear();
@@ -31,6 +37,14 @@ function formatFocusDuration(seconds) {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
+function getPriorityLabel(priority) {
+  return PRIORITY_OPTIONS.find((option) => option.value === priority)?.label ?? '中';
+}
+
+function getDueLabel(todoDate) {
+  return todoDate === getTodayDate() ? '今日' : `截止 ${todoDate}`;
+}
+
 function EditIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -55,33 +69,121 @@ function TrashIcon() {
   );
 }
 
+function FlagIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 21V4.8c3.7-1.9 6.3 1.2 10 0 .7-.2 1.4-.5 2-.8v9.2c-.6.4-1.3.6-2 .8-3.7 1.2-6.3-1.9-10 0" fill="currentColor" />
+    </svg>
+  );
+}
+
+function TodoTaskModal({
+  mode,
+  initialValues,
+  onClose,
+  onSubmit,
+} = {}) {
+  const [title, setTitle] = useState(initialValues.title);
+  const [todoDate, setTodoDate] = useState(initialValues.todoDate);
+  const [priority, setPriority] = useState(initialValues.priority);
+  const isEditMode = mode === 'edit';
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    onSubmit({
+      title: title.trim(),
+      todoDate,
+      priority,
+    });
+  };
+
+  return (
+    <div className="task-modal-backdrop" role="presentation">
+      <section className="task-modal" role="dialog" aria-label={isEditMode ? '编辑任务' : '新增任务'}>
+        <div className="task-modal-header">
+          <p>{isEditMode ? '编辑任务' : '新增任务'}</p>
+          <button type="button" className="task-modal-close" aria-label="关闭任务窗口" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <form className="task-modal-form" onSubmit={handleSubmit}>
+          <label className="task-modal-field">
+            <span>任务名称</span>
+            <input
+              type="text"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="写下要完成的事"
+              autoFocus
+              required
+            />
+          </label>
+
+          <label className="task-modal-field">
+            <span>完成日期</span>
+            <input
+              type="date"
+              value={todoDate}
+              onChange={(event) => setTodoDate(event.target.value)}
+              required
+            />
+          </label>
+
+          <fieldset className="task-priority-field">
+            <legend>紧急程度</legend>
+            <div className="task-priority-options">
+              {PRIORITY_OPTIONS.map((option) => (
+                <label key={option.value} className={`task-priority-option ${option.tone}`}>
+                  <input
+                    type="radio"
+                    name="task-priority"
+                    value={option.value}
+                    checked={priority === option.value}
+                    onChange={(event) => setPriority(event.target.value)}
+                  />
+                  <span><FlagIcon />{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="task-modal-actions">
+            <button type="button" className="daily-todo-text-button muted" onClick={onClose}>
+              取消
+            </button>
+            <button type="submit" className="primary-button task-modal-submit">
+              {isEditMode ? '保存' : '添加'}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 export default function TodoListModule({
   refreshSignal = 0,
   focusTimerStatus = null,
   onFocusTodo = () => {},
   onTodoDeleted = () => {},
 } = {}) {
-  const [todoInputValue, setTodoInputValue] = useState('');
-  const [dailyTodos, setDailyTodos] = useState([]);
+  const [taskTodos, setTaskTodos] = useState([]);
   const [status, setStatus] = useState('loading');
   const [errorMessage, setErrorMessage] = useState('');
-  const [editingTodoId, setEditingTodoId] = useState(null);
-  const [editingTitle, setEditingTitle] = useState('');
-  const todoDate = getTodayDate();
-
-  const completedTodoCount = dailyTodos.filter((todo) => todo.completed).length;
+  const [taskModal, setTaskModal] = useState(null);
 
   useEffect(() => {
     let isDisposed = false;
 
     setStatus('loading');
-    listTodos(todoDate)
+    listTodos()
       .then((todos) => {
         if (isDisposed) {
           return;
         }
 
-        setDailyTodos(todos);
+        setTaskTodos(todos);
         setStatus('ready');
       })
       .catch((error) => {
@@ -95,53 +197,82 @@ export default function TodoListModule({
     return () => {
       isDisposed = true;
     };
-  }, [todoDate, refreshSignal]);
+  }, [refreshSignal]);
 
-  const handleAddTodo = async (event) => {
-    event.preventDefault();
+  const openCreateModal = () => {
+    setTaskModal({
+      mode: 'create',
+      todo: null,
+      values: {
+        title: '',
+        todoDate: getTodayDate(),
+        priority: 'medium',
+      },
+    });
+    setErrorMessage('');
+  };
 
-    const trimmedTitle = todoInputValue.trim();
-    if (!trimmedTitle) {
+  const openEditModal = (todo) => {
+    setTaskModal({
+      mode: 'edit',
+      todo,
+      values: {
+        title: todo.title,
+        todoDate: todo.todoDate,
+        priority: todo.priority ?? 'medium',
+      },
+    });
+    setErrorMessage('');
+  };
+
+  const closeTaskModal = () => {
+    setTaskModal(null);
+  };
+
+  const handleSubmitTaskModal = async (values) => {
+    if (!values.title) {
       return;
     }
 
     try {
-      const todo = await createTodo({ title: trimmedTitle, todoDate });
-      setDailyTodos((currentTodos) => [todo, ...currentTodos]);
-      setTodoInputValue('');
+      if (taskModal.mode === 'create') {
+        const todo = await createTodo(values);
+        setTaskTodos((currentTodos) => [todo, ...currentTodos]);
+      } else {
+        const previousTodo = taskModal.todo;
+        const savedTodo = await updateTodo(previousTodo.id, values);
+        setTaskTodos((currentTodos) => currentTodos.map((todo) => (
+          todo.id === savedTodo.id ? savedTodo : todo
+        )));
+      }
+
+      closeTaskModal();
       setErrorMessage('');
       setStatus('ready');
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : '新增任务失败');
+      setErrorMessage(error instanceof Error ? error.message : '任务保存失败');
       setStatus('error');
     }
   };
 
   const handleToggleTodo = async (todoToToggle) => {
-    const nextCompleted = !todoToToggle.completed;
-    setDailyTodos((currentTodos) => currentTodos.map((todo) => (
-      todo.id === todoToToggle.id ? { ...todo, completed: nextCompleted } : todo
-    )));
+    const previousTodos = taskTodos;
+    setTaskTodos((currentTodos) => currentTodos.filter((todo) => todo.id !== todoToToggle.id));
 
     try {
-      const savedTodo = await updateTodo(todoToToggle.id, { completed: nextCompleted });
-      setDailyTodos((currentTodos) => currentTodos.map((todo) => (
-        todo.id === savedTodo.id ? savedTodo : todo
-      )));
+      await updateTodo(todoToToggle.id, { completed: true });
       setErrorMessage('');
       setStatus('ready');
     } catch (error) {
-      setDailyTodos((currentTodos) => currentTodos.map((todo) => (
-        todo.id === todoToToggle.id ? todoToToggle : todo
-      )));
+      setTaskTodos(previousTodos);
       setErrorMessage(error instanceof Error ? error.message : '更新任务失败');
       setStatus('error');
     }
   };
 
   const handleDeleteTodo = async (todoId) => {
-    const previousTodos = dailyTodos;
-    setDailyTodos((currentTodos) => currentTodos.filter((todo) => todo.id !== todoId));
+    const previousTodos = taskTodos;
+    setTaskTodos((currentTodos) => currentTodos.filter((todo) => todo.id !== todoId));
     onTodoDeleted(todoId);
 
     try {
@@ -149,163 +280,107 @@ export default function TodoListModule({
       setErrorMessage('');
       setStatus('ready');
     } catch (error) {
-      setDailyTodos(previousTodos);
+      setTaskTodos(previousTodos);
       setErrorMessage(error instanceof Error ? error.message : '删除任务失败');
       setStatus('error');
     }
   };
 
-  const handleStartEdit = (todo) => {
-    setEditingTodoId(todo.id);
-    setEditingTitle(todo.title);
-    setErrorMessage('');
-  };
-
-  const handleCancelEdit = () => {
-    setEditingTodoId(null);
-    setEditingTitle('');
-  };
-
-  const handleSaveEdit = async (event, todoToEdit) => {
-    event.preventDefault();
-
-    const trimmedTitle = editingTitle.trim();
-    if (!trimmedTitle || trimmedTitle === todoToEdit.title) {
-      handleCancelEdit();
-      return;
-    }
-
-    const previousTodos = dailyTodos;
-    setDailyTodos((currentTodos) => currentTodos.map((todo) => (
-      todo.id === todoToEdit.id ? { ...todo, title: trimmedTitle } : todo
-    )));
-    handleCancelEdit();
-
-    try {
-      const savedTodo = await updateTodo(todoToEdit.id, { title: trimmedTitle });
-      setDailyTodos((currentTodos) => currentTodos.map((todo) => (
-        todo.id === savedTodo.id ? savedTodo : todo
-      )));
-      setErrorMessage('');
-      setStatus('ready');
-    } catch (error) {
-      setDailyTodos(previousTodos);
-      setErrorMessage(error instanceof Error ? error.message : '编辑任务失败');
-      setStatus('error');
-    }
-  };
-
   return (
-    <section id="daily-todo-panel" className="daily-todo-panel" aria-label="每日 Todo">
+    <section id="daily-todo-panel" className="daily-todo-panel" aria-label="任务清单">
       <div className="daily-todo-header">
         <div>
-          <p className="daily-todo-kicker">Daily Todo</p>
-          <h2>今日任务</h2>
+          <p className="daily-todo-kicker">Task List</p>
+          <h2>任务清单</h2>
         </div>
-        <span className="daily-todo-count">{completedTodoCount} / {dailyTodos.length}</span>
+        <span className="daily-todo-count">{taskTodos.length} 项</span>
       </div>
 
-      <form className="daily-todo-form" onSubmit={handleAddTodo}>
-        <label className="daily-todo-field">
-          <span>新增任务</span>
-          <input
-            type="text"
-            value={todoInputValue}
-            onChange={(event) => setTodoInputValue(event.target.value)}
-            placeholder="写下今天要完成的事"
-          />
-        </label>
-        <button type="submit" className="primary-button daily-todo-add-button">
-          添加
-        </button>
-      </form>
+      <button type="button" className="primary-button daily-todo-add-button" onClick={openCreateModal}>
+        新增任务
+      </button>
 
       {status === 'loading' ? <p className="daily-todo-state">任务加载中...</p> : null}
       {errorMessage ? <p className="daily-todo-error" role="alert">{errorMessage}</p> : null}
 
       <div className="daily-todo-list">
-        {dailyTodos.map((todo) => {
-          const isEditing = editingTodoId === todo.id;
+        {taskTodos.map((todo) => {
           const isHabitTodo = todo.sourceType === 'habit';
+          const priority = todo.priority ?? 'medium';
           const isFocusTodo = String(focusTimerStatus?.todoId ?? '') === String(todo.id);
           const focusTimerLabel = isFocusTodo && focusTimerStatus?.phase === 'focus'
             ? formatTodoTimer(focusTimerStatus.remainingSeconds)
             : '';
 
           return (
-            <div key={todo.id} className={`daily-todo-item ${todo.completed ? 'completed' : ''}`}>
-              {isEditing ? (
-                <form className="daily-todo-edit-form" onSubmit={(event) => handleSaveEdit(event, todo)}>
-                  <input
-                    aria-label="编辑任务标题"
-                    value={editingTitle}
-                    onChange={(event) => setEditingTitle(event.target.value)}
-                    autoFocus
-                  />
-                  <div className="daily-todo-edit-actions">
-                    <button type="submit" className="daily-todo-text-button">保存</button>
-                    <button type="button" className="daily-todo-text-button muted" onClick={handleCancelEdit}>
-                      取消
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <>
-                  <label className="daily-todo-check">
-                    <input
-                      type="checkbox"
-                      checked={todo.completed}
-                      onChange={() => handleToggleTodo(todo)}
-                    />
-                    <span className="daily-todo-title">
-                      <span>{todo.title}</span>
-                      <span className="daily-todo-badge-row">
-                        {isHabitTodo ? <span className="daily-todo-badge">习惯</span> : null}
-                        {todo.focusSeconds > 0 ? (
-                          <span className="daily-todo-focus-badge">已专注 {formatFocusDuration(todo.focusSeconds)}</span>
-                        ) : null}
-                      </span>
+            <div key={todo.id} className="daily-todo-item">
+              <label className="daily-todo-check">
+                <input
+                  type="checkbox"
+                  aria-label={todo.title}
+                  checked={false}
+                  onChange={() => handleToggleTodo(todo)}
+                />
+                <span className="daily-todo-title">
+                  <span>{todo.title}</span>
+                  <span className="daily-todo-badge-row">
+                    <span className="daily-todo-date-badge">{getDueLabel(todo.todoDate)}</span>
+                    <span className={`daily-todo-priority-badge ${priority}`}>
+                      <FlagIcon />{getPriorityLabel(priority)}
                     </span>
-                  </label>
-                  <div className="daily-todo-actions" aria-label={`${todo.title} 操作`}>
-                    {!isHabitTodo ? (
-                      <button
-                        type="button"
-                        className="daily-todo-icon-button has-tooltip"
-                        aria-label={`编辑任务 ${todo.title}`}
-                        data-tooltip="编辑"
-                        onClick={() => handleStartEdit(todo)}
-                      >
-                        <EditIcon />
-                      </button>
+                    {isHabitTodo ? <span className="daily-todo-badge">习惯</span> : null}
+                    {todo.focusSeconds > 0 ? (
+                      <span className="daily-todo-focus-badge">已专注 {formatFocusDuration(todo.focusSeconds)}</span>
                     ) : null}
-                    <button
-                      type="button"
-                      className={`daily-todo-icon-button timer has-tooltip ${focusTimerLabel ? 'active-timer' : ''}`}
-                      aria-label={`开始计时 ${todo.title}`}
-                      data-tooltip={focusTimerLabel ? '当前专注' : '计时'}
-                      onClick={() => onFocusTodo(todo)}
-                    >
-                      {focusTimerLabel ? <span className="daily-todo-timer-label">{focusTimerLabel}</span> : <TimerIcon />}
-                    </button>
-                    {!isHabitTodo ? (
-                      <button
-                        type="button"
-                        className="daily-todo-icon-button danger has-tooltip"
-                        aria-label={`删除任务 ${todo.title}`}
-                        data-tooltip="删除"
-                        onClick={() => handleDeleteTodo(todo.id)}
-                      >
-                        <TrashIcon />
-                      </button>
-                    ) : null}
-                  </div>
-                </>
-              )}
+                  </span>
+                </span>
+              </label>
+              <div className="daily-todo-actions" aria-label={`${todo.title} 操作`}>
+                {!isHabitTodo ? (
+                  <button
+                    type="button"
+                    className="daily-todo-icon-button has-tooltip"
+                    aria-label={`编辑任务 ${todo.title}`}
+                    data-tooltip="编辑"
+                    onClick={() => openEditModal(todo)}
+                  >
+                    <EditIcon />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className={`daily-todo-icon-button timer has-tooltip ${focusTimerLabel ? 'active-timer' : ''}`}
+                  aria-label={`开始计时 ${todo.title}`}
+                  data-tooltip={focusTimerLabel ? '当前专注' : '计时'}
+                  onClick={() => onFocusTodo(todo)}
+                >
+                  {focusTimerLabel ? <span className="daily-todo-timer-label">{focusTimerLabel}</span> : <TimerIcon />}
+                </button>
+                {!isHabitTodo ? (
+                  <button
+                    type="button"
+                    className="daily-todo-icon-button danger has-tooltip"
+                    aria-label={`删除任务 ${todo.title}`}
+                    data-tooltip="删除"
+                    onClick={() => handleDeleteTodo(todo.id)}
+                  >
+                    <TrashIcon />
+                  </button>
+                ) : null}
+              </div>
             </div>
           );
         })}
       </div>
+
+      {taskModal ? (
+        <TodoTaskModal
+          mode={taskModal.mode}
+          initialValues={taskModal.values}
+          onClose={closeTaskModal}
+          onSubmit={handleSubmitTaskModal}
+        />
+      ) : null}
     </section>
   );
 }

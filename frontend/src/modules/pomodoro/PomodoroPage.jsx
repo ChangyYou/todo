@@ -154,8 +154,6 @@ export default function PomodoroPage({
     data: null,
     errorMessage: '',
   });
-  const focusTodoDate = getLocalDate(currentDate);
-
   useEffect(() => {
     let isDisposed = false;
 
@@ -248,7 +246,7 @@ export default function PomodoroPage({
 
     const loadFocusTodos = async () => {
       try {
-        const todos = await listTodos(focusTodoDate);
+        const todos = await listTodos();
 
         if (isDisposed) {
           return;
@@ -290,7 +288,7 @@ export default function PomodoroPage({
     return () => {
       isDisposed = true;
     };
-  }, [focusTodoDate]);
+  }, []);
 
   useEffect(() => {
     if (!focusTodoRequest?.id) {
