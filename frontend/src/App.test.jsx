@@ -194,7 +194,8 @@ describe('App', () => {
     expect(screen.getByRole('complementary', { name: '每日 Todo' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '收起任务' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('region', { name: '沉浸专注' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '切换到卡片模式' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '切换到卡片模式' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '切换到沉浸模式' })).not.toBeInTheDocument();
   });
 
   it('toggles the fixed daily todo drawer from the home page', async () => {
@@ -226,7 +227,8 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: '暂停' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '重置' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '打开设置' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '切换到卡片模式' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '切换到卡片模式' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '切换到沉浸模式' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '打开音乐面板' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '沉浸专注' })).toBeInTheDocument();
     expect(screen.queryByRole('complementary', { name: '每日 Todo' })).not.toBeInTheDocument();
@@ -348,6 +350,7 @@ describe('App', () => {
   });
 
   it('lets users edit and delete habits from the habit panel', async () => {
+    vi.setSystemTime(new Date('2026-06-16T08:00:00+08:00'));
     await renderAtPath('/');
 
     fireEvent.click(screen.getByRole('button', { name: '打开习惯面板' }));
@@ -546,23 +549,20 @@ describe('App', () => {
     expect(screen.getByText('1 / 4')).toBeInTheDocument();
   });
 
-  it('switches into immersive mode without losing the current timer value', async () => {
+  it('uses focus mode as the only pomodoro view', async () => {
     await renderAtPath('/pomodoro');
-
-    fireEvent.click(screen.getByRole('button', { name: '切换到沉浸模式' }));
 
     expect(screen.getByText('Focus Tomato')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '沉浸专注' })).toBeInTheDocument();
     expect(screen.getByText('25:00')).toBeInTheDocument();
     expect(screen.getByText('Chengdu, CN')).toBeInTheDocument();
-    expect(screen.queryByText('沉浸专注')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '切换到卡片模式' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '切换到卡片模式' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '切换到沉浸模式' })).not.toBeInTheDocument();
   });
 
-  it('keeps immersive mode active while timer actions continue to work', async () => {
+  it('keeps focus mode active while timer actions continue to work', async () => {
     await renderAtPath('/pomodoro');
 
-    fireEvent.click(screen.getByRole('button', { name: '切换到沉浸模式' }));
     fireEvent.click(screen.getByRole('button', { name: '开始' }));
 
     expect(screen.getByRole('region', { name: '沉浸专注' })).toBeInTheDocument();
@@ -635,10 +635,9 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: '加载收藏歌单 深夜专注' })).toBeInTheDocument();
   });
 
-  it('keeps the music panel available in immersive mode', async () => {
+  it('keeps the music panel available in focus mode', async () => {
     await renderAtPath('/pomodoro');
 
-    fireEvent.click(screen.getByRole('button', { name: '切换到沉浸模式' }));
     fireEvent.click(screen.getByRole('button', { name: '打开音乐面板' }));
 
     expect(screen.getByRole('dialog', { name: '网易云音乐' })).toBeInTheDocument();

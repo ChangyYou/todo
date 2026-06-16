@@ -5,7 +5,6 @@ import {
   createInitialTimerState,
   formatTime,
   getNextTimerState,
-  getProgressValue,
   TIMER_PHASES,
 } from '../../lib/pomodoro';
 import {
@@ -21,9 +20,6 @@ import {
   updatePomodoroSettings,
   updateTodo,
 } from '../../lib/api';
-
-const RING_RADIUS = 104;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 const PHASE_LABELS = {
   [TIMER_PHASES.FOCUS]: '专注时间',
@@ -43,11 +39,6 @@ const SETTINGS_FIELDS = [
   { key: 'longBreakMinutes', label: '长休息（分钟）' },
   { key: 'longBreakInterval', label: '长休息间隔（轮）' },
 ];
-
-const VIEW_MODES = {
-  CARD: 'card',
-  IMMERSIVE: 'immersive',
-};
 
 function getBeijingTimeParts(currentDate) {
   const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -114,31 +105,6 @@ function SkipIcon() {
   );
 }
 
-function CardModeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="4" y="6" width="16" height="12" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M7.5 9.5h9M7.5 12.5h6.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ImmersiveModeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M8 5.5H5.5V8M16 5.5h2.5V8M8 18.5H5.5V16M18.5 16v2.5H16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <rect x="8.5" y="8.5" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.18" />
-    </svg>
-  );
-}
-
 function MusicIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -167,7 +133,6 @@ export default function PomodoroPage({
   const [settings, setSettings] = useState(() => createDefaultSettings());
   const [timerState, setTimerState] = useState(() => createInitialTimerState(createDefaultSettings()));
   const [settingsErrorMessage, setSettingsErrorMessage] = useState('');
-  const [viewMode, setViewMode] = useState(VIEW_MODES.IMMERSIVE);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSkipChoiceOpen, setIsSkipChoiceOpen] = useState(false);
   const [isMusicPanelOpen, setIsMusicPanelOpen] = useState(false);
@@ -450,13 +415,10 @@ export default function PomodoroPage({
     }
   }, []);
 
-  const progressValue = getProgressValue(timerState);
-  const strokeDashoffset = RING_CIRCUMFERENCE * (1 - progressValue);
   const currentPhaseLabel = PHASE_LABELS[timerState.phase];
   const focusStatusLabel = selectedFocusTodoTitle || '未绑定任务';
   const currentRound = (timerState.completedFocusSessions % settings.longBreakInterval) + 1;
   const { dateLabel, timeLabel } = getBeijingTimeParts(currentDate);
-  const isImmersiveMode = viewMode === VIEW_MODES.IMMERSIVE;
   const isBreakPhase = timerState.phase !== TIMER_PHASES.FOCUS;
   const nextPhaseLabel =
     currentRound === settings.longBreakInterval ? PHASE_LABELS[TIMER_PHASES.LONG_BREAK] : PHASE_LABELS[TIMER_PHASES.SHORT_BREAK];
@@ -634,7 +596,7 @@ export default function PomodoroPage({
 
   const renderSettingsPanel = () =>
     isSettingsOpen ? (
-      <div className={`settings-panel ${isImmersiveMode ? 'settings-panel-immersive' : ''}`} role="dialog" aria-label="计时设置">
+      <div className="settings-panel settings-panel-immersive" role="dialog" aria-label="计时设置">
         <div ref={settingsPanelRef}>
           <div className="settings-panel-header">
             <p>计时设置</p>
@@ -675,7 +637,7 @@ export default function PomodoroPage({
   const renderSkipChoicePanel = () =>
     isSkipChoiceOpen ? (
       <div
-        className={`skip-choice-panel ${isImmersiveMode ? 'skip-choice-panel-immersive' : ''}`}
+        className="skip-choice-panel skip-choice-panel-immersive"
         role="dialog"
         aria-label="跳过专注选择"
       >
@@ -995,7 +957,7 @@ export default function PomodoroPage({
   };
 
   return (
-    <main className={`page-shell ${isImmersiveMode ? 'page-shell-immersive' : ''}`} onMouseDown={handlePagePointerDown}>
+    <main className="page-shell page-shell-immersive" onMouseDown={handlePagePointerDown}>
       <div className="scene-backdrop" aria-hidden="true">
         <div className="scene-sun" />
         <div className="scene-glow scene-glow-left" />
@@ -1005,92 +967,19 @@ export default function PomodoroPage({
         <div className="scene-haze" />
       </div>
 
-      <header className={`page-header ${isImmersiveMode ? 'page-header-immersive' : ''}`} role="banner">
-        <div className={`page-header-left ${isImmersiveMode ? 'page-header-left-immersive' : ''}`}>
+      <header className="page-header page-header-immersive" role="banner">
+        <div className="page-header-left page-header-left-immersive">
           {renderBrandMark()}
-
-          {!isImmersiveMode ? (
-            <section className="time-hero time-weather-panel" aria-label="成都时间与天气">
-              <p className="time-hero-kicker">Today</p>
-              <p className="time-hero-city">Chengdu, CN</p>
-              <div className="time-hero-value">{timeLabel}</div>
-              <p className="time-hero-date">{dateLabel}</p>
-              <div className="weather-panel" aria-live="polite">
-                <p className="weather-kicker">Live Weather</p>
-                <p className="weather-summary">{weatherSummary}</p>
-                {weatherState.status === 'success' ? (
-                  <p className="weather-detail">
-                    体感 {weatherState.data.apparentTemperature}°C · {weatherState.data.lowTemperature}°C / {weatherState.data.highTemperature}°C
-                  </p>
-                ) : null}
-                {weatherState.status === 'error' ? (
-                  <p className="weather-detail">{weatherState.errorMessage}</p>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
         </div>
-
-        {!isImmersiveMode ? (
-          <div className="top-status-chip" aria-live="polite">
-            {timerState.isRunning ? 'Focus Session' : 'Quiet Session'}
-          </div>
-        ) : null}
       </header>
 
-      <section className={`focus-stage ${isImmersiveMode ? 'focus-stage-immersive' : ''}`}>
-        {isImmersiveMode ? (
-          immersiveSidebar ? (
-            <div className="immersive-workspace">
-              {immersiveSidebar}
-              {renderImmersivePanel()}
-            </div>
-          ) : renderImmersivePanel()
-        ) : (
-          <section ref={timerCardRef} className="timer-card" aria-label="番茄钟">
-            <div className="card-topline">
-              <div className="heading-block">
-                <p className="eyebrow">云端专注</p>
-                <div className="pill-row">
-                  <span className="phase-pill">{currentPhaseLabel}</span>
-                  <span className="status-pill">{timerState.isRunning ? '运行中' : '待开始'}</span>
-                  {renderFocusTaskButton('status-pill secondary-pill')}
-                </div>
-              </div>
-            </div>
-            {renderSkipChoicePanel()}
-
-            <div className="timer-ring-wrap">
-              <svg className="timer-ring" viewBox="0 0 300 300" role="img" aria-label="番茄钟进度">
-                <circle className="timer-ring-track" cx="150" cy="150" r={RING_RADIUS} />
-                <circle
-                  className="timer-ring-progress"
-                  cx="150"
-                  cy="150"
-                  r={RING_RADIUS}
-                  strokeDasharray={RING_CIRCUMFERENCE}
-                  strokeDashoffset={strokeDashoffset}
-                />
-              </svg>
-
-              <div className="timer-copy">
-                <p className="phase-title">{currentPhaseLabel}</p>
-                <h1>{formatTime(timerState.remainingSeconds)}</h1>
-                <p className="phase-copy">{PHASE_COPY[timerState.phase]}</p>
-              </div>
-            </div>
-
-            {renderFocusBindingError()}
-            {renderTimerControls()}
-            {renderTimerMeta()}
-
-            <div className="phase-tabs" aria-hidden="true">
-              <span className={`phase-tab ${timerState.phase === TIMER_PHASES.FOCUS ? 'active' : ''}`}>Focus</span>
-              <span className={`phase-tab ${timerState.phase === TIMER_PHASES.SHORT_BREAK ? 'active' : ''}`}>Short Break</span>
-              <span className={`phase-tab ${timerState.phase === TIMER_PHASES.LONG_BREAK ? 'active' : ''}`}>Long Break</span>
-            </div>
-          </section>
-        )}
+      <section className="focus-stage focus-stage-immersive">
+        {immersiveSidebar ? (
+          <div className="immersive-workspace">
+            {immersiveSidebar}
+            {renderImmersivePanel()}
+          </div>
+        ) : renderImmersivePanel()}
       </section>
 
       {renderSettingsPanel()}
@@ -1114,7 +1003,7 @@ export default function PomodoroPage({
         </button>
       </div>
 
-      <div className="mode-switcher" role="toolbar" aria-label="显示模式切换">
+      <div className="settings-launcher">
         <button
           type="button"
           className={`mode-switch-button has-tooltip ${isSettingsOpen ? 'active' : ''} ${getFeedbackClassName('settings')}`}
@@ -1128,32 +1017,6 @@ export default function PomodoroPage({
           }}
         >
           <SettingsIcon />
-        </button>
-        <button
-          type="button"
-          className={`mode-switch-button has-tooltip ${viewMode === VIEW_MODES.CARD ? 'active' : ''} ${getFeedbackClassName('card-mode')}`}
-          aria-label="切换到卡片模式"
-          aria-pressed={viewMode === VIEW_MODES.CARD}
-          data-tooltip="切换到卡片模式"
-          onClick={() => {
-            showButtonFeedback('card-mode');
-            setViewMode(VIEW_MODES.CARD);
-          }}
-        >
-          <CardModeIcon />
-        </button>
-        <button
-          type="button"
-          className={`mode-switch-button has-tooltip ${viewMode === VIEW_MODES.IMMERSIVE ? 'active' : ''} ${getFeedbackClassName('immersive-mode')}`}
-          aria-label="切换到沉浸模式"
-          aria-pressed={viewMode === VIEW_MODES.IMMERSIVE}
-          data-tooltip="切换到沉浸模式"
-          onClick={() => {
-            showButtonFeedback('immersive-mode');
-            setViewMode(VIEW_MODES.IMMERSIVE);
-          }}
-        >
-          <ImmersiveModeIcon />
         </button>
       </div>
     </main>

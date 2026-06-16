@@ -425,30 +425,6 @@ select {
   font-weight: 600;
 }
 
-.top-status-chip {
-  flex-shrink: 0;
-  padding: 12px 18px;
-  border-radius: 999px;
-  background: rgba(250, 252, 246, 0.38);
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  font-family: "Outfit", sans-serif;
-  font-size: 0.95rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(45, 72, 62, 0.82);
-  position: relative;
-}
-
-.top-status-chip::before {
-  content: "";
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  margin-right: 10px;
-  border-radius: 50%;
-  background: #76ad65;
-}
-
 .weather-panel {
   margin-top: 16px;
   padding-top: 14px;
@@ -959,28 +935,6 @@ select {
   color: rgba(43, 70, 61, 0.72);
 }
 
-.time-hero {
-  color: #18342e;
-}
-
-.time-weather-panel {
-  padding: 18px 18px 16px;
-  border-radius: 24px;
-  background: rgba(239, 244, 234, 0.44);
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  box-shadow:
-    0 20px 38px rgba(118, 139, 119, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.34);
-  backdrop-filter: blur(16px);
-}
-
-.time-hero-kicker,
-.time-hero-city,
-.time-hero-date {
-  margin: 0;
-}
-
-.time-hero-kicker,
 .meta-label,
 .side-card-kicker,
 .phase-title,
@@ -990,47 +944,6 @@ select {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: rgba(43, 70, 61, 0.48);
-}
-
-.time-hero-city {
-  margin-top: 10px;
-  font-family: "Outfit", sans-serif;
-  font-size: 1.02rem;
-  letter-spacing: 0.08em;
-  color: rgba(31, 57, 50, 0.9);
-}
-
-.time-hero-value {
-  margin-top: 14px;
-  font-family: "Cormorant Garamond", "Noto Serif SC", serif;
-  font-size: clamp(2.6rem, 3.8vw, 4rem);
-  line-height: 0.92;
-  letter-spacing: -0.06em;
-  color: #17372e;
-}
-
-.time-hero-date {
-  margin-top: 8px;
-  font-size: 0.95rem;
-  color: rgba(44, 69, 63, 0.72);
-}
-
-
-.timer-card {
-  --timer-ring-size: clamp(250px, 76vw, 360px);
-  --timer-core-size: clamp(214px, 58vw, 264px);
-  position: relative;
-  width: 100%;
-  max-width: min(520px, 100%);
-  padding: clamp(16px, 2vw, 22px) clamp(14px, 2vw, 22px) clamp(16px, 2vw, 20px);
-  min-height: 0;
-  border-radius: 28px;
-  border: 1px solid rgba(250, 252, 246, 0.42);
-  background: rgba(237, 243, 231, 0.62);
-  box-shadow:
-    0 32px 64px rgba(120, 140, 114, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(18px);
 }
 
 .immersive-panel {
@@ -1290,14 +1203,6 @@ select {
   margin-top: 8px;
 }
 
-.card-topline {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
 .heading-block {
   display: grid;
   gap: 9px;
@@ -1309,8 +1214,6 @@ select {
   gap: 8px;
 }
 
-.phase-pill,
-.status-pill,
 .phase-tab {
   max-width: min(320px, 100%);
   font-size: 0.8rem;
@@ -1327,11 +1230,6 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.phase-pill {
-  background: rgba(255, 255, 255, 0.84);
-  color: #25463c;
 }
 
 .secondary-pill {
@@ -1468,70 +1366,6 @@ select {
   width: 20px;
   height: 20px;
   accent-color: #2a5b49;
-}
-
-.timer-ring-wrap {
-  position: relative;
-  display: grid;
-  place-items: center;
-  padding: 14px 0 12px;
-}
-
-.timer-ring {
-  width: min(100%, var(--timer-ring-size));
-  height: auto;
-}
-
-.timer-ring-track,
-.timer-ring-progress {
-  fill: none;
-  stroke-width: 10;
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-  stroke-linecap: round;
-}
-
-.timer-ring-track {
-  stroke: rgba(255, 255, 255, 0.52);
-}
-
-.timer-ring-progress {
-  stroke: rgba(255, 255, 255, 0.9);
-  transition: stroke-dashoffset 0.45s ease;
-}
-
-.timer-copy {
-  position: absolute;
-  width: var(--timer-core-size);
-  height: var(--timer-core-size);
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: clamp(8px, 2vw, 12px);
-  text-align: center;
-  border-radius: 50%;
-  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.82), rgba(251, 252, 248, 0.58));
-  border: 1px solid rgba(255, 255, 255, 0.62);
-  box-shadow: inset 0 2px 12px rgba(255, 255, 255, 0.48);
-}
-
-.timer-copy h1 {
-  margin: 0;
-  font-family: "Cormorant Garamond", "Noto Serif SC", serif;
-  font-size: clamp(2.9rem, 15vw, 4.8rem);
-  line-height: 0.95;
-  font-weight: 500;
-  letter-spacing: -0.06em;
-  color: #1c3a31;
-  font-variant-numeric: tabular-nums;
-}
-
-.phase-copy {
-  margin: 0;
-  max-width: 18ch;
-  font-size: clamp(0.76rem, 1.8vw, 0.84rem);
-  line-height: 1.6;
-  color: rgba(50, 75, 68, 0.72);
 }
 
 .controls {
@@ -2185,7 +2019,7 @@ select {
   color: rgba(43, 70, 61, 0.7);
 }
 
-.mode-switcher {
+.settings-launcher {
   position: fixed;
   right: clamp(12px, 2.4vw, 24px);
   bottom: clamp(12px, 2.4vw, 24px);
@@ -2324,14 +2158,6 @@ select {
     align-items: flex-start;
   }
 
-  .top-status-chip {
-    align-self: flex-end;
-  }
-
-  .timer-card {
-    max-width: min(560px, 100%);
-  }
-
 }
 
 @media (max-width: 720px) {
@@ -2347,11 +2173,6 @@ select {
 
   .page-header-left {
     width: 100%;
-  }
-
-  .time-weather-panel {
-    padding: 16px;
-    border-radius: 20px;
   }
 
   .controls {
@@ -2414,18 +2235,8 @@ select {
   }
 
   .intro-card,
-  .side-card,
-  .timer-card {
+  .side-card {
     border-radius: 24px;
-  }
-
-  .timer-card {
-    padding: 20px 16px 20px;
-  }
-
-  .card-topline {
-    flex-direction: column;
-    align-items: stretch;
   }
 
   .icon-button {
@@ -2448,10 +2259,6 @@ select {
   .skip-choice-panel-immersive {
     width: min(100%, 520px);
     margin-inline: auto;
-  }
-
-  .time-hero-value {
-    font-size: clamp(3rem, 16vw, 4.4rem);
   }
 
   .controls {
@@ -2506,7 +2313,7 @@ select {
     max-height: min(70vh, 680px);
   }
 
-  .mode-switcher {
+  .settings-launcher {
     gap: 8px;
   }
 
@@ -2527,7 +2334,6 @@ select {
   }
 
   .brand-kicker,
-  .time-hero-kicker,
   .meta-label,
   .phase-title,
   .eyebrow,
@@ -2535,31 +2341,8 @@ select {
     letter-spacing: 0.12em;
   }
 
-  .top-status-chip {
-    align-self: flex-start;
-    padding: 10px 14px;
-    font-size: 0.82rem;
-  }
-
   .focus-stage {
     padding-top: 18px;
-  }
-
-  .timer-card {
-    --timer-ring-size: clamp(236px, 78vw, 320px);
-    --timer-core-size: clamp(198px, 58vw, 240px);
-    padding: 18px 14px 16px;
-  }
-
-  .phase-pill,
-  .status-pill {
-    min-height: 30px;
-    padding: 5px 10px;
-    font-size: 0.74rem;
-  }
-
-  .timer-ring-wrap {
-    padding: 8px 0 6px;
   }
 
   .timer-meta-strip {
@@ -2607,18 +2390,8 @@ select {
 }
 
 @media (max-width: 420px) {
-  .timer-card {
-    --timer-ring-size: clamp(220px, 82vw, 300px);
-    --timer-core-size: clamp(184px, 60vw, 224px);
-    padding: 16px 12px 14px;
-  }
-
   .pill-row {
     gap: 6px;
-  }
-
-  .time-weather-panel {
-    padding: 14px;
   }
 
   .weather-summary {
