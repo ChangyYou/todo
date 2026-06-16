@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createTodo, deleteTodo, listTodos, updateTodo } from '../../lib/api';
 
 const PRIORITY_OPTIONS = [
@@ -97,9 +98,14 @@ function TodoTaskModal({
     });
   };
 
-  return (
+  return createPortal(
     <div className="task-modal-backdrop" role="presentation">
-      <section className="task-modal" role="dialog" aria-label={isEditMode ? '编辑任务' : '新增任务'}>
+      <section
+        className="task-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={isEditMode ? '编辑任务' : '新增任务'}
+      >
         <div className="task-modal-header">
           <p>{isEditMode ? '编辑任务' : '新增任务'}</p>
           <button type="button" className="task-modal-close" aria-label="关闭任务窗口" onClick={onClose}>
@@ -158,7 +164,8 @@ function TodoTaskModal({
           </div>
         </form>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
