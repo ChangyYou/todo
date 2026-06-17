@@ -51,7 +51,7 @@ func (h *FocusHandler) Stats(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	stats, err := h.focus.Stats(user.ID, c.Query("start"), c.Query("end"))
+	stats, err := h.focus.Stats(user.ID, c.Query("start"), c.Query("end"), c.Query("period"))
 	if errors.Is(err, focus.ErrInvalidFocusSession) {
 		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "统计日期不正确"})
 		return

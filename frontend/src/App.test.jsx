@@ -66,15 +66,33 @@ beforeEach(() => {
           stats: {
             startDate: '2026-06-09',
             endDate: '2026-06-15',
+            period: 'day',
+            overview: {
+              todayCompletedTasks: 2,
+              todayPomodoros: 1,
+              todayFocusSeconds: 2100,
+              totalCompletedTasks: 8,
+              totalPomodoros: 3,
+              totalFocusSeconds: 3900,
+            },
             summary: { durationSeconds: 3900, sessionCount: 3 },
-            daily: [
-              { date: '2026-06-09', durationSeconds: 0, sessionCount: 0 },
-              { date: '2026-06-10', durationSeconds: 600, sessionCount: 1 },
-              { date: '2026-06-11', durationSeconds: 0, sessionCount: 0 },
-              { date: '2026-06-12', durationSeconds: 1200, sessionCount: 1 },
-              { date: '2026-06-13', durationSeconds: 0, sessionCount: 0 },
-              { date: '2026-06-14', durationSeconds: 0, sessionCount: 0 },
-              { date: '2026-06-15', durationSeconds: 2100, sessionCount: 1 },
+            periods: [
+              { label: '9日', startDate: '2026-06-09', endDate: '2026-06-09', durationSeconds: 0, sessionCount: 0, taskTotal: 2, taskCompleted: 1, taskCompletionRate: 50 },
+              { label: '10日', startDate: '2026-06-10', endDate: '2026-06-10', durationSeconds: 600, sessionCount: 1, taskTotal: 2, taskCompleted: 2, taskCompletionRate: 100 },
+              { label: '11日', startDate: '2026-06-11', endDate: '2026-06-11', durationSeconds: 0, sessionCount: 0, taskTotal: 0, taskCompleted: 0, taskCompletionRate: 0 },
+              { label: '12日', startDate: '2026-06-12', endDate: '2026-06-12', durationSeconds: 1200, sessionCount: 1, taskTotal: 3, taskCompleted: 1, taskCompletionRate: 33 },
+              { label: '13日', startDate: '2026-06-13', endDate: '2026-06-13', durationSeconds: 0, sessionCount: 0, taskTotal: 0, taskCompleted: 0, taskCompletionRate: 0 },
+              { label: '14日', startDate: '2026-06-14', endDate: '2026-06-14', durationSeconds: 0, sessionCount: 0, taskTotal: 0, taskCompleted: 0, taskCompletionRate: 0 },
+              { label: '今天', startDate: '2026-06-15', endDate: '2026-06-15', durationSeconds: 2100, sessionCount: 1, taskTotal: 3, taskCompleted: 2, taskCompletionRate: 67 },
+            ],
+            habitWeek: [
+              { date: '2026-06-15', label: '一', total: 2, checked: 1, completion: 50 },
+              { date: '2026-06-16', label: '二', total: 2, checked: 2, completion: 100 },
+              { date: '2026-06-17', label: '三', total: 0, checked: 0, completion: 0 },
+              { date: '2026-06-18', label: '四', total: 0, checked: 0, completion: 0 },
+              { date: '2026-06-19', label: '五', total: 0, checked: 0, completion: 0 },
+              { date: '2026-06-20', label: '六', total: 0, checked: 0, completion: 0 },
+              { date: '2026-06-21', label: '日', total: 0, checked: 0, completion: 0 },
             ],
             byTask: [
               { todoId: 1, title: '整理今天最重要的三件事', durationSeconds: 2100, sessionCount: 1 },
@@ -685,12 +703,14 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: '打开专注统计' }));
 
     expect(await screen.findByRole('dialog', { name: '专注统计' })).toBeInTheDocument();
-    expect(await screen.findByText('总专注')).toBeInTheDocument();
-    expect(screen.getByText('1小时5分钟')).toBeInTheDocument();
-    expect(screen.getByText('3 次')).toBeInTheDocument();
-    expect(screen.getByText('近七天趋势')).toBeInTheDocument();
-    expect(screen.getByText('任务分布')).toBeInTheDocument();
-    expect(screen.getByText('阅读 Go 后端')).toBeInTheDocument();
+    expect(await screen.findByText('概览')).toBeInTheDocument();
+    expect(screen.getByText('今日已完成')).toBeInTheDocument();
+    expect(screen.getByText('今日番茄')).toBeInTheDocument();
+    expect(screen.getByText('总专注时长')).toBeInTheDocument();
+    expect(screen.getByText('最近专注时长趋势')).toBeInTheDocument();
+    expect(screen.getByText('最近完成率趋势')).toBeInTheDocument();
+    expect(screen.getByText('本周打卡进度')).toBeInTheDocument();
+    expect(screen.getByText('最近番茄数趋势')).toBeInTheDocument();
   });
 
   it('loads an official netease playlist iframe from a valid playlist url', async () => {

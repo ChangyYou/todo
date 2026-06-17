@@ -3,6 +3,7 @@ package focus
 import (
 	"database/sql"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -86,8 +87,9 @@ func (s *Service) SummaryByDate(userID int64, sessionDate string) (models.FocusS
 	}, nil
 }
 
-func (s *Service) Stats(userID int64, startDate, endDate string) (models.FocusStats, error) {
-	start, end, err := normalizeStatsRange(startDate, endDate)
+func (s *Service) Stats(userID int64, startDate, endDate, period string) (models.FocusStats, error) {
+	period = normalizeStatsPeriod(period)
+	start, end, periods, err := normalizeStatsRange(startDate, endDate, period)
 	if err != nil || userID <= 0 {
 		return models.FocusStats{}, ErrInvalidFocusSession
 	}
@@ -95,7 +97,10 @@ func (s *Service) Stats(userID int64, startDate, endDate string) (models.FocusSt
 	stats := models.FocusStats{
 		StartDate: start.Format("2006-01-02"),
 		EndDate:   end.Format("2006-01-02"),
+		Period:    period,
+		Periods:   periods,
 		Daily:     buildEmptyDailyStats(start, end),
+		HabitWeek: buildEmptyHabitWeek(time.Now()),
 		ByTask:    make([]models.FocusStatsTask, 0),
 		Recent:    make([]models.FocusStatsEntry, 0),
 	}
@@ -114,6 +119,22 @@ func (s *Service) Stats(userID int64, startDate, endDate string) (models.FocusSt
 	if err := s.fillDailyStats(userID, stats.StartDate, stats.EndDate, stats.Daily); err != nil {
 		return models.FocusStats{}, err
 	}
+	if err := s.fillPeriodStats(userID, stats.Periods); err != nil {
+		return models.FocusStats{}, err
+	}
+	if err := s.fillTaskCompletionStats(userID, stats.Periods); err != nil {
+		return models.FocusStats{}, err
+	}
+	overview, err := s.overview(userID)
+	if err != nil {
+		return models.FocusStats{}, err
+	}
+	stats.Overview = overview
+	habitWeek, err := s.habitWeek(userID, time.Now())
+	if err != nil {
+		return models.FocusStats{}, err
+	}
+	stats.HabitWeek = habitWeek
 
 	byTask, err := s.listTaskStats(userID, stats.StartDate, stats.EndDate)
 	if err != nil {
@@ -128,6 +149,115 @@ func (s *Service) Stats(userID int64, startDate, endDate string) (models.FocusSt
 	stats.Recent = recent
 
 	return stats, nil
+}
+
+func (s *Service) overview(userID int64) (models.FocusStatsOverview, error) {
+	today := time.Now().Format("2006-01-02")
+	var overview models.FocusStatsOverview
+
+	if err := s.db.QueryRow(
+		`SELECT COUNT(*)
+		   FROM todos
+		  WHERE user_id = ? AND source_type = 'todo' AND completed = 1 AND DATE(completed_at) = ?`,
+		userID,
+		today,
+	).Scan(&overview.TodayCompletedTasks); err != nil {
+		return overview, err
+	}
+	if err := s.db.QueryRow(
+		`SELECT COUNT(*)
+		   FROM todos
+		  WHERE user_id = ? AND source_type = 'todo' AND completed = 1`,
+		userID,
+	).Scan(&overview.TotalCompletedTasks); err != nil {
+		return overview, err
+	}
+	if err := s.db.QueryRow(
+		`SELECT COUNT(*), COALESCE(SUM(duration_seconds), 0)
+		   FROM focus_sessions
+		  WHERE user_id = ? AND session_date = ?`,
+		userID,
+		today,
+	).Scan(&overview.TodayPomodoros, &overview.TodayFocusSeconds); err != nil {
+		return overview, err
+	}
+	if err := s.db.QueryRow(
+		`SELECT COUNT(*), COALESCE(SUM(duration_seconds), 0)
+		   FROM focus_sessions
+		  WHERE user_id = ?`,
+		userID,
+	).Scan(&overview.TotalPomodoros, &overview.TotalFocusSeconds); err != nil {
+		return overview, err
+	}
+
+	return overview, nil
+}
+
+func (s *Service) fillPeriodStats(userID int64, periods []models.FocusStatsPeriod) error {
+	for index := range periods {
+		if err := s.db.QueryRow(
+			`SELECT COUNT(*), COALESCE(SUM(duration_seconds), 0)
+			   FROM focus_sessions
+			  WHERE user_id = ? AND session_date BETWEEN ? AND ?`,
+			userID,
+			periods[index].StartDate,
+			periods[index].EndDate,
+		).Scan(&periods[index].SessionCount, &periods[index].DurationSeconds); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) fillTaskCompletionStats(userID int64, periods []models.FocusStatsPeriod) error {
+	for index := range periods {
+		if err := s.db.QueryRow(
+			`SELECT COUNT(*),
+			        COALESCE(SUM(CASE
+			          WHEN completed = 1 AND completed_at IS NOT NULL AND DATE(completed_at) BETWEEN ? AND ? THEN 1
+			          ELSE 0
+			        END), 0)
+			   FROM todos
+			  WHERE user_id = ?
+			    AND source_type = 'todo'
+			    AND deleted_at IS NULL
+			    AND todo_date BETWEEN ? AND ?`,
+			periods[index].StartDate,
+			periods[index].EndDate,
+			userID,
+			periods[index].StartDate,
+			periods[index].EndDate,
+		).Scan(&periods[index].TaskTotal, &periods[index].TaskCompleted); err != nil {
+			return err
+		}
+		if periods[index].TaskTotal > 0 {
+			periods[index].TaskCompletionRate = (periods[index].TaskCompleted * 100) / periods[index].TaskTotal
+		}
+	}
+	return nil
+}
+
+func (s *Service) habitWeek(userID int64, now time.Time) ([]models.FocusStatsHabitDay, error) {
+	result := buildEmptyHabitWeek(now)
+	for index := range result {
+		if err := s.db.QueryRow(
+			`SELECT COUNT(*),
+			        COALESCE(SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END), 0)
+			   FROM todos
+			  WHERE user_id = ?
+			    AND source_type = 'habit'
+			    AND deleted_at IS NULL
+			    AND todo_date = ?`,
+			userID,
+			result[index].Date,
+		).Scan(&result[index].Total, &result[index].Checked); err != nil {
+			return nil, err
+		}
+		if result[index].Total > 0 {
+			result[index].Completion = (result[index].Checked * 100) / result[index].Total
+		}
+	}
+	return result, nil
 }
 
 func (s *Service) fillDailyStats(userID int64, startDate, endDate string, daily []models.FocusStatsDay) error {
@@ -229,7 +359,15 @@ func (s *Service) listRecentStats(userID int64, startDate, endDate string) ([]mo
 	return result, rows.Err()
 }
 
-func normalizeStatsRange(startDate, endDate string) (time.Time, time.Time, error) {
+func normalizeStatsPeriod(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "week" || value == "month" {
+		return value
+	}
+	return "day"
+}
+
+func normalizeStatsRange(startDate, endDate, period string) (time.Time, time.Time, []models.FocusStatsPeriod, error) {
 	endDate = strings.TrimSpace(endDate)
 	if endDate == "" {
 		endDate = time.Now().Format("2006-01-02")
@@ -237,24 +375,25 @@ func normalizeStatsRange(startDate, endDate string) (time.Time, time.Time, error
 
 	end, err := time.Parse("2006-01-02", endDate)
 	if err != nil {
-		return time.Time{}, time.Time{}, err
+		return time.Time{}, time.Time{}, nil, err
 	}
 
 	startDate = strings.TrimSpace(startDate)
 	if startDate == "" {
-		startDate = end.AddDate(0, 0, -6).Format("2006-01-02")
+		startDate = defaultPeriodStart(end, period).Format("2006-01-02")
 	}
 
 	start, err := time.Parse("2006-01-02", startDate)
 	if err != nil {
-		return time.Time{}, time.Time{}, err
+		return time.Time{}, time.Time{}, nil, err
 	}
 
 	if start.After(end) || int(end.Sub(start).Hours()/24) >= maxStatsRangeDays {
-		return time.Time{}, time.Time{}, ErrInvalidFocusSession
+		return time.Time{}, time.Time{}, nil, ErrInvalidFocusSession
 	}
 
-	return start, end, nil
+	periods := buildEmptyPeriodStats(start, end, period)
+	return start, end, periods, nil
 }
 
 func buildEmptyDailyStats(start, end time.Time) []models.FocusStatsDay {
@@ -263,4 +402,97 @@ func buildEmptyDailyStats(start, end time.Time) []models.FocusStatsDay {
 		days = append(days, models.FocusStatsDay{Date: day.Format("2006-01-02")})
 	}
 	return days
+}
+
+func buildEmptyPeriodStats(start, end time.Time, period string) []models.FocusStatsPeriod {
+	periods := make([]models.FocusStatsPeriod, 0, 7)
+	switch period {
+	case "week":
+		weekStart := startOfWeek(start)
+		for day := weekStart; !day.After(end); day = day.AddDate(0, 0, 7) {
+			periodEnd := day.AddDate(0, 0, 6)
+			periods = append(periods, models.FocusStatsPeriod{
+				Label:     labelWeek(day),
+				StartDate: day.Format("2006-01-02"),
+				EndDate:   minDate(periodEnd, end).Format("2006-01-02"),
+			})
+		}
+	case "month":
+		monthStart := time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, start.Location())
+		for day := monthStart; !day.After(end); day = day.AddDate(0, 1, 0) {
+			periodEnd := day.AddDate(0, 1, -1)
+			periods = append(periods, models.FocusStatsPeriod{
+				Label:     labelMonth(day),
+				StartDate: day.Format("2006-01-02"),
+				EndDate:   minDate(periodEnd, end).Format("2006-01-02"),
+			})
+		}
+	default:
+		for day := start; !day.After(end); day = day.AddDate(0, 0, 1) {
+			periods = append(periods, models.FocusStatsPeriod{
+				Label:     labelDay(day),
+				StartDate: day.Format("2006-01-02"),
+				EndDate:   day.Format("2006-01-02"),
+			})
+		}
+	}
+
+	if len(periods) > 7 {
+		return periods[len(periods)-7:]
+	}
+	return periods
+}
+
+func buildEmptyHabitWeek(now time.Time) []models.FocusStatsHabitDay {
+	labels := []string{"一", "二", "三", "四", "五", "六", "日"}
+	start := startOfWeek(now)
+	result := make([]models.FocusStatsHabitDay, 0, 7)
+	for index := 0; index < 7; index++ {
+		day := start.AddDate(0, 0, index)
+		result = append(result, models.FocusStatsHabitDay{
+			Date:  day.Format("2006-01-02"),
+			Label: labels[index],
+		})
+	}
+	return result
+}
+
+func defaultPeriodStart(end time.Time, period string) time.Time {
+	switch period {
+	case "week":
+		return startOfWeek(end).AddDate(0, 0, -42)
+	case "month":
+		monthStart := time.Date(end.Year(), end.Month(), 1, 0, 0, 0, 0, end.Location())
+		return monthStart.AddDate(0, -6, 0)
+	default:
+		return end.AddDate(0, 0, -6)
+	}
+}
+
+func startOfWeek(value time.Time) time.Time {
+	offset := (int(value.Weekday()) + 6) % 7
+	return value.AddDate(0, 0, -offset)
+}
+
+func minDate(a, b time.Time) time.Time {
+	if a.After(b) {
+		return b
+	}
+	return a
+}
+
+func labelDay(value time.Time) string {
+	if value.Format("2006-01-02") == time.Now().Format("2006-01-02") {
+		return "今天"
+	}
+	return value.Format("2日")
+}
+
+func labelWeek(value time.Time) string {
+	_, week := value.ISOWeek()
+	return "W" + strconv.Itoa(week)
+}
+
+func labelMonth(value time.Time) string {
+	return value.Format("1月")
 }

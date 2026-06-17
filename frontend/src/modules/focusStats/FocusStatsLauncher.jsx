@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { getFocusStats } from '../../lib/api';
 
+const PERIOD_OPTIONS = [
+  { value: 'day', label: '日' },
+  { value: 'week', label: '周' },
+  { value: 'month', label: '月' },
+];
+
 function ChartIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -9,11 +15,14 @@ function ChartIcon() {
   );
 }
 
-function formatDuration(seconds = 0) {
+function formatDuration(seconds = 0, compact = false) {
   const safeSeconds = Math.max(0, seconds);
   const hours = Math.floor(safeSeconds / 3600);
   const minutes = Math.floor((safeSeconds % 3600) / 60);
 
+  if (compact) {
+    return `${hours}h${minutes}m`;
+  }
   if (hours > 0 && minutes > 0) {
     return `${hours}小时${minutes}分钟`;
   }
@@ -26,13 +35,63 @@ function formatDuration(seconds = 0) {
   return '0分钟';
 }
 
-function getDayLabel(date) {
-  const parts = date.split('-');
-  return parts.length === 3 ? `${Number(parts[1])}/${Number(parts[2])}` : date;
+function StatCard({ label, value }) {
+  return (
+    <div className="focus-stats-overview-card">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function PeriodSelect({ value, onChange }) {
+  return (
+    <label className="focus-stats-period-select">
+      <span className="sr-only">统计周期</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        {PERIOD_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function TrendCard({ title, period, onPeriodChange, items, valueKey, maxValue, formatValue, percent = false }) {
+  return (
+    <div className="focus-stats-chart-card">
+      <div className="focus-stats-chart-header">
+        <h3>{title}</h3>
+        <PeriodSelect value={period} onChange={onPeriodChange} />
+      </div>
+      <div className={`focus-stats-chart ${percent ? 'percent' : ''}`}>
+        <div className="focus-stats-chart-axis" aria-hidden="true">
+          <span>{percent ? '100%' : formatValue(maxValue)}</span>
+          <span>{percent ? '50%' : formatValue(Math.floor(maxValue / 2))}</span>
+          <span>{percent ? '0%' : formatValue(0)}</span>
+        </div>
+        <div className="focus-stats-chart-bars">
+          {items.map((item) => {
+            const value = item[valueKey] ?? 0;
+            const height = maxValue > 0 ? Math.max(4, (value / maxValue) * 100) : 4;
+            return (
+              <div key={`${item.startDate}-${item.label}-${valueKey}`} className="focus-stats-chart-bar-item">
+                <div className="focus-stats-chart-track">
+                  <span style={{ height: `${height}%` }} title={`${item.label} ${formatValue(value)}`} />
+                </div>
+                <small>{item.label}</small>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
   const [isOpen, setIsOpen] = useState(false);
+  const [period, setPeriod] = useState('day');
   const [stats, setStats] = useState(null);
   const [status, setStatus] = useState('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -45,7 +104,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
 
     let isDisposed = false;
     setStatus('loading');
-    getFocusStats()
+    getFocusStats({ period })
       .then((nextStats) => {
         if (isDisposed) {
           return;
@@ -65,7 +124,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
     return () => {
       isDisposed = true;
     };
-  }, [isOpen, refreshSignal]);
+  }, [isOpen, period, refreshSignal]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -83,10 +142,11 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
     return () => window.removeEventListener('mousedown', handleMouseDown);
   }, [isOpen]);
 
-  const dailyStats = stats?.daily ?? [];
-  const maxDailySeconds = Math.max(1, ...dailyStats.map((day) => day.durationSeconds));
-  const taskStats = stats?.byTask ?? [];
-  const recentStats = stats?.recent ?? [];
+  const periods = stats?.periods ?? [];
+  const overview = stats?.overview ?? {};
+  const habitWeek = stats?.habitWeek ?? [];
+  const maxFocusSeconds = Math.max(300, ...periods.map((item) => item.durationSeconds ?? 0));
+  const maxPomodoros = Math.max(5, ...periods.map((item) => item.sessionCount ?? 0));
 
   return (
     <div className="focus-stats-launcher" ref={launcherRef}>
@@ -108,71 +168,71 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
               <p className="focus-stats-kicker">Focus Stats</p>
               <p className="focus-stats-title">专注统计</p>
             </div>
-            {stats ? <span>{getDayLabel(stats.startDate)} - {getDayLabel(stats.endDate)}</span> : null}
+            <PeriodSelect value={period} onChange={setPeriod} />
           </div>
 
           {status === 'loading' ? <p className="focus-stats-state">统计加载中...</p> : null}
           {errorMessage ? <p className="focus-stats-error" role="alert">{errorMessage}</p> : null}
 
           {stats ? (
-            <>
-              <div className="focus-stats-summary">
-                <div>
-                  <span>总专注</span>
-                  <strong>{formatDuration(stats.summary.durationSeconds)}</strong>
+            <div className="focus-stats-content">
+              <section className="focus-stats-overview" aria-label="概览">
+                <h3>概览</h3>
+                <div className="focus-stats-overview-grid">
+                  <StatCard label="今日已完成" value={overview.todayCompletedTasks ?? 0} />
+                  <StatCard label="今日番茄" value={overview.todayPomodoros ?? 0} />
+                  <StatCard label="今日专注时长" value={formatDuration(overview.todayFocusSeconds, true)} />
+                  <StatCard label="总已完成" value={overview.totalCompletedTasks ?? 0} />
+                  <StatCard label="总番茄" value={overview.totalPomodoros ?? 0} />
+                  <StatCard label="总专注时长" value={formatDuration(overview.totalFocusSeconds, true)} />
                 </div>
-                <div>
-                  <span>专注次数</span>
-                  <strong>{stats.summary.sessionCount} 次</strong>
-                </div>
-              </div>
+              </section>
 
-              <div className="focus-stats-section">
-                <p className="focus-stats-section-title">近七天趋势</p>
-                <div className="focus-stats-bars">
-                  {dailyStats.map((day) => (
-                    <div key={day.date} className="focus-stats-bar-item">
-                      <div className="focus-stats-bar-track">
-                        <span style={{ height: `${Math.max(8, (day.durationSeconds / maxDailySeconds) * 100)}%` }} />
+              <TrendCard
+                title="最近专注时长趋势"
+                period={period}
+                onPeriodChange={setPeriod}
+                items={periods}
+                valueKey="durationSeconds"
+                maxValue={maxFocusSeconds}
+                formatValue={(value) => `${Math.round(value / 60)}m`}
+              />
+
+              <TrendCard
+                title="最近完成率趋势"
+                period={period}
+                onPeriodChange={setPeriod}
+                items={periods}
+                valueKey="taskCompletionRate"
+                maxValue={100}
+                formatValue={(value) => `${value}%`}
+                percent
+              />
+
+              <section className="focus-stats-habits" aria-label="本周打卡进度">
+                <h3>本周打卡进度</h3>
+                <div className="focus-stats-habit-row">
+                  {habitWeek.map((day) => (
+                    <div key={day.date} className="focus-stats-habit-day">
+                      <div className="focus-stats-habit-ring" style={{ '--habit-progress': `${day.completion ?? 0}%` }}>
+                        <span>{day.total > 0 ? `${day.checked}/${day.total}` : ''}</span>
                       </div>
-                      <small>{getDayLabel(day.date)}</small>
+                      <small>{day.label}</small>
                     </div>
                   ))}
                 </div>
-              </div>
+              </section>
 
-              <div className="focus-stats-section">
-                <p className="focus-stats-section-title">任务分布</p>
-                {taskStats.length > 0 ? (
-                  <div className="focus-stats-task-list">
-                    {taskStats.map((task) => (
-                      <div key={task.todoId} className="focus-stats-task-item">
-                        <span>{task.title}</span>
-                        <strong>{formatDuration(task.durationSeconds)}</strong>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="focus-stats-state">还没有任务专注记录</p>
-                )}
-              </div>
-
-              <div className="focus-stats-section">
-                <p className="focus-stats-section-title">最近记录</p>
-                {recentStats.length > 0 ? (
-                  <div className="focus-stats-recent-list">
-                    {recentStats.map((entry) => (
-                      <div key={`${entry.todoId}-${entry.createdAt}`} className="focus-stats-recent-item">
-                        <span>{entry.title}</span>
-                        <strong>{formatDuration(entry.durationSeconds)}</strong>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="focus-stats-state">暂无最近记录</p>
-                )}
-              </div>
-            </>
+              <TrendCard
+                title="最近番茄数趋势"
+                period={period}
+                onPeriodChange={setPeriod}
+                items={periods}
+                valueKey="sessionCount"
+                maxValue={maxPomodoros}
+                formatValue={(value) => String(value)}
+              />
+            </div>
           ) : null}
         </section>
       ) : null}

@@ -111,13 +111,16 @@ export async function getFocusSessionSummary(sessionDate) {
   return payload.summary;
 }
 
-export async function getFocusStats({ start, end } = {}) {
+export async function getFocusStats({ start, end, period } = {}) {
   const params = new URLSearchParams();
   if (start) {
     params.set('start', start);
   }
   if (end) {
     params.set('end', end);
+  }
+  if (period) {
+    params.set('period', period);
   }
   const query = params.toString() ? `?${params.toString()}` : '';
   const payload = await request(`/api/focus-stats${query}`);

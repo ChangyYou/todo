@@ -149,9 +149,20 @@ func (s *Service) Update(userID, todoID int64, title *string, completed *bool, t
 
 	_, err = s.db.Exec(
 		`UPDATE todos
-		 SET title = ?, completed = ?, todo_date = ?, priority = ?, updated_at = CURRENT_TIMESTAMP
+		 SET title = ?,
+		     completed = ?,
+		     completed_at = CASE
+		       WHEN ? = 1 AND completed_at IS NULL THEN CURRENT_TIMESTAMP
+		       WHEN ? = 0 THEN NULL
+		       ELSE completed_at
+		     END,
+		     todo_date = ?,
+		     priority = ?,
+		     updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ? AND user_id = ?`,
 		nextTitle,
+		boolToInt(nextCompleted),
+		boolToInt(nextCompleted),
 		boolToInt(nextCompleted),
 		nextTodoDate,
 		nextPriority,

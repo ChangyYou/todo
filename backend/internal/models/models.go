@@ -44,17 +44,49 @@ type FocusSummary struct {
 }
 
 type FocusStats struct {
-	StartDate string            `json:"startDate"`
-	EndDate   string            `json:"endDate"`
-	Summary   FocusStatsSummary `json:"summary"`
-	Daily     []FocusStatsDay   `json:"daily"`
-	ByTask    []FocusStatsTask  `json:"byTask"`
-	Recent    []FocusStatsEntry `json:"recent"`
+	StartDate string               `json:"startDate"`
+	EndDate   string               `json:"endDate"`
+	Period    string               `json:"period"`
+	Overview  FocusStatsOverview   `json:"overview"`
+	Summary   FocusStatsSummary    `json:"summary"`
+	Periods   []FocusStatsPeriod   `json:"periods"`
+	HabitWeek []FocusStatsHabitDay `json:"habitWeek"`
+	Daily     []FocusStatsDay      `json:"daily"`
+	ByTask    []FocusStatsTask     `json:"byTask"`
+	Recent    []FocusStatsEntry    `json:"recent"`
 }
 
 type FocusStatsSummary struct {
 	DurationSeconds int64 `json:"durationSeconds"`
 	SessionCount    int64 `json:"sessionCount"`
+}
+
+type FocusStatsOverview struct {
+	TodayCompletedTasks int64 `json:"todayCompletedTasks"`
+	TodayPomodoros      int64 `json:"todayPomodoros"`
+	TodayFocusSeconds   int64 `json:"todayFocusSeconds"`
+	TotalCompletedTasks int64 `json:"totalCompletedTasks"`
+	TotalPomodoros      int64 `json:"totalPomodoros"`
+	TotalFocusSeconds   int64 `json:"totalFocusSeconds"`
+}
+
+type FocusStatsPeriod struct {
+	Label              string `json:"label"`
+	StartDate          string `json:"startDate"`
+	EndDate            string `json:"endDate"`
+	DurationSeconds    int64  `json:"durationSeconds"`
+	SessionCount       int64  `json:"sessionCount"`
+	TaskTotal          int64  `json:"taskTotal"`
+	TaskCompleted      int64  `json:"taskCompleted"`
+	TaskCompletionRate int64  `json:"taskCompletionRate"`
+}
+
+type FocusStatsHabitDay struct {
+	Date       string `json:"date"`
+	Label      string `json:"label"`
+	Total      int64  `json:"total"`
+	Checked    int64  `json:"checked"`
+	Completion int64  `json:"completion"`
 }
 
 type FocusStatsDay struct {
