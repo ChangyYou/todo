@@ -714,10 +714,14 @@ select {
 }
 
 .daily-todo-add-button {
-  width: auto;
+  width: fit-content;
   min-height: 30px;
   margin: 16px auto 0;
   padding-inline: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
   font-size: 0.78rem;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
@@ -2017,12 +2021,15 @@ select {
 }
 
 .habit-new-button {
-  width: auto;
+  width: fit-content;
   min-height: 30px;
-  margin-top: 14px;
+  margin: 14px auto 0;
   padding-inline: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
   font-size: 0.78rem;
-  justify-self: center;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
     0 8px 14px rgba(68, 96, 83, 0.12);
