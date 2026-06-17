@@ -230,7 +230,7 @@ export default function PomodoroPage({
           const startedAtRemaining = focusBindingStartRemainingRef.current ?? currentState.totalSeconds;
           focusSessionToRecordRef.current = {
             todoId: selectedFocusTodoId ? Number(selectedFocusTodoId) : 0,
-            sceneId: selectedFocusTodoId ? 0 : Number(selectedSceneId),
+            sceneId: selectedSceneId ? Number(selectedSceneId) : 0,
             durationSeconds: Math.max(1, startedAtRemaining - currentState.remainingSeconds + 1),
             sessionDate: getLocalDate(new Date()),
           };
@@ -589,7 +589,7 @@ export default function PomodoroPage({
     const sessionDate = getLocalDate(new Date());
     await recordFocusSession({
       todoId: selectedFocusTodoId ? Number(selectedFocusTodoId) : 0,
-      sceneId: selectedFocusTodoId ? 0 : Number(selectedSceneId),
+      sceneId: selectedSceneId ? Number(selectedSceneId) : 0,
       durationSeconds,
       sessionDate,
     });
@@ -821,6 +821,7 @@ export default function PomodoroPage({
               type="button"
               role="menuitem"
               key={scene.id}
+              className="focus-scene-menu-item"
               onClick={() => {
                 setSelectedSceneId(String(scene.id));
                 setSelectedSceneTitle(scene.title);
@@ -828,6 +829,7 @@ export default function PomodoroPage({
                 focusBindingStartRemainingRef.current = timerState.phase === TIMER_PHASES.FOCUS ? timerState.remainingSeconds : null;
               }}
             >
+              <span className="scene-color-dot" style={{ '--scene-color': scene.color || '#4b8768' }} aria-hidden="true" />
               {scene.title}
             </button>
           ))}

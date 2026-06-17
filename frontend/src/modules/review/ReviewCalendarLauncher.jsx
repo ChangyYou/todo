@@ -71,6 +71,10 @@ function formatDetailDuration(seconds = 0) {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
+function getSceneStyle(color) {
+  return color ? { '--review-scene-color': color } : undefined;
+}
+
 function DaySummary({ day }) {
   const items = [];
   if (day.focusSeconds > 0) {
@@ -258,9 +262,13 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                   <DaySummary day={day} />
                   <div className="review-entry-list">
                     {day.entries.map((entry, index) => (
-                      <div key={`${day.date}-${entry.type}-${entry.title}-${index}`} className={`review-entry ${entry.type}`}>
+                      <div
+                        key={`${day.date}-${entry.type}-${entry.title}-${index}`}
+                        className={`review-entry ${entry.type} ${entry.sceneColor ? 'with-scene-color' : ''}`}
+                        style={getSceneStyle(entry.sceneColor)}
+                      >
                         <span>{entry.title}</span>
-                        {entry.meta ? <small>{entry.meta}</small> : null}
+                        {entry.meta ? <small>{entry.sceneTitle && entry.type !== 'scene' ? `${entry.sceneTitle} · ${entry.meta}` : entry.meta}</small> : null}
                       </div>
                     ))}
                   </div>
@@ -289,11 +297,17 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
               {detailErrorMessage ? <p className="review-error" role="alert">{detailErrorMessage}</p> : null}
               <div className="review-task-list">
                 {selectedDay.tasks.length > 0 ? selectedDay.tasks.map((task) => (
-                  <article key={task.todoId} className="review-task-row">
+                  <article
+                    key={`${task.sourceType}-${task.todoId || task.sceneId}`}
+                    className={`review-task-row ${task.sceneColor ? 'with-scene-color' : ''}`}
+                    style={getSceneStyle(task.sceneColor)}
+                  >
                     <div className="review-task-main">
                       <span className={`review-task-badge ${task.sourceType}`}>{task.sourceType === 'habit' ? '习惯' : task.sourceType === 'scene' ? '场景' : '任务'}</span>
                       <strong>{task.title}</strong>
-                      <small>{task.completed ? '已完成' : '未完成'} · 专注 {formatDetailDuration(task.focusSeconds)} · {task.sessionCount} 个番茄</small>
+                      <small>
+                        {task.completed ? '已完成' : '未完成'} · 场景 {task.sceneTitle || '默认'} · 专注 {formatDetailDuration(task.focusSeconds)} · {task.sessionCount} 个番茄
+                      </small>
                     </div>
                     {task.sourceType !== 'scene' ? (
                       <button

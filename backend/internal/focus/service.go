@@ -206,6 +206,9 @@ func (s *Service) ReviewCalendar(userID int64, year, month int) (models.ReviewCa
 	if err := s.fillReviewTaskStats(userID, gridStart.Format("2006-01-02"), gridEnd.Format("2006-01-02"), calendar.Days, byDate); err != nil {
 		return models.ReviewCalendar{}, err
 	}
+	if err := s.fillReviewTaskScenes(userID, gridStart.Format("2006-01-02"), gridEnd.Format("2006-01-02"), calendar.Days, byDate); err != nil {
+		return models.ReviewCalendar{}, err
+	}
 	if err := s.fillReviewSceneStats(userID, gridStart.Format("2006-01-02"), gridEnd.Format("2006-01-02"), calendar.Days, byDate); err != nil {
 		return models.ReviewCalendar{}, err
 	}
@@ -271,7 +274,13 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 		        focus_sessions.todo_id,
 		        COALESCE(focus_sessions.scene_id, 0) AS scene_id,
 		        COALESCE(todos.title, focus_scenes.title, '') AS title,
-		        CASE WHEN focus_sessions.scene_id IS NOT NULL THEN 'scene' ELSE 'focus' END AS entry_type,
+		        CASE
+		          WHEN focus_sessions.todo_id > 0 THEN 'focus'
+		          WHEN focus_sessions.scene_id IS NOT NULL THEN 'scene'
+		          ELSE 'focus'
+		        END AS entry_type,
+		        COALESCE(focus_scenes.title, '') AS scene_title,
+		        COALESCE(focus_scenes.color, '#4b8768') AS scene_color,
 		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS duration_seconds,
 		        COUNT(*) AS session_count
 		   FROM focus_sessions
@@ -282,6 +291,8 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 		           focus_sessions.todo_id,
 		           scene_id,
 		           COALESCE(todos.title, focus_scenes.title, ''),
+		           scene_title,
+		           scene_color,
 		           entry_type
 		  ORDER BY focus_sessions.session_date ASC, duration_seconds DESC`,
 		userID,
@@ -299,9 +310,11 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 		var sceneID int64
 		var title string
 		var entryType string
+		var sceneTitle string
+		var sceneColor string
 		var durationSeconds int64
 		var sessionCount int64
-		if err := rows.Scan(&date, &todoID, &sceneID, &title, &entryType, &durationSeconds, &sessionCount); err != nil {
+		if err := rows.Scan(&date, &todoID, &sceneID, &title, &entryType, &sceneTitle, &sceneColor, &durationSeconds, &sessionCount); err != nil {
 			return err
 		}
 		index, ok := byDate[date]
@@ -318,11 +331,13 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 				entryTodoID = todoID.Int64
 			}
 			days[index].Entries = append(days[index].Entries, models.ReviewCalendarEntry{
-				TodoID:  entryTodoID,
-				SceneID: sceneID,
-				Type:    entryType,
-				Title:   title,
-				Meta:    formatReviewFocusMeta(durationSeconds, sessionCount),
+				TodoID:     entryTodoID,
+				SceneID:    sceneID,
+				Type:       entryType,
+				Title:      title,
+				Meta:       formatReviewFocusMeta(durationSeconds, sessionCount),
+				SceneTitle: sceneTitle,
+				SceneColor: sceneColor,
 			})
 		}
 	}
@@ -378,19 +393,81 @@ func (s *Service) fillReviewTaskStats(userID int64, startDate, endDate string, d
 	return rows.Err()
 }
 
+func (s *Service) fillReviewTaskScenes(userID int64, startDate, endDate string, days []models.ReviewCalendarDay, byDate map[string]int) error {
+	rows, err := s.db.Query(
+		`SELECT focus_sessions.todo_id,
+		        focus_sessions.session_date,
+		        focus_sessions.scene_id,
+		        COALESCE(focus_scenes.title, '') AS scene_title,
+		        COALESCE(focus_scenes.color, '#4b8768') AS scene_color,
+		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS scene_seconds,
+		        COUNT(*) AS scene_sessions
+		   FROM focus_sessions
+		   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
+		  WHERE focus_sessions.user_id = ?
+		    AND focus_sessions.todo_id > 0
+		    AND focus_sessions.scene_id IS NOT NULL
+		    AND focus_sessions.session_date BETWEEN ? AND ?
+		  GROUP BY focus_sessions.todo_id,
+		           focus_sessions.session_date,
+		           focus_sessions.scene_id,
+		           scene_title,
+		           scene_color
+		  ORDER BY focus_sessions.session_date ASC, focus_sessions.todo_id ASC, scene_seconds DESC, scene_sessions DESC`,
+		userID,
+		startDate,
+		endDate,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var todoID int64
+		var date string
+		var sceneID int64
+		var sceneTitle string
+		var sceneColor string
+		var sceneSeconds int64
+		var sceneSessions int64
+		if err := rows.Scan(&todoID, &date, &sceneID, &sceneTitle, &sceneColor, &sceneSeconds, &sceneSessions); err != nil {
+			return err
+		}
+		index, ok := byDate[date]
+		if !ok {
+			continue
+		}
+		for taskIndex := range days[index].Tasks {
+			task := &days[index].Tasks[taskIndex]
+			if task.TodoID != todoID || task.SceneID > 0 {
+				continue
+			}
+			task.SceneID = sceneID
+			task.SceneTitle = sceneTitle
+			task.SceneColor = sceneColor
+			break
+		}
+	}
+
+	return rows.Err()
+}
+
 func (s *Service) fillReviewSceneStats(userID int64, startDate, endDate string, days []models.ReviewCalendarDay, byDate map[string]int) error {
 	rows, err := s.db.Query(
 		`SELECT focus_sessions.scene_id,
 		        focus_sessions.session_date,
 		        COALESCE(focus_scenes.title, '已删除场景') AS title,
+		        COALESCE(focus_scenes.color, '#4b8768') AS scene_color,
 		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS focus_seconds,
 		        COUNT(*) AS session_count
 		   FROM focus_sessions
 		   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
 		  WHERE focus_sessions.user_id = ?
 		    AND focus_sessions.scene_id IS NOT NULL
+		    AND focus_sessions.todo_id <= 0
 		    AND focus_sessions.session_date BETWEEN ? AND ?
-		  GROUP BY focus_sessions.scene_id, focus_sessions.session_date, title
+		  GROUP BY focus_sessions.scene_id, focus_sessions.session_date, title, scene_color
 		  ORDER BY focus_sessions.session_date ASC, focus_seconds DESC`,
 		userID,
 		startDate,
@@ -404,7 +481,7 @@ func (s *Service) fillReviewSceneStats(userID int64, startDate, endDate string, 
 	for rows.Next() {
 		var item models.ReviewTaskStat
 		var date string
-		if err := rows.Scan(&item.SceneID, &date, &item.Title, &item.FocusSeconds, &item.SessionCount); err != nil {
+		if err := rows.Scan(&item.SceneID, &date, &item.Title, &item.SceneColor, &item.FocusSeconds, &item.SessionCount); err != nil {
 			return err
 		}
 		index, ok := byDate[date]
@@ -412,6 +489,7 @@ func (s *Service) fillReviewSceneStats(userID int64, startDate, endDate string, 
 			continue
 		}
 		item.SourceType = "scene"
+		item.SceneTitle = item.Title
 		days[index].Tasks = append(days[index].Tasks, item)
 	}
 

@@ -32,6 +32,7 @@ type Habit struct {
 type FocusScene struct {
 	ID        int64  `json:"id"`
 	Title     string `json:"title"`
+	Color     string `json:"color"`
 	Active    bool   `json:"active"`
 	CreatedAt string `json:"createdAt"`
 	UpdatedAt string `json:"updatedAt"`
@@ -140,11 +141,13 @@ type ReviewCalendarDay struct {
 }
 
 type ReviewCalendarEntry struct {
-	TodoID  int64  `json:"todoId,omitempty"`
-	SceneID int64  `json:"sceneId,omitempty"`
-	Type    string `json:"type"`
-	Title   string `json:"title"`
-	Meta    string `json:"meta,omitempty"`
+	TodoID     int64  `json:"todoId,omitempty"`
+	SceneID    int64  `json:"sceneId,omitempty"`
+	Type       string `json:"type"`
+	Title      string `json:"title"`
+	Meta       string `json:"meta,omitempty"`
+	SceneTitle string `json:"sceneTitle,omitempty"`
+	SceneColor string `json:"sceneColor,omitempty"`
 }
 
 type ReviewTaskStat struct {
@@ -156,4 +159,6 @@ type ReviewTaskStat struct {
 	FocusSeconds int64  `json:"focusSeconds"`
 	SessionCount int64  `json:"sessionCount"`
 	CompletedAt  string `json:"completedAt,omitempty"`
+	SceneTitle   string `json:"sceneTitle,omitempty"`
+	SceneColor   string `json:"sceneColor,omitempty"`
 }

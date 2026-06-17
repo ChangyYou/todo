@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { createScene, deleteScene, listScenes, updateScene } from '../../lib/api';
 
+const SCENE_COLOR_OPTIONS = [
+  { value: '#4b8768', label: '森林绿' },
+  { value: '#6f9fc7', label: '湖蓝' },
+  { value: '#d89a5b', label: '暖橙' },
+  { value: '#9b7bc3', label: '紫藤' },
+  { value: '#c86f6f', label: '珊瑚红' },
+  { value: '#7f8f55', label: '橄榄' },
+];
+
 function SceneIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -15,6 +24,7 @@ export default function SceneLauncher({ onScenesChanged = () => {} }) {
   const [scenes, setScenes] = useState([]);
   const [editingScene, setEditingScene] = useState(null);
   const [title, setTitle] = useState('');
+  const [color, setColor] = useState(SCENE_COLOR_OPTIONS[0].value);
   const [status, setStatus] = useState('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const panelRef = useRef(null);
@@ -53,12 +63,14 @@ export default function SceneLauncher({ onScenesChanged = () => {} }) {
   const openCreate = () => {
     setEditingScene({ id: null });
     setTitle('');
+    setColor(SCENE_COLOR_OPTIONS[0].value);
     setErrorMessage('');
   };
 
   const openEdit = (scene) => {
     setEditingScene(scene);
     setTitle(scene.title);
+    setColor(scene.color || SCENE_COLOR_OPTIONS[0].value);
     setErrorMessage('');
   };
 
@@ -69,11 +81,12 @@ export default function SceneLauncher({ onScenesChanged = () => {} }) {
     try {
       setStatus('saving');
       const scene = editingScene?.id
-        ? await updateScene(editingScene.id, { title: nextTitle })
-        : await createScene({ title: nextTitle });
+        ? await updateScene(editingScene.id, { title: nextTitle, color })
+        : await createScene({ title: nextTitle, color });
       setScenes((items) => [scene, ...items.filter((item) => item.id !== scene.id)]);
       setEditingScene(null);
       setTitle('');
+      setColor(SCENE_COLOR_OPTIONS[0].value);
       setStatus('idle');
       onScenesChanged();
     } catch (error) {
@@ -112,7 +125,10 @@ export default function SceneLauncher({ onScenesChanged = () => {} }) {
                   <button type="button" className="habit-icon-button danger" aria-label={`删除场景 ${scene.title}`} onClick={() => handleDelete(scene.id)}>删</button>
                 </div>
                 <div className="habit-item-copy">
-                  <span className="habit-item-title">{scene.title}</span>
+                  <span className="habit-item-title scene-item-title">
+                    <span className="scene-color-dot" style={{ '--scene-color': scene.color || SCENE_COLOR_OPTIONS[0].value }} aria-hidden="true" />
+                    {scene.title}
+                  </span>
                   <span className="habit-item-range">可绑定到专注计时</span>
                 </div>
               </div>
@@ -134,6 +150,23 @@ export default function SceneLauncher({ onScenesChanged = () => {} }) {
               <span>场景名称</span>
               <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="例如 运动" />
             </label>
+            <fieldset className="scene-color-field">
+              <legend>场景颜色</legend>
+              <div className="scene-color-options">
+                {SCENE_COLOR_OPTIONS.map((option) => (
+                  <label key={option.value} className="scene-color-option" title={option.label}>
+                    <input
+                      type="radio"
+                      name="scene-color"
+                      value={option.value}
+                      checked={color === option.value}
+                      onChange={(event) => setColor(event.target.value)}
+                    />
+                    <span style={{ '--scene-color': option.value }}>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <div className="habit-editor-actions">
               <button type="submit" className="primary-button habit-submit-button" disabled={status === 'saving'}>保存</button>
               <button type="button" className="ghost-button habit-submit-button" onClick={() => setEditingScene(null)}>取消</button>

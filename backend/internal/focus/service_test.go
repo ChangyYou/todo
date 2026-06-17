@@ -23,7 +23,7 @@ func TestReviewCalendarIncludesSceneFocusSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err = database.Exec(`INSERT INTO focus_scenes (user_id, title) VALUES (?, ?)`, userID, "运动")
+	result, err = database.Exec(`INSERT INTO focus_scenes (user_id, title, color) VALUES (?, ?, ?)`, userID, "运动", "#6f9fc7")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,6 +43,32 @@ func TestReviewCalendarIncludesSceneFocusSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	result, err = database.Exec(
+		`INSERT INTO todos (user_id, title, todo_date, priority) VALUES (?, ?, ?, ?)`,
+		userID,
+		"阅读 Go 后端",
+		"2026-06-17",
+		"medium",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	todoID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := database.Exec(
+		`INSERT INTO focus_sessions (user_id, todo_id, scene_id, duration_seconds, session_date) VALUES (?, ?, ?, ?, ?)`,
+		userID,
+		todoID,
+		sceneID,
+		900,
+		"2026-06-17",
+	); err != nil {
+		t.Fatal(err)
+	}
+
 	calendar, err := NewService(database).ReviewCalendar(userID, 2026, 6)
 	if err != nil {
 		t.Fatal(err)
@@ -54,17 +80,36 @@ func TestReviewCalendarIncludesSceneFocusSessions(t *testing.T) {
 			continue
 		}
 		targetDayFound = true
-		if day.FocusSeconds != 600 {
-			t.Fatalf("expected focus seconds 600, got %d", day.FocusSeconds)
+		if day.FocusSeconds != 1500 {
+			t.Fatalf("expected focus seconds 1500, got %d", day.FocusSeconds)
 		}
 		if day.SceneCount != 1 {
 			t.Fatalf("expected scene count 1, got %d", day.SceneCount)
 		}
-		if len(day.Entries) != 1 {
-			t.Fatalf("expected 1 entry, got %d", len(day.Entries))
+		if len(day.Entries) != 2 {
+			t.Fatalf("expected 2 entries, got %d", len(day.Entries))
 		}
-		if day.Entries[0].Title != "运动" || day.Entries[0].Type != "scene" {
-			t.Fatalf("unexpected entry: %+v", day.Entries[0])
+		if day.Entries[0].Title != "阅读 Go 后端" || day.Entries[0].Type != "focus" {
+			t.Fatalf("unexpected first entry: %+v", day.Entries[0])
+		}
+		if day.Entries[0].SceneTitle != "运动" || day.Entries[0].SceneColor != "#6f9fc7" {
+			t.Fatalf("expected scene metadata on focus entry, got %+v", day.Entries[0])
+		}
+		if len(day.Tasks) != 2 {
+			t.Fatalf("expected 2 review task rows, got %d", len(day.Tasks))
+		}
+		var taskFound bool
+		for _, task := range day.Tasks {
+			if task.TodoID != todoID {
+				continue
+			}
+			taskFound = true
+			if task.SceneTitle != "运动" || task.SceneColor != "#6f9fc7" {
+				t.Fatalf("expected task scene metadata, got %+v", task)
+			}
+		}
+		if !taskFound {
+			t.Fatal("expected todo task in review detail")
 		}
 	}
 	if !targetDayFound {

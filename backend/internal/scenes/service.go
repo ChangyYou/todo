@@ -3,12 +3,17 @@ package scenes
 import (
 	"database/sql"
 	"errors"
+	"regexp"
 	"strings"
 
 	"todo/backend/internal/models"
 )
 
 var ErrInvalidScene = errors.New("invalid focus scene")
+
+const defaultSceneColor = "#4b8768"
+
+var sceneColorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 type Service struct {
 	db *sql.DB
@@ -20,7 +25,7 @@ func NewService(database *sql.DB) *Service {
 
 func (s *Service) List(userID int64) ([]models.FocusScene, error) {
 	rows, err := s.db.Query(
-		`SELECT id, title, active, created_at, updated_at
+		`SELECT id, title, color, active, created_at, updated_at
 		   FROM focus_scenes
 		  WHERE user_id = ? AND active = 1
 		  ORDER BY id DESC`,
@@ -43,16 +48,18 @@ func (s *Service) List(userID int64) ([]models.FocusScene, error) {
 	return result, rows.Err()
 }
 
-func (s *Service) Create(userID int64, title string) (models.FocusScene, error) {
+func (s *Service) Create(userID int64, title, color string) (models.FocusScene, error) {
 	title = strings.TrimSpace(title)
+	color = normalizeSceneColor(color)
 	if userID <= 0 || title == "" {
 		return models.FocusScene{}, ErrInvalidScene
 	}
 
 	result, err := s.db.Exec(
-		`INSERT INTO focus_scenes (user_id, title) VALUES (?, ?)`,
+		`INSERT INTO focus_scenes (user_id, title, color) VALUES (?, ?, ?)`,
 		userID,
 		title,
+		color,
 	)
 	if err != nil {
 		return models.FocusScene{}, err
@@ -66,17 +73,19 @@ func (s *Service) Create(userID int64, title string) (models.FocusScene, error) 
 	return s.byID(userID, sceneID)
 }
 
-func (s *Service) Update(userID, sceneID int64, title string) (models.FocusScene, error) {
+func (s *Service) Update(userID, sceneID int64, title, color string) (models.FocusScene, error) {
 	title = strings.TrimSpace(title)
+	color = normalizeSceneColor(color)
 	if userID <= 0 || sceneID <= 0 || title == "" {
 		return models.FocusScene{}, ErrInvalidScene
 	}
 
 	_, err := s.db.Exec(
 		`UPDATE focus_scenes
-		    SET title = ?, updated_at = CURRENT_TIMESTAMP
+		    SET title = ?, color = ?, updated_at = CURRENT_TIMESTAMP
 		  WHERE id = ? AND user_id = ? AND active = 1`,
 		title,
+		color,
 		sceneID,
 		userID,
 	)
@@ -103,7 +112,7 @@ func (s *Service) Delete(userID, sceneID int64) error {
 
 func (s *Service) byID(userID, sceneID int64) (models.FocusScene, error) {
 	row := s.db.QueryRow(
-		`SELECT id, title, active, created_at, updated_at
+		`SELECT id, title, color, active, created_at, updated_at
 		   FROM focus_scenes
 		  WHERE id = ? AND user_id = ?`,
 		sceneID,
@@ -122,10 +131,19 @@ func scanScene(scanner sceneScanner) (models.FocusScene, error) {
 	err := scanner.Scan(
 		&scene.ID,
 		&scene.Title,
+		&scene.Color,
 		&active,
 		&scene.CreatedAt,
 		&scene.UpdatedAt,
 	)
 	scene.Active = active == 1
 	return scene, err
+}
+
+func normalizeSceneColor(color string) string {
+	color = strings.TrimSpace(color)
+	if sceneColorPattern.MatchString(color) {
+		return strings.ToLower(color)
+	}
+	return defaultSceneColor
 }

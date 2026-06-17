@@ -42,14 +42,14 @@ function createReviewCalendarMock(deletedTodoIds = new Set()) {
     entries: [
       { todoId: 101, type: 'task', title: '写日报', meta: '完成' },
       { todoId: 102, type: 'habit', title: '运动30分钟', meta: '打卡' },
-      { todoId: 103, type: 'focus', title: '阅读 Go 后端', meta: '25m' },
-      { sceneId: 201, type: 'scene', title: '运动', meta: '15m' },
+      { todoId: 103, type: 'focus', title: '阅读 Go 后端', meta: '25m', sceneId: 201, sceneTitle: '运动', sceneColor: '#6f9fc7' },
+      { sceneId: 201, type: 'scene', title: '运动', meta: '15m', sceneTitle: '运动', sceneColor: '#6f9fc7' },
     ].filter((entry) => !deletedTodoIds.has(entry.todoId)),
     tasks: [
       { todoId: 101, title: '写日报', sourceType: 'todo', completed: true, focusSeconds: 0, sessionCount: 0, completedAt: '2026-06-10 09:00:00' },
       { todoId: 102, title: '运动30分钟', sourceType: 'habit', completed: true, focusSeconds: 0, sessionCount: 0, completedAt: '2026-06-10 10:00:00' },
-      { todoId: 103, title: '阅读 Go 后端', sourceType: 'todo', completed: false, focusSeconds: 1500, sessionCount: 1, completedAt: '' },
-      { todoId: 0, sceneId: 201, title: '运动', sourceType: 'scene', completed: false, focusSeconds: 900, sessionCount: 1, completedAt: '' },
+      { todoId: 103, sceneId: 201, sceneTitle: '运动', sceneColor: '#6f9fc7', title: '阅读 Go 后端', sourceType: 'todo', completed: false, focusSeconds: 1500, sessionCount: 1, completedAt: '' },
+      { todoId: 0, sceneId: 201, sceneTitle: '运动', sceneColor: '#6f9fc7', title: '运动', sourceType: 'scene', completed: false, focusSeconds: 900, sessionCount: 1, completedAt: '' },
     ].filter((task) => !deletedTodoIds.has(task.todoId)),
   };
 
@@ -62,7 +62,7 @@ function createReviewCalendarMock(deletedTodoIds = new Set()) {
 
 beforeEach(() => {
   let habits = [];
-  let scenes = [{ id: 1, title: '运动', active: true }];
+  let scenes = [{ id: 1, title: '运动', color: '#6f9fc7', active: true }];
   const deletedReviewTodoIds = new Set();
   let pomodoroSettings = {
     focusMinutes: 25,
@@ -178,7 +178,7 @@ beforeEach(() => {
 
     if (url === '/api/scenes' && method === 'POST') {
       const body = JSON.parse(options.body);
-      const scene = { id: 2, title: body.title, active: true };
+      const scene = { id: 2, title: body.title, color: body.color || '#4b8768', active: true };
       scenes = [scene, ...scenes];
       return {
         ok: true,
@@ -841,8 +841,8 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: '2026-06-10 复盘' }));
     const detail = await screen.findByRole('dialog', { name: '2026-06-10 当日复盘详情' });
     expect(within(detail).getByText('写日报')).toBeInTheDocument();
-    expect(within(detail).getAllByText('已完成 · 专注 0s · 0 个番茄')).toHaveLength(2);
-    expect(within(detail).getByText('未完成 · 专注 25:00 · 1 个番茄')).toBeInTheDocument();
+    expect(within(detail).getAllByText('已完成 · 场景 默认 · 专注 0s · 0 个番茄')).toHaveLength(2);
+    expect(within(detail).getByText('未完成 · 场景 运动 · 专注 25:00 · 1 个番茄')).toBeInTheDocument();
 
     fireEvent.click(within(detail).getByRole('button', { name: '永久删除 写日报' }));
 

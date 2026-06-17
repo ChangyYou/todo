@@ -2060,6 +2060,22 @@ select {
   overflow-wrap: anywhere;
 }
 
+.scene-item-title,
+.focus-scene-menu-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scene-color-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--scene-color, #4b8768);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--scene-color, #4b8768) 16%, transparent);
+}
+
 .habit-item-range {
   font-family: "Outfit", sans-serif;
   font-size: 0.78rem;
@@ -2079,6 +2095,56 @@ select {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
     0 8px 14px rgba(68, 96, 83, 0.12);
+}
+
+.scene-color-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.scene-color-field legend {
+  padding: 0;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(43, 70, 61, 0.58);
+}
+
+.scene-color-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scene-color-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scene-color-option span {
+  min-height: 36px;
+  padding: 0 9px;
+  border-radius: 12px;
+  border: 1px solid rgba(43, 70, 61, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #243f37;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--scene-color) 28%, white), rgba(255, 255, 255, 0.62));
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.scene-color-option input:checked + span {
+  border-color: color-mix(in srgb, var(--scene-color) 58%, #244238);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--scene-color) 18%, transparent);
 }
 
 .habit-never-field {
@@ -2547,6 +2613,12 @@ select {
   background: rgba(125, 194, 203, 0.26);
 }
 
+.review-entry.with-scene-color {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--review-scene-color, #4b8768) 26%, white), rgba(255, 255, 255, 0.22));
+  border-left: 3px solid var(--review-scene-color, #4b8768);
+}
+
 .review-state,
 .review-error {
   margin-top: 12px;
@@ -2621,6 +2693,12 @@ select {
   gap: 12px;
   background: rgba(255, 255, 255, 0.52);
   border: 1px solid rgba(43, 70, 61, 0.07);
+}
+
+.review-task-row.with-scene-color {
+  border-left: 5px solid var(--review-scene-color, #4b8768);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--review-scene-color, #4b8768) 14%, white), rgba(255, 255, 255, 0.62));
 }
 
 .review-task-main {

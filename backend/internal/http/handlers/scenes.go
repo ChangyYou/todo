@@ -19,6 +19,7 @@ type SceneHandler struct {
 
 type sceneRequest struct {
 	Title string `json:"title"`
+	Color string `json:"color"`
 }
 
 func NewSceneHandler(sceneService *scenes.Service) *SceneHandler {
@@ -54,7 +55,7 @@ func (h *SceneHandler) Create(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	scene, err := h.scenes.Create(user.ID, request.Title)
+	scene, err := h.scenes.Create(user.ID, request.Title, request.Color)
 	if err != nil {
 		writeSceneError(ctx, c, err)
 		return
@@ -82,7 +83,7 @@ func (h *SceneHandler) Update(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	scene, err := h.scenes.Update(user.ID, sceneID, request.Title)
+	scene, err := h.scenes.Update(user.ID, sceneID, request.Title, request.Color)
 	if err != nil {
 		writeSceneError(ctx, c, err)
 		return

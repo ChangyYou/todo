@@ -90,6 +90,7 @@ func migrate(database *sql.DB) error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL,
 			title TEXT NOT NULL,
+			color TEXT NOT NULL DEFAULT '#4b8768',
 			active INTEGER NOT NULL DEFAULT 1,
 			created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -135,6 +136,9 @@ func migrate(database *sql.DB) error {
 		return err
 	}
 	if err := ensureColumn(database, "focus_sessions", "scene_id", `ALTER TABLE focus_sessions ADD COLUMN scene_id INTEGER`); err != nil {
+		return err
+	}
+	if err := ensureColumn(database, "focus_scenes", "color", `ALTER TABLE focus_scenes ADD COLUMN color TEXT NOT NULL DEFAULT '#4b8768'`); err != nil {
 		return err
 	}
 	if _, err := database.Exec(`DROP INDEX IF EXISTS idx_todos_user_habit_date`); err != nil {
