@@ -303,10 +303,6 @@ export default function TodoListModule({
         <span className="daily-todo-count">{taskTodos.length} 项</span>
       </div>
 
-      <button type="button" className="primary-button daily-todo-add-button" onClick={openCreateModal}>
-        新增任务
-      </button>
-
       {status === 'loading' ? <p className="daily-todo-state">任务加载中...</p> : null}
       {errorMessage ? <p className="daily-todo-error" role="alert">{errorMessage}</p> : null}
 
@@ -330,17 +326,17 @@ export default function TodoListModule({
                 />
                 <span className="daily-todo-title">
                   <span>{todo.title}</span>
-                  <span className="daily-todo-badge-row">
-                    <span className="daily-todo-date-badge">{getDueLabel(todo.todoDate)}</span>
-                    <span className={`daily-todo-priority-badge ${priority}`}>
-                      <FlagIcon />{getPriorityLabel(priority)}
-                    </span>
-                    {isHabitTodo ? <span className="daily-todo-badge">习惯</span> : null}
-                    {todo.focusSeconds > 0 ? (
-                      <span className="daily-todo-focus-badge">已专注 {formatFocusDuration(todo.focusSeconds)}</span>
-                    ) : null}
-                  </span>
+                  {todo.focusSeconds > 0 ? (
+                    <span className="daily-todo-focus-badge">已专注 {formatFocusDuration(todo.focusSeconds)}</span>
+                  ) : null}
                 </span>
+              </div>
+              <div className="daily-todo-badge-row">
+                <span className="daily-todo-date-badge">{getDueLabel(todo.todoDate)}</span>
+                <span className={`daily-todo-priority-badge ${priority}`}>
+                  <FlagIcon />{getPriorityLabel(priority)}
+                </span>
+                {isHabitTodo ? <span className="daily-todo-badge">习惯</span> : null}
               </div>
               <div className="daily-todo-actions" aria-label={`${todo.title} 操作`}>
                 {!isHabitTodo ? (
@@ -379,6 +375,10 @@ export default function TodoListModule({
           );
         })}
       </div>
+
+      <button type="button" className="primary-button daily-todo-add-button" onClick={openCreateModal}>
+        新增任务
+      </button>
 
       {taskModal ? (
         <TodoTaskModal

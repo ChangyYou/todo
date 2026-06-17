@@ -127,6 +127,7 @@ export default function PomodoroPage({
   const settingsPanelRef = useRef(null);
   const musicPanelRef = useRef(null);
   const musicButtonRef = useRef(null);
+  const focusTaskMenuRef = useRef(null);
   const feedbackTimeoutRef = useRef(null);
   const focusSessionToRecordRef = useRef(null);
   const focusBindingStartRemainingRef = useRef(null);
@@ -671,7 +672,7 @@ export default function PomodoroPage({
   );
 
   const renderFocusTaskButton = (className) => (
-    <span className="focus-task-menu-wrap">
+    <span className="focus-task-menu-wrap" ref={focusTaskMenuRef}>
       <button
         type="button"
         className={`${className} task-pill task-pill-button`}
@@ -923,6 +924,14 @@ export default function PomodoroPage({
       return;
     }
 
+    if (isFocusTaskMenuOpen && focusTaskMenuRef.current?.contains(event.target)) {
+      return;
+    }
+
+    if (isFocusTaskMenuOpen) {
+      setIsFocusTaskMenuOpen(false);
+    }
+
     if (isSettingsOpen || isSkipChoiceOpen || isFocusTaskMenuOpen) {
       if (timerCardRef.current?.contains(event.target)) {
         return;
@@ -943,10 +952,9 @@ export default function PomodoroPage({
       }
     }
 
-    if (isSettingsOpen || isSkipChoiceOpen || isFocusTaskMenuOpen) {
+    if (isSettingsOpen || isSkipChoiceOpen) {
       setIsSettingsOpen(false);
       setIsSkipChoiceOpen(false);
-      setIsFocusTaskMenuOpen(false);
     }
 
     if (isMusicPanelOpen) {

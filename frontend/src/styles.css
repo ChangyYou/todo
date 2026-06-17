@@ -517,7 +517,7 @@ select {
   z-index: 12;
   left: 28px;
   top: 50%;
-  width: clamp(280px, 18vw, 340px);
+  width: clamp(360px, 27vw, 520px);
   max-height: calc(100vh - 160px);
   transform: translateY(-50%);
   transition:
@@ -716,7 +716,7 @@ select {
 .daily-todo-add-button {
   width: auto;
   min-height: 30px;
-  margin-top: 14px;
+  margin: 16px auto 0;
   padding-inline: 12px;
   font-size: 0.78rem;
   box-shadow:
@@ -731,12 +731,12 @@ select {
 }
 
 .daily-todo-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   min-height: 48px;
-  padding: 8px 8px 8px 12px;
+  padding: 10px 10px 10px 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.36);
   border: 1px solid rgba(255, 255, 255, 0.32);
@@ -748,7 +748,6 @@ select {
 
 .daily-todo-check {
   min-width: 0;
-  flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -772,13 +771,15 @@ select {
 
 .daily-todo-title {
   min-width: 0;
-  display: grid;
-  gap: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .daily-todo-badge-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
   gap: 6px;
 }
 
@@ -837,7 +838,7 @@ select {
 }
 
 .daily-todo-focus-badge {
-  width: fit-content;
+  width: max-content;
   padding: 3px 8px;
   border-radius: 999px;
   background: rgba(47, 88, 72, 0.1);
@@ -2021,7 +2022,7 @@ select {
   margin-top: 14px;
   padding-inline: 12px;
   font-size: 0.78rem;
-  justify-self: start;
+  justify-self: center;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
     0 8px 14px rgba(68, 96, 83, 0.12);
@@ -2388,7 +2389,7 @@ select {
 
   .home-todo-drawer {
     left: 14px;
-    width: min(320px, calc(100vw - 76px));
+    width: min(420px, calc(100vw - 76px));
     max-height: calc(100vh - 132px);
   }
 
@@ -2564,7 +2565,14 @@ select {
   }
 
   .daily-todo-item {
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: flex-start;
+  }
+
+  .daily-todo-badge-row {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    padding-left: 28px;
   }
 }
 

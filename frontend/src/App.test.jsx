@@ -321,6 +321,20 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: '未绑定任务' })).toBeDisabled();
   });
 
+  it('closes the bound focus todo menu when clicking outside', async () => {
+    await renderAtPath('/');
+
+    const todoPanel = screen.getByRole('complementary', { name: '任务清单' });
+    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
+    fireEvent.click(screen.getByRole('button', { name: '整理今天最重要的三件事' }));
+
+    expect(screen.getByRole('menuitem', { name: '取消绑定' })).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByRole('main'));
+
+    expect(screen.queryByRole('menuitem', { name: '取消绑定' })).not.toBeInTheDocument();
+  });
+
   it('unbinds the timer when the bound todo is deleted', async () => {
     await renderAtPath('/');
 
