@@ -3131,7 +3131,7 @@ select {
     max-width: none;
     min-height: 40px;
     margin: 0;
-    padding-right: 132px;
+    padding-right: min(42vw, 172px);
     flex-direction: row;
     align-items: flex-start;
   }
@@ -3171,11 +3171,13 @@ select {
   .account-bar {
     top: calc(12px + env(safe-area-inset-top, 0px));
     right: 12px;
-    max-width: 124px;
+    width: min(156px, 40vw);
+    max-width: calc(100vw - 24px);
     min-height: 38px;
     gap: 6px;
     padding: 6px 7px 6px 10px;
     font-size: 0.9rem;
+    justify-content: space-between;
   }
 
   .account-bar span {
@@ -3186,8 +3188,10 @@ select {
   }
 
   .account-bar button {
+    flex: 0 0 auto;
     min-height: 28px;
     padding: 0 9px;
+    white-space: nowrap;
   }
 
   .controls {
@@ -3567,6 +3571,20 @@ select {
 }
 
 @media (max-width: 420px) {
+  .page-shell-immersive .page-header-immersive {
+    padding-right: 150px;
+  }
+
+  .account-bar {
+    width: 142px;
+    right: 10px;
+    font-size: 0.86rem;
+  }
+
+  .account-bar button {
+    padding-inline: 8px;
+  }
+
   .pill-row {
     gap: 6px;
   }
