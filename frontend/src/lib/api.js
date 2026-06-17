@@ -140,6 +140,10 @@ export async function getReviewCalendar({ year, month } = {}) {
   return payload.calendar;
 }
 
+export async function deleteReviewTodo(todoId) {
+  await request(`/api/review-todos/${todoId}`, { method: 'DELETE' });
+}
+
 export async function getPomodoroSettings() {
   const payload = await request('/api/settings/pomodoro');
   return payload.settings;

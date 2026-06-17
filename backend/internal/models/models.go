@@ -127,10 +127,22 @@ type ReviewCalendarDay struct {
 	CompletedHabits int64                 `json:"completedHabits"`
 	FocusSeconds    int64                 `json:"focusSeconds"`
 	Entries         []ReviewCalendarEntry `json:"entries"`
+	Tasks           []ReviewTaskStat      `json:"tasks"`
 }
 
 type ReviewCalendarEntry struct {
-	Type  string `json:"type"`
-	Title string `json:"title"`
-	Meta  string `json:"meta,omitempty"`
+	TodoID int64  `json:"todoId,omitempty"`
+	Type   string `json:"type"`
+	Title  string `json:"title"`
+	Meta   string `json:"meta,omitempty"`
+}
+
+type ReviewTaskStat struct {
+	TodoID       int64  `json:"todoId"`
+	Title        string `json:"title"`
+	SourceType   string `json:"sourceType"`
+	Completed    bool   `json:"completed"`
+	FocusSeconds int64  `json:"focusSeconds"`
+	SessionCount int64  `json:"sessionCount"`
+	CompletedAt  string `json:"completedAt,omitempty"`
 }

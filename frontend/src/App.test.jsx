@@ -12,7 +12,7 @@ async function renderAtPath(pathname) {
   return result;
 }
 
-function createReviewCalendarMock() {
+function createReviewCalendarMock(deletedTodoIds = new Set()) {
   const days = Array.from({ length: 42 }, (_, index) => {
     const day = index < 1 ? 31 : index > 30 ? index - 30 : index;
     const inCurrentMonth = index >= 1 && index <= 30;
@@ -25,6 +25,7 @@ function createReviewCalendarMock() {
       completedHabits: 0,
       focusSeconds: 0,
       entries: [],
+      tasks: [],
     };
   });
 
@@ -37,10 +38,15 @@ function createReviewCalendarMock() {
     completedHabits: 1,
     focusSeconds: 1500,
     entries: [
-      { type: 'task', title: '写日报', meta: '完成' },
-      { type: 'habit', title: '运动30分钟', meta: '打卡' },
-      { type: 'focus', title: '阅读 Go 后端', meta: '25m' },
-    ],
+      { todoId: 101, type: 'task', title: '写日报', meta: '完成' },
+      { todoId: 102, type: 'habit', title: '运动30分钟', meta: '打卡' },
+      { todoId: 103, type: 'focus', title: '阅读 Go 后端', meta: '25m' },
+    ].filter((entry) => !deletedTodoIds.has(entry.todoId)),
+    tasks: [
+      { todoId: 101, title: '写日报', sourceType: 'todo', completed: true, focusSeconds: 0, sessionCount: 0, completedAt: '2026-06-10 09:00:00' },
+      { todoId: 102, title: '运动30分钟', sourceType: 'habit', completed: true, focusSeconds: 0, sessionCount: 0, completedAt: '2026-06-10 10:00:00' },
+      { todoId: 103, title: '阅读 Go 后端', sourceType: 'todo', completed: false, focusSeconds: 1500, sessionCount: 1, completedAt: '' },
+    ].filter((task) => !deletedTodoIds.has(task.todoId)),
   };
 
   return {
@@ -52,6 +58,7 @@ function createReviewCalendarMock() {
 
 beforeEach(() => {
   let habits = [];
+  const deletedReviewTodoIds = new Set();
   let pomodoroSettings = {
     focusMinutes: 25,
     shortBreakMinutes: 5,
@@ -153,8 +160,13 @@ beforeEach(() => {
     if (url.startsWith('/api/review-calendar') && method === 'GET') {
       return {
         ok: true,
-        json: async () => ({ calendar: createReviewCalendarMock() }),
+        json: async () => ({ calendar: createReviewCalendarMock(deletedReviewTodoIds) }),
       };
+    }
+
+    if (url.startsWith('/api/review-todos/') && method === 'DELETE') {
+      deletedReviewTodoIds.add(Number(url.replace('/api/review-todos/', '')));
+      return { ok: true, json: async () => ({ status: 'ok' }) };
     }
 
     if (url === '/api/settings/pomodoro' && method === 'PATCH') {
@@ -774,6 +786,31 @@ describe('App', () => {
     expect(screen.getByText('运动30分钟')).toBeInTheDocument();
     expect(screen.getByText('阅读 Go 后端')).toBeInTheDocument();
     expect(screen.getByText('专注 25m')).toBeInTheDocument();
+  });
+
+  it('opens review day detail and permanently deletes a review task', async () => {
+    vi.setSystemTime(new Date('2026-06-15T08:00:00+08:00'));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await renderAtPath('/pomodoro');
+
+    fireEvent.click(screen.getByRole('button', { name: '打开个人复盘' }));
+    expect(await screen.findByText('写日报')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '2026-06-10 复盘' }));
+    const detail = await screen.findByRole('dialog', { name: '2026-06-10 当日复盘详情' });
+    expect(within(detail).getByText('写日报')).toBeInTheDocument();
+    expect(within(detail).getAllByText('已完成 · 专注 0s · 0 个番茄')).toHaveLength(2);
+    expect(within(detail).getByText('未完成 · 专注 25:00 · 1 个番茄')).toBeInTheDocument();
+
+    fireEvent.click(within(detail).getByRole('button', { name: '永久删除 写日报' }));
+
+    expect(window.confirm).toHaveBeenCalledWith('永久删除「写日报」以及它的全部专注记录？这个操作不能撤销。');
+    expect(await screen.findByRole('dialog', { name: '2026-06-10 当日复盘详情' })).toBeInTheDocument();
+    expect(screen.queryByText('写日报')).not.toBeInTheDocument();
+    const deleteCall = window.fetch.mock.calls.find(([url, options]) => (
+      url === '/api/review-todos/101' && options?.method === 'DELETE'
+    ));
+    expect(deleteCall).toBeTruthy();
   });
 
   it('loads an official netease playlist iframe from a valid playlist url', async () => {

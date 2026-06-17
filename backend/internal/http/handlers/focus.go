@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strconv"
 
@@ -94,6 +95,36 @@ func (h *FocusHandler) ReviewCalendar(ctx context.Context, c *app.RequestContext
 	}
 
 	writeJSON(ctx, c, consts.StatusOK, map[string]any{"calendar": calendar})
+}
+
+func (h *FocusHandler) DeleteReviewTodo(ctx context.Context, c *app.RequestContext) {
+	user, ok := CurrentUser(c)
+	if !ok {
+		writeJSON(ctx, c, consts.StatusUnauthorized, map[string]string{"error": "请先登录"})
+		return
+	}
+
+	todoID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || todoID <= 0 {
+		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "任务 ID 不正确"})
+		return
+	}
+
+	err = h.focus.DeleteReviewTodo(user.ID, todoID)
+	if errors.Is(err, sql.ErrNoRows) {
+		writeJSON(ctx, c, consts.StatusNotFound, map[string]string{"error": "任务不存在"})
+		return
+	}
+	if errors.Is(err, focus.ErrInvalidFocusSession) {
+		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "任务 ID 不正确"})
+		return
+	}
+	if err != nil {
+		writeJSON(ctx, c, consts.StatusInternalServerError, map[string]string{"error": "永久删除任务失败"})
+		return
+	}
+
+	writeJSON(ctx, c, consts.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *FocusHandler) Create(ctx context.Context, c *app.RequestContext) {

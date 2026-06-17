@@ -185,13 +185,16 @@ func (s *Service) ReviewCalendar(userID int64, year, month int) (models.ReviewCa
 	if err := s.fillReviewFocus(userID, gridStart.Format("2006-01-02"), gridEnd.Format("2006-01-02"), calendar.Days, byDate); err != nil {
 		return models.ReviewCalendar{}, err
 	}
+	if err := s.fillReviewTaskStats(userID, gridStart.Format("2006-01-02"), gridEnd.Format("2006-01-02"), calendar.Days, byDate); err != nil {
+		return models.ReviewCalendar{}, err
+	}
 
 	return calendar, nil
 }
 
 func (s *Service) fillReviewTodos(userID int64, startDate, endDate string, days []models.ReviewCalendarDay, byDate map[string]int) error {
 	rows, err := s.db.Query(
-		`SELECT todo_date, source_type, title
+		`SELECT id, todo_date, source_type, title
 		   FROM todos
 		  WHERE user_id = ?
 		    AND completed = 1
@@ -207,10 +210,11 @@ func (s *Service) fillReviewTodos(userID int64, startDate, endDate string, days 
 	defer rows.Close()
 
 	for rows.Next() {
+		var todoID int64
 		var date string
 		var sourceType string
 		var title string
-		if err := rows.Scan(&date, &sourceType, &title); err != nil {
+		if err := rows.Scan(&todoID, &date, &sourceType, &title); err != nil {
 			return err
 		}
 		index, ok := byDate[date]
@@ -228,9 +232,10 @@ func (s *Service) fillReviewTodos(userID int64, startDate, endDate string, days 
 		}
 		if len(days[index].Entries) < 4 {
 			days[index].Entries = append(days[index].Entries, models.ReviewCalendarEntry{
-				Type:  entryType,
-				Title: title,
-				Meta:  meta,
+				TodoID: todoID,
+				Type:   entryType,
+				Title:  title,
+				Meta:   meta,
 			})
 		}
 	}
@@ -241,6 +246,7 @@ func (s *Service) fillReviewTodos(userID int64, startDate, endDate string, days 
 func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days []models.ReviewCalendarDay, byDate map[string]int) error {
 	rows, err := s.db.Query(
 		`SELECT focus_sessions.session_date,
+		        focus_sessions.todo_id,
 		        COALESCE(todos.title, '已删除任务') AS title,
 		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS duration_seconds,
 		        COUNT(*) AS session_count
@@ -260,10 +266,11 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 
 	for rows.Next() {
 		var date string
+		var todoID int64
 		var title string
 		var durationSeconds int64
 		var sessionCount int64
-		if err := rows.Scan(&date, &title, &durationSeconds, &sessionCount); err != nil {
+		if err := rows.Scan(&date, &todoID, &title, &durationSeconds, &sessionCount); err != nil {
 			return err
 		}
 		index, ok := byDate[date]
@@ -273,14 +280,92 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 		days[index].FocusSeconds += durationSeconds
 		if len(days[index].Entries) < 4 {
 			days[index].Entries = append(days[index].Entries, models.ReviewCalendarEntry{
-				Type:  "focus",
-				Title: title,
-				Meta:  formatReviewFocusMeta(durationSeconds, sessionCount),
+				TodoID: todoID,
+				Type:   "focus",
+				Title:  title,
+				Meta:   formatReviewFocusMeta(durationSeconds, sessionCount),
 			})
 		}
 	}
 
 	return rows.Err()
+}
+
+func (s *Service) fillReviewTaskStats(userID int64, startDate, endDate string, days []models.ReviewCalendarDay, byDate map[string]int) error {
+	rows, err := s.db.Query(
+		`SELECT todos.id,
+		        todos.todo_date,
+		        todos.title,
+		        todos.source_type,
+		        todos.completed,
+		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS focus_seconds,
+		        COUNT(focus_sessions.id) AS session_count,
+		        COALESCE(todos.completed_at, '') AS completed_at
+		   FROM todos
+		   LEFT JOIN focus_sessions ON focus_sessions.todo_id = todos.id AND focus_sessions.user_id = todos.user_id
+		  WHERE todos.user_id = ?
+		    AND todos.todo_date BETWEEN ? AND ?
+		  GROUP BY todos.id
+		 HAVING todos.completed = 1 OR COUNT(focus_sessions.id) > 0
+		  ORDER BY todos.todo_date ASC,
+		           CASE todos.source_type WHEN 'todo' THEN 1 ELSE 2 END ASC,
+		           focus_seconds DESC,
+		           todos.id DESC`,
+		userID,
+		startDate,
+		endDate,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item models.ReviewTaskStat
+		var date string
+		var completed int
+		if err := rows.Scan(&item.TodoID, &date, &item.Title, &item.SourceType, &completed, &item.FocusSeconds, &item.SessionCount, &item.CompletedAt); err != nil {
+			return err
+		}
+		index, ok := byDate[date]
+		if !ok {
+			continue
+		}
+		item.Completed = completed == 1
+		days[index].Tasks = append(days[index].Tasks, item)
+	}
+
+	return rows.Err()
+}
+
+func (s *Service) DeleteReviewTodo(userID, todoID int64) error {
+	if userID <= 0 || todoID <= 0 {
+		return ErrInvalidFocusSession
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`DELETE FROM focus_sessions WHERE user_id = ? AND todo_id = ?`, userID, todoID); err != nil {
+		return err
+	}
+
+	result, err := tx.Exec(`DELETE FROM todos WHERE id = ? AND user_id = ?`, todoID, userID)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return tx.Commit()
 }
 
 func (s *Service) overview(userID int64) (models.FocusStatsOverview, error) {
@@ -627,6 +712,7 @@ func buildEmptyReviewDays(gridStart, monthStart, now time.Time) []models.ReviewC
 			InCurrentMonth: day.Month() == currentMonth,
 			IsToday:        date == today,
 			Entries:        make([]models.ReviewCalendarEntry, 0),
+			Tasks:          make([]models.ReviewTaskStat, 0),
 		})
 	}
 	return days

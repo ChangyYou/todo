@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getReviewCalendar } from '../../lib/api';
+import { deleteReviewTodo, getReviewCalendar } from '../../lib/api';
 
 const WEEK_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
@@ -23,6 +23,14 @@ function ChevronRightIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M9.2 18.4 7.8 17l5-5-5-5 1.4-1.4 6.4 6.4-6.4 6.4Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 11H7.7L7 9Zm3 2v7h2v-7h-2Zm3 0v7h2v-7h-2Z" fill="currentColor" />
     </svg>
   );
 }
@@ -53,6 +61,16 @@ function formatDuration(seconds = 0) {
   return `${minutes}m`;
 }
 
+function formatDetailDuration(seconds = 0) {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  if (minutes <= 0) {
+    return `${remainingSeconds}s`;
+  }
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
 function DaySummary({ day }) {
   const items = [];
   if (day.focusSeconds > 0) {
@@ -80,8 +98,11 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewMonth, setViewMonth] = useState(() => getCurrentMonth());
   const [calendar, setCalendar] = useState(null);
+  const [selectedDate, setSelectedDate] = useState('');
   const [status, setStatus] = useState('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [deleteStatus, setDeleteStatus] = useState('idle');
+  const [detailErrorMessage, setDetailErrorMessage] = useState('');
   const launcherRef = useRef(null);
 
   useEffect(() => {
@@ -130,6 +151,32 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
   }, [isOpen]);
 
   const monthTitle = useMemo(() => `${viewMonth.year}年${viewMonth.month}月`, [viewMonth]);
+  const selectedDay = useMemo(() => (
+    calendar?.days.find((day) => day.date === selectedDate) ?? null
+  ), [calendar, selectedDate]);
+
+  const handleDeleteTask = async (task) => {
+    const confirmed = window.confirm(`永久删除「${task.title}」以及它的全部专注记录？这个操作不能撤销。`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleteStatus('deleting');
+    setDetailErrorMessage('');
+    try {
+      await deleteReviewTodo(task.todoId);
+      const nextCalendar = await getReviewCalendar(viewMonth);
+      setCalendar(nextCalendar);
+      setSelectedDate((date) => {
+        const nextDay = nextCalendar.days.find((day) => day.date === date);
+        return nextDay ? date : '';
+      });
+      setDeleteStatus('idle');
+    } catch (error) {
+      setDeleteStatus('error');
+      setDetailErrorMessage(error instanceof Error ? error.message : '永久删除失败');
+    }
+  };
 
   return (
     <div className="review-launcher" ref={launcherRef}>
@@ -172,10 +219,15 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
             <div className="review-calendar" aria-label={`${monthTitle}复盘日历`}>
               {WEEK_LABELS.map((label) => <div key={label} className="review-weekday">{label}</div>)}
               {calendar.days.map((day) => (
-                <article
+                <button
+                  type="button"
                   key={day.date}
                   className={`review-day-cell ${day.inCurrentMonth ? '' : 'muted'} ${day.isToday ? 'today' : ''}`}
                   aria-label={`${day.date} 复盘`}
+                  onClick={() => {
+                    setSelectedDate(day.date);
+                    setDetailErrorMessage('');
+                  }}
                 >
                   <div className="review-day-topline">
                     <span className="review-day-number">{day.day}</span>
@@ -190,9 +242,52 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                       </div>
                     ))}
                   </div>
-                </article>
+                </button>
               ))}
             </div>
+          ) : null}
+
+          {selectedDay ? (
+            <section className="review-detail-panel" role="dialog" aria-label={`${selectedDay.date} 当日复盘详情`}>
+              <div className="review-detail-header">
+                <div>
+                  <p className="review-kicker">Day Detail</p>
+                  <h3>{selectedDay.date} 复盘详情</h3>
+                </div>
+                <button type="button" className="review-today-button" onClick={() => setSelectedDate('')}>
+                  关闭
+                </button>
+              </div>
+              <div className="review-detail-summary">
+                <span>任务 {selectedDay.completedTasks}</span>
+                <span>习惯 {selectedDay.completedHabits}</span>
+                <span>专注 {formatDuration(selectedDay.focusSeconds)}</span>
+              </div>
+              {detailErrorMessage ? <p className="review-error" role="alert">{detailErrorMessage}</p> : null}
+              <div className="review-task-list">
+                {selectedDay.tasks.length > 0 ? selectedDay.tasks.map((task) => (
+                  <article key={task.todoId} className="review-task-row">
+                    <div className="review-task-main">
+                      <span className={`review-task-badge ${task.sourceType}`}>{task.sourceType === 'habit' ? '习惯' : '任务'}</span>
+                      <strong>{task.title}</strong>
+                      <small>{task.completed ? '已完成' : '未完成'} · 专注 {formatDetailDuration(task.focusSeconds)} · {task.sessionCount} 个番茄</small>
+                    </div>
+                    <button
+                      type="button"
+                      className="review-delete-button has-tooltip"
+                      aria-label={`永久删除 ${task.title}`}
+                      data-tooltip="永久删除"
+                      disabled={deleteStatus === 'deleting'}
+                      onClick={() => handleDeleteTask(task)}
+                    >
+                      <TrashIcon />
+                    </button>
+                  </article>
+                )) : (
+                  <p className="review-empty">这一天还没有可复盘的任务。</p>
+                )}
+              </div>
+            </section>
           ) : null}
         </section>
       ) : null}
