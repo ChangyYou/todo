@@ -129,7 +129,6 @@ export default function SceneLauncher({ onScenesChanged = () => {} }) {
                     <span className="scene-color-dot" style={{ '--scene-color': scene.color || SCENE_COLOR_OPTIONS[0].value }} aria-hidden="true" />
                     {scene.title}
                   </span>
-                  <span className="habit-item-range">可绑定到专注计时</span>
                 </div>
               </div>
             ))}

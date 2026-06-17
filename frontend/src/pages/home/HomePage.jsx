@@ -13,6 +13,7 @@ export default function HomePage({ user, onLoggedOut }) {
   const [focusTimerStatus, setFocusTimerStatus] = useState(null);
   const [unbindFocusSignal, setUnbindFocusSignal] = useState(0);
   const [completeFocusSignal, setCompleteFocusSignal] = useState(null);
+  const [sceneRefreshSignal, setSceneRefreshSignal] = useState(0);
   const focusTodoIdRef = useRef('');
 
   const handleLogout = async () => {
@@ -68,6 +69,7 @@ export default function HomePage({ user, onLoggedOut }) {
         focusTodoRequest={focusTodoRequest}
         unbindFocusSignal={unbindFocusSignal}
         completeFocusSignal={completeFocusSignal}
+        sceneRefreshSignal={sceneRefreshSignal}
         onFocusTimerChange={handleFocusTimerChange}
         onFocusTodoCompleted={handleFocusTodoCompleted}
       />
@@ -81,7 +83,7 @@ export default function HomePage({ user, onLoggedOut }) {
         />
       </aside>
       <HabitLauncher onHabitCreated={() => setTodoRefreshSignal((signal) => signal + 1)} />
-      <SceneLauncher />
+      <SceneLauncher onScenesChanged={() => setSceneRefreshSignal((signal) => signal + 1)} />
       <button
         type="button"
         className={`home-todo-toggle ${isTodoDrawerOpen ? 'open' : 'closed'}`}

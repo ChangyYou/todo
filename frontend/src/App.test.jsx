@@ -475,6 +475,27 @@ describe('App', () => {
     expect(screen.queryByRole('menuitem', { name: '不绑定场景' })).not.toBeInTheDocument();
   });
 
+  it('refreshes the timer scene picker after creating a scene', async () => {
+    await renderAtPath('/');
+
+    fireEvent.click(screen.getByRole('button', { name: '打开场景面板' }));
+    const scenePanel = screen.getByRole('dialog', { name: '专注场景面板' });
+    fireEvent.click(within(scenePanel).getByRole('button', { name: '新建场景' }));
+
+    const sceneEditor = screen.getByRole('dialog', { name: '创建场景' });
+    fireEvent.change(within(sceneEditor).getByLabelText('场景名称'), {
+      target: { value: '写作' },
+    });
+    fireEvent.click(within(sceneEditor).getByRole('button', { name: '保存' }));
+
+    expect(await within(scenePanel).findByText('写作')).toBeInTheDocument();
+    expect(within(scenePanel).queryByText('可绑定到专注计时')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '绑定场景' }));
+
+    expect(await screen.findByRole('menuitem', { name: '写作' })).toBeInTheDocument();
+  });
+
   it('unbinds the timer when the bound todo is deleted', async () => {
     await renderAtPath('/');
 

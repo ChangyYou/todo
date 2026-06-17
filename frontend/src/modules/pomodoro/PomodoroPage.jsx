@@ -150,6 +150,7 @@ export default function PomodoroPage({
   focusTodoRequest = null,
   unbindFocusSignal = 0,
   completeFocusSignal = null,
+  sceneRefreshSignal = 0,
   onFocusTimerChange = () => {},
   onFocusTodoCompleted = () => {},
 } = {}) {
@@ -308,7 +309,7 @@ export default function PomodoroPage({
     return () => {
       isDisposed = true;
     };
-  }, [focusStatsRefreshSignal]);
+  }, [focusStatsRefreshSignal, sceneRefreshSignal]);
 
   useEffect(() => {
     let isDisposed = false;
