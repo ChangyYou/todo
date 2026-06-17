@@ -278,7 +278,11 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id
 		   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
 		  WHERE focus_sessions.user_id = ? AND focus_sessions.session_date BETWEEN ? AND ?
-		  GROUP BY focus_sessions.session_date, focus_sessions.todo_id, scene_id, title, entry_type
+		  GROUP BY focus_sessions.session_date,
+		           focus_sessions.todo_id,
+		           scene_id,
+		           COALESCE(todos.title, focus_scenes.title, ''),
+		           entry_type
 		  ORDER BY focus_sessions.session_date ASC, duration_seconds DESC`,
 		userID,
 		startDate,
