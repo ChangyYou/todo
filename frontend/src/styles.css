@@ -3095,8 +3095,28 @@ select {
 }
 
 @media (max-width: 720px) {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
   .page-shell {
-    padding: 18px 14px 28px;
+    padding: 18px 14px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .page-shell-immersive {
+    height: auto;
+    min-height: 100svh;
+    overflow: visible;
+    padding:
+      calc(16px + env(safe-area-inset-top, 0px))
+      14px
+      calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .page-shell-immersive .scene-backdrop {
+    position: fixed;
   }
 
   .page-header {
@@ -3105,8 +3125,69 @@ select {
     gap: 18px;
   }
 
+  .page-shell-immersive .page-header-immersive {
+    position: relative;
+    inset: auto;
+    max-width: none;
+    min-height: 40px;
+    margin: 0;
+    padding-right: 132px;
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
   .page-header-left {
     width: 100%;
+  }
+
+  .page-header-left-immersive {
+    max-width: 100%;
+  }
+
+  .brand-mark {
+    gap: 9px;
+    align-items: center;
+  }
+
+  .brand-dot {
+    width: 28px;
+    height: 28px;
+  }
+
+  .brand-dot::after {
+    inset: 10px;
+  }
+
+  .brand-kicker {
+    display: none;
+  }
+
+  .brand-name {
+    margin-top: 0;
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+
+  .account-bar {
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    right: 12px;
+    max-width: 124px;
+    min-height: 38px;
+    gap: 6px;
+    padding: 6px 7px 6px 10px;
+    font-size: 0.9rem;
+  }
+
+  .account-bar span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account-bar button {
+    min-height: 28px;
+    padding: 0 9px;
   }
 
   .controls {
@@ -3120,44 +3201,169 @@ select {
     min-height: 40px;
   }
 
-  .brand-name {
-    font-size: 1.6rem;
-  }
-
   .focus-stage {
     min-height: auto;
     padding: 22px 0 0;
   }
 
   .focus-stage-immersive {
-    min-height: calc(100vh - 80px);
+    min-height: auto;
   }
 
   .home-todo-drawer {
-    left: 14px;
-    width: min(420px, calc(100vw - 76px));
-    max-height: calc(100vh - 132px);
+    position: relative;
+    z-index: 3;
+    left: auto;
+    top: auto;
+    width: min(100% - 28px, 520px);
+    max-height: none;
+    margin: 18px auto 0;
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .home-todo-drawer.closed {
+    display: none;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: none;
+    transform: none;
   }
 
   .home-todo-toggle {
-    left: 14px;
+    position: relative;
+    z-index: 3;
+    left: auto;
     top: auto;
-    bottom: 74px;
+    bottom: auto;
     min-height: 42px;
+    width: fit-content;
+    margin: 12px auto calc(82px + env(safe-area-inset-bottom, 0px));
     padding: 0 13px;
   }
 
   .home-todo-toggle.closed {
-    left: 14px;
+    left: auto;
   }
 
   .immersive-workspace {
     gap: 18px;
+    width: 100%;
+    min-height: auto;
+  }
+
+  .page-shell-immersive .focus-stage-immersive {
+    height: auto;
+    min-height: 0;
+    padding: 18px 0 0;
+  }
+
+  .page-shell-immersive .immersive-panel {
+    gap: 18px;
+  }
+
+  .immersive-panel {
+    width: 100%;
+  }
+
+  .immersive-ambient-strip {
+    width: 100%;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(148px, 1fr);
+    justify-content: start;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .immersive-ambient-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .immersive-ambient-pill {
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 18px;
+    scroll-snap-align: start;
+  }
+
+  .immersive-ambient-label {
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+  }
+
+  .immersive-ambient-pill strong {
+    font-size: 1rem;
+  }
+
+  .immersive-ambient-meta {
+    font-size: 0.76rem;
+  }
+
+  .immersive-phase-group {
+    order: 2;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .focus-task-menu-wrap {
+    min-width: 0;
+  }
+
+  .immersive-phase-pill {
+    max-width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 0.78rem;
+    letter-spacing: 0;
+  }
+
+  .focus-task-menu {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  .immersive-time-wrap {
+    order: 1;
+    gap: 12px;
+  }
+
+  .page-shell-immersive .immersive-time {
+    width: 100%;
+    font-size: clamp(5.2rem, 24vw, 7.2rem);
+    line-height: 0.9;
+  }
+
+  .page-shell-immersive .immersive-copy {
+    max-width: 22ch;
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .immersive-controls {
+    order: 3;
+    margin-top: 0;
+  }
+
+  .immersive-meta {
+    order: 4;
+    width: min(320px, 100%);
+    margin-top: 0;
   }
 
   .daily-todo-panel {
     padding: 18px;
     border-radius: 22px;
+    max-height: none;
   }
 
   .intro-card,
@@ -3183,8 +3389,15 @@ select {
 
   .settings-panel-immersive,
   .skip-choice-panel-immersive {
-    width: min(100%, 520px);
-    margin-inline: auto;
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-height: min(72svh, 620px);
+    margin: 0;
+    overflow-y: auto;
+    z-index: 35;
   }
 
   .controls {
@@ -3201,52 +3414,83 @@ select {
     padding-inline: 16px;
   }
 
-  .immersive-phase-group {
-    gap: 8px;
-  }
-
-  .immersive-ambient-strip {
-    gap: 10px;
-  }
-
-  .immersive-ambient-pill {
-    min-width: 160px;
-    padding: 12px 16px;
-  }
-
-  .immersive-phase-pill {
-    min-height: 40px;
-    padding: 0 16px;
-    font-size: 0.8rem;
-  }
-
-  .immersive-time {
-    width: min(100%, 900px);
-    font-size: clamp(5.2rem, 21vw, 8rem);
-    line-height: 0.94;
-  }
-
-  .immersive-copy {
-    font-size: clamp(1.02rem, 2.4vw, 1.16rem);
-  }
-
-  .immersive-meta {
-    width: min(320px, 100%);
-  }
-
   .music-panel {
-    width: min(360px, calc(100vw - 24px));
-    max-height: min(70vh, 680px);
+    left: 12px;
+    right: 12px;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-height: min(72svh, 680px);
+    border-radius: 22px;
   }
 
   .settings-launcher {
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     gap: 8px;
+    z-index: 31;
   }
 
-  .mode-switch-button {
+  .music-launcher {
+    left: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .habit-launcher {
+    left: 62px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .scene-launcher {
+    left: 112px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mode-switch-button,
+  .music-launcher-button,
+  .habit-launcher-button {
     width: 40px;
     height: 40px;
     border-radius: 12px;
+  }
+
+  .habit-panel,
+  .habit-editor-panel {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-height: min(72svh, 620px);
+  }
+
+  .habit-editor-panel {
+    transform: none;
+  }
+
+  .focus-stats-panel,
+  .review-panel {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-height: min(76svh, 680px);
+    border-radius: 22px;
+  }
+
+  .focus-stats-content {
+    max-height: calc(min(76svh, 680px) - 92px);
+  }
+
+  .review-detail-panel,
+  .focus-stats-detail {
+    position: fixed;
+    left: 18px;
+    right: 18px;
+    top: auto;
+    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-height: min(66svh, 560px);
   }
 }
 
@@ -3379,7 +3623,7 @@ select {
   .music-panel {
     left: 12px;
     right: 12px;
-    bottom: 68px;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
     width: auto;
     max-height: min(68vh, 620px);
   }
@@ -3432,12 +3676,12 @@ select {
 
   .habit-launcher {
     left: 62px;
-    bottom: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
 
   .scene-launcher {
     left: 112px;
-    bottom: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
 
   .habit-launcher-button {
@@ -3447,14 +3691,15 @@ select {
 
   .habit-panel,
   .habit-editor-panel {
-    left: -50px;
-    bottom: 54px;
-    width: min(330px, calc(100vw - 24px));
+    left: 12px;
+    right: 12px;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    width: auto;
   }
 
   .habit-editor-panel {
-    bottom: 0;
-    transform: translateY(calc(-100% - 64px));
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    transform: none;
   }
 }
 
