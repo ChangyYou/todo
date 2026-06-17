@@ -111,6 +111,19 @@ export async function getFocusSessionSummary(sessionDate) {
   return payload.summary;
 }
 
+export async function getFocusStats({ start, end } = {}) {
+  const params = new URLSearchParams();
+  if (start) {
+    params.set('start', start);
+  }
+  if (end) {
+    params.set('end', end);
+  }
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const payload = await request(`/api/focus-stats${query}`);
+  return payload.stats;
+}
+
 export async function getPomodoroSettings() {
   const payload = await request('/api/settings/pomodoro');
   return payload.settings;

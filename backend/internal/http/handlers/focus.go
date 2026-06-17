@@ -44,6 +44,26 @@ func (h *FocusHandler) Summary(ctx context.Context, c *app.RequestContext) {
 	writeJSON(ctx, c, consts.StatusOK, map[string]any{"summary": summary})
 }
 
+func (h *FocusHandler) Stats(ctx context.Context, c *app.RequestContext) {
+	user, ok := CurrentUser(c)
+	if !ok {
+		writeJSON(ctx, c, consts.StatusUnauthorized, map[string]string{"error": "请先登录"})
+		return
+	}
+
+	stats, err := h.focus.Stats(user.ID, c.Query("start"), c.Query("end"))
+	if errors.Is(err, focus.ErrInvalidFocusSession) {
+		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "统计日期不正确"})
+		return
+	}
+	if err != nil {
+		writeJSON(ctx, c, consts.StatusInternalServerError, map[string]string{"error": "专注统计暂时不可用"})
+		return
+	}
+
+	writeJSON(ctx, c, consts.StatusOK, map[string]any{"stats": stats})
+}
+
 func (h *FocusHandler) Create(ctx context.Context, c *app.RequestContext) {
 	user, ok := CurrentUser(c)
 	if !ok {

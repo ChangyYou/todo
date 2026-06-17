@@ -42,3 +42,38 @@ type FocusSummary struct {
 	SessionDate     string `json:"sessionDate"`
 	DurationSeconds int64  `json:"durationSeconds"`
 }
+
+type FocusStats struct {
+	StartDate string            `json:"startDate"`
+	EndDate   string            `json:"endDate"`
+	Summary   FocusStatsSummary `json:"summary"`
+	Daily     []FocusStatsDay   `json:"daily"`
+	ByTask    []FocusStatsTask  `json:"byTask"`
+	Recent    []FocusStatsEntry `json:"recent"`
+}
+
+type FocusStatsSummary struct {
+	DurationSeconds int64 `json:"durationSeconds"`
+	SessionCount    int64 `json:"sessionCount"`
+}
+
+type FocusStatsDay struct {
+	Date            string `json:"date"`
+	DurationSeconds int64  `json:"durationSeconds"`
+	SessionCount    int64  `json:"sessionCount"`
+}
+
+type FocusStatsTask struct {
+	TodoID          int64  `json:"todoId"`
+	Title           string `json:"title"`
+	DurationSeconds int64  `json:"durationSeconds"`
+	SessionCount    int64  `json:"sessionCount"`
+}
+
+type FocusStatsEntry struct {
+	TodoID          int64  `json:"todoId"`
+	Title           string `json:"title"`
+	DurationSeconds int64  `json:"durationSeconds"`
+	SessionDate     string `json:"sessionDate"`
+	CreatedAt       string `json:"createdAt"`
+}

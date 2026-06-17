@@ -12,6 +12,7 @@ import {
   createSavedPlaylistRecord,
   parseNeteasePlaylistInput,
 } from '../../lib/music';
+import FocusStatsLauncher from '../focusStats/FocusStatsLauncher';
 import { fetchChengduWeather } from '../../lib/weather';
 import {
   getFocusSessionSummary,
@@ -164,6 +165,7 @@ export default function PomodoroPage({
   const [isFocusTaskMenuOpen, setIsFocusTaskMenuOpen] = useState(false);
   const [focusBindingError, setFocusBindingError] = useState('');
   const [todayFocusSeconds, setTodayFocusSeconds] = useState(0);
+  const [focusStatsRefreshSignal, setFocusStatsRefreshSignal] = useState(0);
   const [activeFeedbackButton, setActiveFeedbackButton] = useState('');
   const [weatherState, setWeatherState] = useState({
     status: 'loading',
@@ -245,6 +247,7 @@ export default function PomodoroPage({
         if (session.sessionDate === getLocalDate(new Date())) {
           setTodayFocusSeconds((seconds) => seconds + session.durationSeconds);
         }
+        setFocusStatsRefreshSignal((signal) => signal + 1);
         onFocusTodoCompleted();
       })
       .catch(() => {
@@ -524,6 +527,7 @@ export default function PomodoroPage({
     if (sessionDate === todayDate) {
       setTodayFocusSeconds((seconds) => seconds + durationSeconds);
     }
+    setFocusStatsRefreshSignal((signal) => signal + 1);
     onFocusTodoCompleted();
   };
 
@@ -1055,6 +1059,7 @@ export default function PomodoroPage({
       </div>
 
       <div className="settings-launcher">
+        <FocusStatsLauncher refreshSignal={focusStatsRefreshSignal} />
         <button
           type="button"
           className={`mode-switch-button has-tooltip ${isSettingsOpen ? 'active' : ''} ${getFeedbackClassName('settings')}`}

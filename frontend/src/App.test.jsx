@@ -59,6 +59,41 @@ beforeEach(() => {
       };
     }
 
+    if (url.startsWith('/api/focus-stats') && method === 'GET') {
+      return {
+        ok: true,
+        json: async () => ({
+          stats: {
+            startDate: '2026-06-09',
+            endDate: '2026-06-15',
+            summary: { durationSeconds: 3900, sessionCount: 3 },
+            daily: [
+              { date: '2026-06-09', durationSeconds: 0, sessionCount: 0 },
+              { date: '2026-06-10', durationSeconds: 600, sessionCount: 1 },
+              { date: '2026-06-11', durationSeconds: 0, sessionCount: 0 },
+              { date: '2026-06-12', durationSeconds: 1200, sessionCount: 1 },
+              { date: '2026-06-13', durationSeconds: 0, sessionCount: 0 },
+              { date: '2026-06-14', durationSeconds: 0, sessionCount: 0 },
+              { date: '2026-06-15', durationSeconds: 2100, sessionCount: 1 },
+            ],
+            byTask: [
+              { todoId: 1, title: '整理今天最重要的三件事', durationSeconds: 2100, sessionCount: 1 },
+              { todoId: 2, title: '阅读 Go 后端', durationSeconds: 1800, sessionCount: 2 },
+            ],
+            recent: [
+              {
+                todoId: 1,
+                title: '整理今天最重要的三件事',
+                durationSeconds: 2100,
+                sessionDate: '2026-06-15',
+                createdAt: '2026-06-15 09:30:00',
+              },
+            ],
+          },
+        }),
+      };
+    }
+
     if (url === '/api/settings/pomodoro' && method === 'PATCH') {
       pomodoroSettings = {
         ...pomodoroSettings,
@@ -642,6 +677,20 @@ describe('App', () => {
 
     expect(screen.getByRole('dialog', { name: '网易云音乐' })).toBeInTheDocument();
     expect(screen.getByText('加载公开歌单，边专注边播放')).toBeInTheDocument();
+  });
+
+  it('opens the focus stats panel from the bottom launcher', async () => {
+    await renderAtPath('/pomodoro');
+
+    fireEvent.click(screen.getByRole('button', { name: '打开专注统计' }));
+
+    expect(await screen.findByRole('dialog', { name: '专注统计' })).toBeInTheDocument();
+    expect(await screen.findByText('总专注')).toBeInTheDocument();
+    expect(screen.getByText('1小时5分钟')).toBeInTheDocument();
+    expect(screen.getByText('3 次')).toBeInTheDocument();
+    expect(screen.getByText('近七天趋势')).toBeInTheDocument();
+    expect(screen.getByText('任务分布')).toBeInTheDocument();
+    expect(screen.getByText('阅读 Go 后端')).toBeInTheDocument();
   });
 
   it('loads an official netease playlist iframe from a valid playlist url', async () => {
