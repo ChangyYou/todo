@@ -2248,7 +2248,7 @@ select {
   position: fixed;
   right: clamp(12px, 2.4vw, 24px);
   bottom: clamp(12px, 2.4vw, 24px);
-  z-index: 7;
+  z-index: 35;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -2309,6 +2309,7 @@ select {
 
 .review-panel {
   position: absolute;
+  z-index: 36;
   right: 0;
   bottom: 58px;
   width: min(1160px, calc(100vw - 24px));
@@ -2685,6 +2686,7 @@ select {
 
 .focus-stats-panel {
   position: absolute;
+  z-index: 36;
   right: 0;
   bottom: 58px;
   width: min(720px, calc(100vw - 24px));
