@@ -714,9 +714,14 @@ select {
 }
 
 .daily-todo-add-button {
-  width: 100%;
-  margin-top: 18px;
-  min-height: 42px;
+  width: auto;
+  min-height: 30px;
+  margin-top: 14px;
+  padding-inline: 12px;
+  font-size: 0.78rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 8px 14px rgba(68, 96, 83, 0.12);
 }
 
 .daily-todo-list {
@@ -2011,9 +2016,15 @@ select {
 }
 
 .habit-new-button {
-  width: 100%;
-  min-height: 42px;
-  margin-top: 16px;
+  width: auto;
+  min-height: 30px;
+  margin-top: 14px;
+  padding-inline: 12px;
+  font-size: 0.78rem;
+  justify-self: start;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 8px 14px rgba(68, 96, 83, 0.12);
 }
 
 .habit-never-field {
@@ -2400,10 +2411,6 @@ select {
   .daily-todo-panel {
     padding: 18px;
     border-radius: 22px;
-  }
-
-  .daily-todo-add-button {
-    width: 100%;
   }
 
   .intro-card,
