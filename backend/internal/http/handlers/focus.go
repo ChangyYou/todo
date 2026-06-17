@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"strconv"
 
@@ -137,8 +138,10 @@ func (h *FocusHandler) Create(ctx context.Context, c *app.RequestContext) {
 
 	var request createFocusSessionRequest
 	if err := c.BindAndValidate(&request); err != nil {
-		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "请求格式不正确"})
-		return
+		if jsonErr := json.Unmarshal(c.Request.Body(), &request); jsonErr != nil {
+			writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "请求格式不正确"})
+			return
+		}
 	}
 
 	err := h.focus.Create(user.ID, request.TodoID, request.SceneID, request.DurationSeconds, request.SessionDate)

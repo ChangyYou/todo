@@ -130,6 +130,13 @@ export async function recordFocusSession(session) {
   });
 }
 
+export function recordFocusSessionOnUnload(session) {
+  if (!navigator.sendBeacon) {
+    return false;
+  }
+  return navigator.sendBeacon('/api/focus-sessions', JSON.stringify(session));
+}
+
 export async function getFocusSessionSummary(sessionDate) {
   const query = sessionDate ? `?date=${encodeURIComponent(sessionDate)}` : '';
   const payload = await request(`/api/focus-sessions/summary${query}`);

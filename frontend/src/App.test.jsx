@@ -524,6 +524,59 @@ describe('App', () => {
     expect(screen.getByText('今日专注 0:10')).toBeInTheDocument();
   });
 
+  it('records the current focus segment before logging out', async () => {
+    vi.useFakeTimers();
+    await renderAtPath('/');
+
+    fireEvent.click(screen.getByRole('button', { name: '绑定场景' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '运动' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始' }));
+
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '退出' }));
+    });
+
+    const focusCallIndex = window.fetch.mock.calls.findIndex(([url]) => url === '/api/focus-sessions');
+    const logoutCallIndex = window.fetch.mock.calls.findIndex(([url]) => url === '/api/auth/logout');
+    expect(focusCallIndex).toBeGreaterThan(-1);
+    expect(focusCallIndex).toBeLessThan(logoutCallIndex);
+    expect(JSON.parse(window.fetch.mock.calls[focusCallIndex][1].body)).toMatchObject({
+      todoId: 0,
+      sceneId: 1,
+      durationSeconds: 10,
+    });
+  });
+
+  it('queues the current focus segment with sendBeacon when the page is closing', async () => {
+    vi.useFakeTimers();
+    const sendBeacon = vi.fn(() => true);
+    Object.defineProperty(window.navigator, 'sendBeacon', {
+      configurable: true,
+      value: sendBeacon,
+    });
+    await renderAtPath('/');
+
+    fireEvent.click(screen.getByRole('button', { name: '绑定场景' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '运动' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始' }));
+
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    window.dispatchEvent(new Event('pagehide'));
+
+    expect(sendBeacon).toHaveBeenCalledWith('/api/focus-sessions', expect.any(String));
+    expect(JSON.parse(sendBeacon.mock.calls[0][1])).toMatchObject({
+      todoId: 0,
+      sceneId: 1,
+      durationSeconds: 10,
+    });
+  });
+
   it('unbinds the timer when the bound todo is deleted', async () => {
     await renderAtPath('/');
 

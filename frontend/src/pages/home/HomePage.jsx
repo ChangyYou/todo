@@ -15,8 +15,14 @@ export default function HomePage({ user, onLoggedOut }) {
   const [completeFocusSignal, setCompleteFocusSignal] = useState(null);
   const [sceneRefreshSignal, setSceneRefreshSignal] = useState(0);
   const focusTodoIdRef = useRef('');
+  const pomodoroRef = useRef(null);
 
   const handleLogout = async () => {
+    try {
+      await pomodoroRef.current?.flushCurrentFocusDuration?.();
+    } catch {
+      // Logging out should not trap the user if the last focus segment cannot be saved.
+    }
     await logout();
     onLoggedOut();
   };
@@ -66,6 +72,7 @@ export default function HomePage({ user, onLoggedOut }) {
         <button type="button" onClick={handleLogout}>退出</button>
       </div>
       <PomodoroPage
+        ref={pomodoroRef}
         focusTodoRequest={focusTodoRequest}
         unbindFocusSignal={unbindFocusSignal}
         completeFocusSignal={completeFocusSignal}

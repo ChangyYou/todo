@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   applySettingsToTimerState,
   createDefaultSettings,
@@ -21,6 +21,7 @@ import {
   listScenes,
   listTodos,
   recordFocusSession,
+  recordFocusSessionOnUnload,
   updatePomodoroSettings,
   updateTodo,
 } from '../../lib/api';
@@ -145,7 +146,7 @@ function MusicIcon() {
   );
 }
 
-export default function PomodoroPage({
+const PomodoroPage = forwardRef(function PomodoroPage({
   immersiveSidebar = null,
   focusTodoRequest = null,
   unbindFocusSignal = 0,
@@ -153,7 +154,7 @@ export default function PomodoroPage({
   sceneRefreshSignal = 0,
   onFocusTimerChange = () => {},
   onFocusTodoCompleted = () => {},
-} = {}) {
+} = {}, ref) {
   const timerCardRef = useRef(null);
   const settingsPanelRef = useRef(null);
   const musicPanelRef = useRef(null);
@@ -163,6 +164,7 @@ export default function PomodoroPage({
   const feedbackTimeoutRef = useRef(null);
   const focusSessionToRecordRef = useRef(null);
   const focusBindingStartRemainingRef = useRef(null);
+  const unloadFocusSessionKeyRef = useRef('');
   const [settings, setSettings] = useState(() => createDefaultSettings());
   const [timerState, setTimerState] = useState(() => createInitialTimerState(createDefaultSettings()));
   const [settingsErrorMessage, setSettingsErrorMessage] = useState('');
@@ -193,6 +195,47 @@ export default function PomodoroPage({
     data: null,
     errorMessage: '',
   });
+
+  function getCurrentFocusSession() {
+    if ((!selectedFocusTodoId && !selectedSceneId) || timerState.phase !== TIMER_PHASES.FOCUS) {
+      return null;
+    }
+
+    const startedAtRemaining = focusBindingStartRemainingRef.current ?? timerState.remainingSeconds;
+    const durationSeconds = Math.max(0, startedAtRemaining - timerState.remainingSeconds);
+    if (durationSeconds <= 0) {
+      return null;
+    }
+
+    return {
+      todoId: selectedFocusTodoId ? Number(selectedFocusTodoId) : 0,
+      sceneId: selectedSceneId ? Number(selectedSceneId) : 0,
+      durationSeconds,
+      sessionDate: getLocalDate(new Date()),
+    };
+  }
+
+  function markCurrentFocusSessionRecorded(session, { notifyTodoRefresh = true } = {}) {
+    if (session.sessionDate === todayDate) {
+      setTodayFocusSeconds((seconds) => seconds + session.durationSeconds);
+    }
+    focusBindingStartRemainingRef.current = timerState.remainingSeconds;
+    setFocusStatsRefreshSignal((signal) => signal + 1);
+    if (notifyTodoRefresh && selectedFocusTodoId) {
+      onFocusTodoCompleted();
+    }
+  }
+
+  async function persistCurrentFocusDuration({ notifyTodoRefresh = true } = {}) {
+    const session = getCurrentFocusSession();
+    if (!session) {
+      return;
+    }
+
+    await recordFocusSession(session);
+    markCurrentFocusSessionRecorded(session, { notifyTodoRefresh });
+  }
+
   useEffect(() => {
     let isDisposed = false;
 
@@ -535,6 +578,48 @@ export default function PomodoroPage({
         ? '天气暂时不可用'
         : '天气加载中...';
 
+  useImperativeHandle(ref, () => ({
+    flushCurrentFocusDuration: () => persistCurrentFocusDuration({ notifyTodoRefresh: false }),
+  }));
+
+  useEffect(() => {
+    const persistFocusOnPageExit = () => {
+      const session = getCurrentFocusSession();
+      if (!session) {
+        return;
+      }
+
+      const sessionKey = [
+        session.todoId,
+        session.sceneId,
+        session.durationSeconds,
+        session.sessionDate,
+        timerState.remainingSeconds,
+      ].join(':');
+      if (unloadFocusSessionKeyRef.current === sessionKey) {
+        return;
+      }
+
+      if (recordFocusSessionOnUnload(session)) {
+        unloadFocusSessionKeyRef.current = sessionKey;
+        focusBindingStartRemainingRef.current = timerState.remainingSeconds;
+      }
+    };
+
+    window.addEventListener('pagehide', persistFocusOnPageExit);
+    window.addEventListener('beforeunload', persistFocusOnPageExit);
+
+    return () => {
+      window.removeEventListener('pagehide', persistFocusOnPageExit);
+      window.removeEventListener('beforeunload', persistFocusOnPageExit);
+    };
+  }, [
+    selectedFocusTodoId,
+    selectedSceneId,
+    timerState.phase,
+    timerState.remainingSeconds,
+  ]);
+
   useEffect(() => {
     let isDisposed = false;
 
@@ -596,34 +681,6 @@ export default function PomodoroPage({
     focusBindingStartRemainingRef.current = null;
     setIsFocusTaskMenuOpen(false);
     setFocusBindingError('');
-  };
-
-  const persistCurrentFocusDuration = async ({ notifyTodoRefresh = true } = {}) => {
-    if ((!selectedFocusTodoId && !selectedSceneId) || timerState.phase !== TIMER_PHASES.FOCUS) {
-      return;
-    }
-
-    const startedAtRemaining = focusBindingStartRemainingRef.current ?? timerState.remainingSeconds;
-    const durationSeconds = Math.max(0, startedAtRemaining - timerState.remainingSeconds);
-    if (durationSeconds <= 0) {
-      return;
-    }
-
-    const sessionDate = getLocalDate(new Date());
-    await recordFocusSession({
-      todoId: selectedFocusTodoId ? Number(selectedFocusTodoId) : 0,
-      sceneId: selectedSceneId ? Number(selectedSceneId) : 0,
-      durationSeconds,
-      sessionDate,
-    });
-    if (sessionDate === todayDate) {
-      setTodayFocusSeconds((seconds) => seconds + durationSeconds);
-    }
-    focusBindingStartRemainingRef.current = timerState.remainingSeconds;
-    setFocusStatsRefreshSignal((signal) => signal + 1);
-    if (notifyTodoRefresh && selectedFocusTodoId) {
-      onFocusTodoCompleted();
-    }
   };
 
   const handleClearSceneBinding = async () => {
@@ -1208,4 +1265,6 @@ export default function PomodoroPage({
       </div>
     </main>
   );
-}
+});
+
+export default PomodoroPage;
