@@ -57,6 +57,28 @@ function PeriodSelect({ value, onChange }) {
   );
 }
 
+function getTrendTooltip(item, valueKey, formatValue) {
+  const value = item[valueKey] ?? 0;
+  if (valueKey === 'durationSeconds') {
+    return `${item.label}：专注 ${formatDuration(value)}；${item.sessionCount ?? 0} 个番茄`;
+  }
+  if (valueKey === 'taskCompletionRate') {
+    return `${item.label}：完成率 ${formatValue(value)}；完成 ${item.taskCompleted ?? 0}/${item.taskTotal ?? 0}`;
+  }
+  if (valueKey === 'sessionCount') {
+    return `${item.label}：${value} 个番茄；专注 ${formatDuration(item.durationSeconds ?? 0)}`;
+  }
+  return `${item.label}：${formatValue(value)}`;
+}
+
+function getHabitTooltip(day) {
+  const completed = day.completedHabits ?? [];
+  const pending = day.pendingHabits ?? [];
+  const completedText = completed.length > 0 ? completed.join('、') : '无';
+  const pendingText = pending.length > 0 ? pending.join('、') : '无';
+  return `${day.date}：已完成 ${completedText}；未完成 ${pendingText}`;
+}
+
 function TrendCard({ title, period, onPeriodChange, items, valueKey, maxValue, formatValue, percent = false }) {
   return (
     <div className="focus-stats-chart-card">
@@ -74,10 +96,11 @@ function TrendCard({ title, period, onPeriodChange, items, valueKey, maxValue, f
           {items.map((item) => {
             const value = item[valueKey] ?? 0;
             const height = maxValue > 0 ? Math.max(4, (value / maxValue) * 100) : 4;
+            const tooltip = getTrendTooltip(item, valueKey, formatValue);
             return (
               <div key={`${item.startDate}-${item.label}-${valueKey}`} className="focus-stats-chart-bar-item">
-                <div className="focus-stats-chart-track">
-                  <span style={{ height: `${height}%` }} title={`${item.label} ${formatValue(value)}`} />
+                <div className="focus-stats-chart-track" title={tooltip}>
+                  <span style={{ height: `${height}%` }} />
                 </div>
                 <small>{item.label}</small>
               </div>
@@ -209,20 +232,6 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
                 percent
               />
 
-              <section className="focus-stats-habits" aria-label="本周打卡进度">
-                <h3>本周打卡进度</h3>
-                <div className="focus-stats-habit-row">
-                  {habitWeek.map((day) => (
-                    <div key={day.date} className="focus-stats-habit-day">
-                      <div className="focus-stats-habit-ring" style={{ '--habit-progress': `${day.completion ?? 0}%` }}>
-                        <span>{day.total > 0 ? `${day.checked}/${day.total}` : ''}</span>
-                      </div>
-                      <small>{day.label}</small>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
               <TrendCard
                 title="最近番茄数趋势"
                 period={period}
@@ -232,6 +241,20 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
                 maxValue={maxPomodoros}
                 formatValue={(value) => String(value)}
               />
+
+              <section className="focus-stats-habits" aria-label="本周打卡进度">
+                <h3>本周打卡进度</h3>
+                <div className="focus-stats-habit-row">
+                  {habitWeek.map((day) => (
+                    <div key={day.date} className="focus-stats-habit-day" title={getHabitTooltip(day)}>
+                      <div className="focus-stats-habit-ring" style={{ '--habit-progress': `${day.completion ?? 0}%` }}>
+                        <span>{day.total > 0 ? `${day.checked}/${day.total}` : ''}</span>
+                      </div>
+                      <small>{day.label}</small>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
           ) : null}
         </section>

@@ -372,17 +372,40 @@ func (s *Service) fillTaskCompletionStats(userID int64, periods []models.FocusSt
 func (s *Service) habitWeek(userID int64, now time.Time) ([]models.FocusStatsHabitDay, error) {
 	result := buildEmptyHabitWeek(now)
 	for index := range result {
-		if err := s.db.QueryRow(
-			`SELECT COUNT(*),
-			        COALESCE(SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END), 0)
+		rows, err := s.db.Query(
+			`SELECT title, completed
 			   FROM todos
 			  WHERE user_id = ?
 			    AND source_type = 'habit'
 			    AND deleted_at IS NULL
-			    AND todo_date = ?`,
+			    AND todo_date = ?
+			  ORDER BY title ASC, id ASC`,
 			userID,
 			result[index].Date,
-		).Scan(&result[index].Total, &result[index].Checked); err != nil {
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			var title string
+			var completed bool
+			if err := rows.Scan(&title, &completed); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			result[index].Total++
+			if completed {
+				result[index].Checked++
+				result[index].CompletedHabits = append(result[index].CompletedHabits, title)
+			} else {
+				result[index].PendingHabits = append(result[index].PendingHabits, title)
+			}
+		}
+		if err := rows.Close(); err != nil {
+			return nil, err
+		}
+		if err := rows.Err(); err != nil {
 			return nil, err
 		}
 		if result[index].Total > 0 {
@@ -582,8 +605,10 @@ func buildEmptyHabitWeek(now time.Time) []models.FocusStatsHabitDay {
 	for index := 0; index < 7; index++ {
 		day := start.AddDate(0, 0, index)
 		result = append(result, models.FocusStatsHabitDay{
-			Date:  day.Format("2006-01-02"),
-			Label: labels[index],
+			Date:            day.Format("2006-01-02"),
+			Label:           labels[index],
+			CompletedHabits: make([]string, 0),
+			PendingHabits:   make([]string, 0),
 		})
 	}
 	return result

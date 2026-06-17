@@ -82,11 +82,13 @@ type FocusStatsPeriod struct {
 }
 
 type FocusStatsHabitDay struct {
-	Date       string `json:"date"`
-	Label      string `json:"label"`
-	Total      int64  `json:"total"`
-	Checked    int64  `json:"checked"`
-	Completion int64  `json:"completion"`
+	Date            string   `json:"date"`
+	Label           string   `json:"label"`
+	Total           int64    `json:"total"`
+	Checked         int64    `json:"checked"`
+	Completion      int64    `json:"completion"`
+	CompletedHabits []string `json:"completedHabits"`
+	PendingHabits   []string `json:"pendingHabits"`
 }
 
 type FocusStatsDay struct {

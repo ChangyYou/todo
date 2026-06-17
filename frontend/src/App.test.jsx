@@ -124,13 +124,13 @@ beforeEach(() => {
               { label: '今天', startDate: '2026-06-15', endDate: '2026-06-15', durationSeconds: 2100, sessionCount: 1, taskTotal: 3, taskCompleted: 2, taskCompletionRate: 67 },
             ],
             habitWeek: [
-              { date: '2026-06-15', label: '一', total: 2, checked: 1, completion: 50 },
-              { date: '2026-06-16', label: '二', total: 2, checked: 2, completion: 100 },
-              { date: '2026-06-17', label: '三', total: 0, checked: 0, completion: 0 },
-              { date: '2026-06-18', label: '四', total: 0, checked: 0, completion: 0 },
-              { date: '2026-06-19', label: '五', total: 0, checked: 0, completion: 0 },
-              { date: '2026-06-20', label: '六', total: 0, checked: 0, completion: 0 },
-              { date: '2026-06-21', label: '日', total: 0, checked: 0, completion: 0 },
+              { date: '2026-06-15', label: '一', total: 2, checked: 1, completion: 50, completedHabits: ['运动30分钟'], pendingHabits: ['阅读'] },
+              { date: '2026-06-16', label: '二', total: 2, checked: 2, completion: 100, completedHabits: ['运动30分钟', '阅读'], pendingHabits: [] },
+              { date: '2026-06-17', label: '三', total: 0, checked: 0, completion: 0, completedHabits: [], pendingHabits: [] },
+              { date: '2026-06-18', label: '四', total: 0, checked: 0, completion: 0, completedHabits: [], pendingHabits: [] },
+              { date: '2026-06-19', label: '五', total: 0, checked: 0, completion: 0, completedHabits: [], pendingHabits: [] },
+              { date: '2026-06-20', label: '六', total: 0, checked: 0, completion: 0, completedHabits: [], pendingHabits: [] },
+              { date: '2026-06-21', label: '日', total: 0, checked: 0, completion: 0, completedHabits: [], pendingHabits: [] },
             ],
             byTask: [
               { todoId: 1, title: '整理今天最重要的三件事', durationSeconds: 2100, sessionCount: 1 },
@@ -756,6 +756,10 @@ describe('App', () => {
     expect(screen.getByText('最近完成率趋势')).toBeInTheDocument();
     expect(screen.getByText('本周打卡进度')).toBeInTheDocument();
     expect(screen.getByText('最近番茄数趋势')).toBeInTheDocument();
+    expect(screen.getByTitle('今天：专注 35分钟；1 个番茄')).toBeInTheDocument();
+    expect(screen.getByTitle('今天：完成率 67%；完成 2/3')).toBeInTheDocument();
+    expect(screen.getByTitle('今天：1 个番茄；专注 35分钟')).toBeInTheDocument();
+    expect(screen.getByTitle('2026-06-15：已完成 运动30分钟；未完成 阅读')).toBeInTheDocument();
   });
 
   it('opens the personal review calendar from the bottom launcher', async () => {
@@ -766,7 +770,7 @@ describe('App', () => {
 
     expect(await screen.findByRole('dialog', { name: '个人复盘' })).toBeInTheDocument();
     expect(screen.getByText('2026年6月')).toBeInTheDocument();
-    expect(screen.getByText('写日报')).toBeInTheDocument();
+    expect(await screen.findByText('写日报')).toBeInTheDocument();
     expect(screen.getByText('运动30分钟')).toBeInTheDocument();
     expect(screen.getByText('阅读 Go 后端')).toBeInTheDocument();
     expect(screen.getByText('专注 25m')).toBeInTheDocument();
