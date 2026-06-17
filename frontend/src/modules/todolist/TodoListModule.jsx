@@ -174,6 +174,7 @@ export default function TodoListModule({
   focusTimerStatus = null,
   onFocusTodo = () => {},
   onTodoDeleted = () => {},
+  onTodoCompleted = () => {},
 } = {}) {
   const [taskTodos, setTaskTodos] = useState([]);
   const [status, setStatus] = useState('loading');
@@ -265,6 +266,7 @@ export default function TodoListModule({
   const handleToggleTodo = async (todoToToggle) => {
     const previousTodos = taskTodos;
     setTaskTodos((currentTodos) => currentTodos.filter((todo) => todo.id !== todoToToggle.id));
+    onTodoCompleted(todoToToggle.id);
 
     try {
       await updateTodo(todoToToggle.id, { completed: true });

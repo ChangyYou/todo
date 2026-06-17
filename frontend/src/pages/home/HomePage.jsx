@@ -12,6 +12,7 @@ export default function HomePage({ user, onLoggedOut }) {
   const [focusTodoRequest, setFocusTodoRequest] = useState(null);
   const [focusTimerStatus, setFocusTimerStatus] = useState(null);
   const [unbindFocusSignal, setUnbindFocusSignal] = useState(0);
+  const [completeFocusSignal, setCompleteFocusSignal] = useState(null);
   const focusTodoIdRef = useRef('');
 
   const handleLogout = async () => {
@@ -36,6 +37,15 @@ export default function HomePage({ user, onLoggedOut }) {
     }
   };
 
+  const handleTodoCompleted = (todoId) => {
+    if (focusTodoIdRef.current === String(todoId)) {
+      setCompleteFocusSignal({
+        todoId,
+        stamp: Date.now(),
+      });
+    }
+  };
+
   const handleFocusTodoCompleted = () => {
     focusTodoIdRef.current = '';
     setTodoRefreshSignal((signal) => signal + 1);
@@ -57,6 +67,7 @@ export default function HomePage({ user, onLoggedOut }) {
       <PomodoroPage
         focusTodoRequest={focusTodoRequest}
         unbindFocusSignal={unbindFocusSignal}
+        completeFocusSignal={completeFocusSignal}
         onFocusTimerChange={handleFocusTimerChange}
         onFocusTodoCompleted={handleFocusTodoCompleted}
       />
@@ -66,6 +77,7 @@ export default function HomePage({ user, onLoggedOut }) {
           focusTimerStatus={focusTimerStatus}
           onFocusTodo={handleFocusTodo}
           onTodoDeleted={handleTodoDeleted}
+          onTodoCompleted={handleTodoCompleted}
         />
       </aside>
       <HabitLauncher onHabitCreated={() => setTodoRefreshSignal((signal) => signal + 1)} />

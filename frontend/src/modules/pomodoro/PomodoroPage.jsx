@@ -137,6 +137,7 @@ export default function PomodoroPage({
   immersiveSidebar = null,
   focusTodoRequest = null,
   unbindFocusSignal = 0,
+  completeFocusSignal = null,
   onFocusTimerChange = () => {},
   onFocusTodoCompleted = () => {},
 } = {}) {
@@ -389,6 +390,35 @@ export default function PomodoroPage({
   }, [unbindFocusSignal]);
 
   useEffect(() => {
+    if (!completeFocusSignal?.stamp || String(completeFocusSignal.todoId) !== selectedFocusTodoId) {
+      return;
+    }
+
+    let isDisposed = false;
+
+    const completeBoundTodo = async () => {
+      try {
+        await persistCurrentFocusDuration();
+        if (isDisposed) {
+          return;
+        }
+
+        clearFocusTodoBinding();
+      } catch (error) {
+        if (!isDisposed) {
+          setFocusBindingError(error instanceof Error ? error.message : '专注记录保存失败');
+        }
+      }
+    };
+
+    completeBoundTodo();
+
+    return () => {
+      isDisposed = true;
+    };
+  }, [completeFocusSignal?.stamp]);
+
+  useEffect(() => {
     onFocusTimerChange(selectedFocusTodoId ? {
       todoId: Number(selectedFocusTodoId),
       title: selectedFocusTodoTitle,
@@ -470,12 +500,15 @@ export default function PomodoroPage({
   }, []);
 
   const currentPhaseLabel = PHASE_LABELS[timerState.phase];
-  const focusStatusLabel = selectedFocusTodoTitle || '未绑定任务';
   const sceneStatusLabel = selectedSceneTitle || '绑定场景';
   const currentRound = (timerState.completedFocusSessions % settings.longBreakInterval) + 1;
   const { dateLabel, timeLabel } = getBeijingTimeParts(currentDate);
   const todayDate = getLocalDate(currentDate);
   const todayFocusLabel = `今日专注 ${formatTodayFocusDuration(todayFocusSeconds)}`;
+  const focusCopy =
+    timerState.phase === TIMER_PHASES.FOCUS && selectedFocusTodoTitle
+      ? `把注意力留给${selectedFocusTodoTitle}`
+      : PHASE_COPY[timerState.phase];
   const isBreakPhase = timerState.phase !== TIMER_PHASES.FOCUS;
   const nextPhaseLabel =
     currentRound === settings.longBreakInterval ? PHASE_LABELS[TIMER_PHASES.LONG_BREAK] : PHASE_LABELS[TIMER_PHASES.SHORT_BREAK];
@@ -758,38 +791,6 @@ export default function PomodoroPage({
     focusBindingError ? <p className="focus-binding-error" role="alert">{focusBindingError}</p> : null
   );
 
-  const renderFocusTaskButton = (className) => (
-    <span className="focus-task-menu-wrap" ref={focusTaskMenuRef}>
-      <button
-        type="button"
-        className={`${className} task-pill task-pill-button`}
-        title={focusStatusLabel}
-        aria-haspopup="menu"
-        aria-expanded={isFocusTaskMenuOpen}
-        disabled={!selectedFocusTodoId}
-        onClick={() => {
-          if (!selectedFocusTodoId) {
-            return;
-          }
-
-          setIsFocusTaskMenuOpen((isOpen) => !isOpen);
-        }}
-      >
-        {focusStatusLabel}
-      </button>
-      {isFocusTaskMenuOpen && selectedFocusTodoId ? (
-        <div className="focus-task-menu" role="menu" aria-label={`${selectedFocusTodoTitle} 操作`}>
-          <button type="button" role="menuitem" onClick={handleCompleteFocusTodo}>
-            已完成该任务
-          </button>
-          <button type="button" role="menuitem" onClick={handleClearFocusTodoBinding}>
-            取消绑定
-          </button>
-        </div>
-      ) : null}
-    </span>
-  );
-
   const renderSceneButton = (className) => (
     <span className="focus-task-menu-wrap" ref={sceneMenuRef}>
       <button
@@ -838,6 +839,7 @@ export default function PomodoroPage({
 
   const renderTimerControls = (className = 'controls') => (
     <div className={className}>
+      {renderSceneButton('ghost-button scene-control-button')}
       <button
         type="button"
         className={`primary-button timer-action-button has-tooltip ${getFeedbackClassName('timer-toggle')}`}
@@ -1035,15 +1037,13 @@ export default function PomodoroPage({
 
       <div className="immersive-phase-group">
         <span className="immersive-phase-pill" title="今日累计专注时长">{todayFocusLabel}</span>
-        {renderSceneButton('immersive-phase-pill secondary-pill')}
-        {renderFocusTaskButton('immersive-phase-pill secondary-pill')}
       </div>
       {renderSkipChoicePanel()}
 
       <div className="immersive-time-wrap">
         <p className="phase-title immersive-phase-title">{currentPhaseLabel}</p>
         <div className="immersive-time">{formatTime(timerState.remainingSeconds)}</div>
-        <p className="immersive-copy">{PHASE_COPY[timerState.phase]}</p>
+        <p className="immersive-copy">{focusCopy}</p>
       </div>
 
       {renderFocusBindingError()}
