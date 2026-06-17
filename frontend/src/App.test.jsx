@@ -284,7 +284,10 @@ describe('App', () => {
     expect(within(todoPanel).getByText('截止 2026-06-19')).toBeInTheDocument();
     expect(within(todoPanel).getAllByText('高').length).toBeGreaterThanOrEqual(1);
 
-    fireEvent.click(within(todoPanel).getByLabelText('写日报和复盘'));
+    fireEvent.click(within(todoPanel).getByText('写日报和复盘'));
+    expect(within(todoPanel).getByText('写日报和复盘')).toBeInTheDocument();
+
+    fireEvent.click(within(todoPanel).getByLabelText('完成任务 写日报和复盘'));
     expect(within(todoPanel).queryByText('写日报和复盘')).not.toBeInTheDocument();
     expect(await within(todoPanel).findByText('1 项')).toBeInTheDocument();
 

@@ -321,10 +321,10 @@ export default function TodoListModule({
 
           return (
             <div key={todo.id} className="daily-todo-item">
-              <label className="daily-todo-check">
+              <div className="daily-todo-check">
                 <input
                   type="checkbox"
-                  aria-label={todo.title}
+                  aria-label={`完成任务 ${todo.title}`}
                   checked={false}
                   onChange={() => handleToggleTodo(todo)}
                 />
@@ -341,7 +341,7 @@ export default function TodoListModule({
                     ) : null}
                   </span>
                 </span>
-              </label>
+              </div>
               <div className="daily-todo-actions" aria-label={`${todo.title} 操作`}>
                 {!isHabitTodo ? (
                   <button

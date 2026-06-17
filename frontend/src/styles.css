@@ -754,7 +754,6 @@ select {
   gap: 10px;
   color: #243f37;
   line-height: 1.4;
-  cursor: pointer;
 }
 
 .daily-todo-check input,
@@ -763,6 +762,7 @@ select {
   height: 18px;
   flex-shrink: 0;
   accent-color: #2f5848;
+  cursor: pointer;
 }
 
 .daily-todo-check span {
