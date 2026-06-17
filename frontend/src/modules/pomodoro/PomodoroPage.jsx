@@ -573,7 +573,14 @@ export default function PomodoroPage({
     activeFeedbackButton === buttonKey ? 'is-click-confirmed' : ''
   );
 
-  const handleTimerAction = (action) => {
+  const handleTimerAction = async (action) => {
+    if (action === 'pause' && timerState.phase === TIMER_PHASES.FOCUS && timerState.isRunning) {
+      try {
+        await persistCurrentFocusDuration({ notifyTodoRefresh: false });
+      } catch (error) {
+        setFocusBindingError(error instanceof Error ? error.message : '专注记录保存失败');
+      }
+    }
     setTimerState((state) => getNextTimerState(state, action, settings));
   };
 
@@ -591,7 +598,7 @@ export default function PomodoroPage({
     setFocusBindingError('');
   };
 
-  const persistCurrentFocusDuration = async () => {
+  const persistCurrentFocusDuration = async ({ notifyTodoRefresh = true } = {}) => {
     if ((!selectedFocusTodoId && !selectedSceneId) || timerState.phase !== TIMER_PHASES.FOCUS) {
       return;
     }
@@ -612,9 +619,22 @@ export default function PomodoroPage({
     if (sessionDate === todayDate) {
       setTodayFocusSeconds((seconds) => seconds + durationSeconds);
     }
+    focusBindingStartRemainingRef.current = timerState.remainingSeconds;
     setFocusStatsRefreshSignal((signal) => signal + 1);
-    if (selectedFocusTodoId) {
+    if (notifyTodoRefresh && selectedFocusTodoId) {
       onFocusTodoCompleted();
+    }
+  };
+
+  const handleClearSceneBinding = async () => {
+    try {
+      await persistCurrentFocusDuration({ notifyTodoRefresh: false });
+      setSelectedSceneId('');
+      setSelectedSceneTitle('');
+      setIsSceneMenuOpen(false);
+      focusBindingStartRemainingRef.current = timerState.phase === TIMER_PHASES.FOCUS ? timerState.remainingSeconds : null;
+    } catch (error) {
+      setFocusBindingError(error instanceof Error ? error.message : '专注记录保存失败');
     }
   };
 
@@ -828,11 +848,7 @@ export default function PomodoroPage({
           <button
             type="button"
             role="menuitem"
-            onClick={() => {
-              setSelectedSceneId('');
-              setSelectedSceneTitle('');
-              setIsSceneMenuOpen(false);
-            }}
+            onClick={handleClearSceneBinding}
           >
             不绑定场景
           </button>

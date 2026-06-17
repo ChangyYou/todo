@@ -496,6 +496,34 @@ describe('App', () => {
     expect(await screen.findByRole('menuitem', { name: '写作' })).toBeInTheDocument();
   });
 
+  it('records the current scene focus segment when pausing', async () => {
+    vi.useFakeTimers();
+    await renderAtPath('/');
+
+    fireEvent.click(screen.getByRole('button', { name: '绑定场景' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '运动' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始' }));
+
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '暂停' }));
+    });
+
+    const focusCall = window.fetch.mock.calls.find(([url, options]) => (
+      url === '/api/focus-sessions' && JSON.parse(options.body).sceneId === 1
+    ));
+    expect(focusCall).toBeTruthy();
+    expect(JSON.parse(focusCall[1].body)).toMatchObject({
+      todoId: 0,
+      sceneId: 1,
+      durationSeconds: 10,
+    });
+    expect(screen.getByText('今日专注 0:10')).toBeInTheDocument();
+  });
+
   it('unbinds the timer when the bound todo is deleted', async () => {
     await renderAtPath('/');
 
@@ -614,11 +642,11 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: '暂停' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '暂停' }));
-    expect(screen.getByRole('button', { name: '开始' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '开始' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '开始' }));
     fireEvent.click(screen.getByRole('button', { name: '重置' }));
-    expect(screen.getByRole('button', { name: '开始' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '开始' })).toBeInTheDocument();
   });
 
   it('updates the visible duration when the focus setting changes', async () => {
