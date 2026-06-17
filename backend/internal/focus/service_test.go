@@ -116,3 +116,72 @@ func TestReviewCalendarIncludesSceneFocusSessions(t *testing.T) {
 		t.Fatal("expected 2026-06-17 in review calendar")
 	}
 }
+
+func TestReviewCalendarDoesNotDuplicateCompletedFocusedTodoEntry(t *testing.T) {
+	database, err := db.Open(filepath.Join(t.TempDir(), "todo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+
+	result, err := database.Exec(`INSERT INTO users (username, password_hash) VALUES (?, ?)`, "tester", "hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	userID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err = database.Exec(
+		`INSERT INTO todos (user_id, title, completed, todo_date, priority, completed_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+		userID,
+		"是",
+		1,
+		"2026-06-17",
+		"medium",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	todoID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := database.Exec(
+		`INSERT INTO focus_sessions (user_id, todo_id, duration_seconds, session_date) VALUES (?, ?, ?, ?)`,
+		userID,
+		todoID,
+		60,
+		"2026-06-17",
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	calendar, err := NewService(database).ReviewCalendar(userID, 2026, 6)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, day := range calendar.Days {
+		if day.Date != "2026-06-17" {
+			continue
+		}
+		if day.FocusSeconds != 60 {
+			t.Fatalf("expected focus seconds 60, got %d", day.FocusSeconds)
+		}
+		if len(day.Entries) != 1 {
+			t.Fatalf("expected one calendar entry for completed focused todo, got %+v", day.Entries)
+		}
+		if day.Entries[0].TodoID != todoID || day.Entries[0].Title != "是" || day.Entries[0].Meta != "完成" {
+			t.Fatalf("unexpected calendar entry: %+v", day.Entries[0])
+		}
+		if len(day.Tasks) != 1 || day.Tasks[0].FocusSeconds != 60 {
+			t.Fatalf("expected detail task with focus seconds, got %+v", day.Tasks)
+		}
+		return
+	}
+
+	t.Fatal("expected 2026-06-17 in review calendar")
+}

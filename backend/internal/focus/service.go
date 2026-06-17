@@ -330,6 +330,9 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 			if todoID.Valid {
 				entryTodoID = todoID.Int64
 			}
+			if entryTodoID > 0 && hasReviewEntryForTodo(days[index].Entries, entryTodoID) {
+				continue
+			}
 			days[index].Entries = append(days[index].Entries, models.ReviewCalendarEntry{
 				TodoID:     entryTodoID,
 				SceneID:    sceneID,
@@ -343,6 +346,15 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 	}
 
 	return rows.Err()
+}
+
+func hasReviewEntryForTodo(entries []models.ReviewCalendarEntry, todoID int64) bool {
+	for _, entry := range entries {
+		if entry.TodoID == todoID {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) fillReviewTaskStats(userID int64, startDate, endDate string, days []models.ReviewCalendarDay, byDate map[string]int) error {
