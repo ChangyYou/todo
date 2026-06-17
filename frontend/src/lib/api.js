@@ -105,6 +105,12 @@ export async function recordFocusSession(session) {
   });
 }
 
+export async function getFocusSessionSummary(sessionDate) {
+  const query = sessionDate ? `?date=${encodeURIComponent(sessionDate)}` : '';
+  const payload = await request(`/api/focus-sessions/summary${query}`);
+  return payload.summary;
+}
+
 export async function getPomodoroSettings() {
   const payload = await request('/api/settings/pomodoro');
   return payload.settings;

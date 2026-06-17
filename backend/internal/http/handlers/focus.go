@@ -24,6 +24,26 @@ func NewFocusHandler(focusService *focus.Service) *FocusHandler {
 	return &FocusHandler{focus: focusService}
 }
 
+func (h *FocusHandler) Summary(ctx context.Context, c *app.RequestContext) {
+	user, ok := CurrentUser(c)
+	if !ok {
+		writeJSON(ctx, c, consts.StatusUnauthorized, map[string]string{"error": "请先登录"})
+		return
+	}
+
+	summary, err := h.focus.SummaryByDate(user.ID, c.Query("date"))
+	if errors.Is(err, focus.ErrInvalidFocusSession) {
+		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "专注日期不正确"})
+		return
+	}
+	if err != nil {
+		writeJSON(ctx, c, consts.StatusInternalServerError, map[string]string{"error": "专注统计暂时不可用"})
+		return
+	}
+
+	writeJSON(ctx, c, consts.StatusOK, map[string]any{"summary": summary})
+}
+
 func (h *FocusHandler) Create(ctx context.Context, c *app.RequestContext) {
 	user, ok := CurrentUser(c)
 	if !ok {

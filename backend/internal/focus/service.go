@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"todo/backend/internal/models"
 )
 
 var ErrInvalidFocusSession = errors.New("invalid focus session")
@@ -46,4 +48,34 @@ func (s *Service) Create(userID, todoID int64, durationSeconds int, sessionDate 
 		sessionDate,
 	)
 	return err
+}
+
+func (s *Service) SummaryByDate(userID int64, sessionDate string) (models.FocusSummary, error) {
+	sessionDate = strings.TrimSpace(sessionDate)
+	if sessionDate == "" {
+		sessionDate = time.Now().Format("2006-01-02")
+	}
+	if _, err := time.Parse("2006-01-02", sessionDate); err != nil {
+		return models.FocusSummary{}, ErrInvalidFocusSession
+	}
+	if userID <= 0 {
+		return models.FocusSummary{}, ErrInvalidFocusSession
+	}
+
+	var durationSeconds int64
+	err := s.db.QueryRow(
+		`SELECT COALESCE(SUM(duration_seconds), 0)
+		   FROM focus_sessions
+		  WHERE user_id = ? AND session_date = ?`,
+		userID,
+		sessionDate,
+	).Scan(&durationSeconds)
+	if err != nil {
+		return models.FocusSummary{}, err
+	}
+
+	return models.FocusSummary{
+		SessionDate:     sessionDate,
+		DurationSeconds: durationSeconds,
+	}, nil
 }

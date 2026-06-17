@@ -63,6 +63,7 @@ func main() {
 	api.POST("/auth/login", authHandler.Login)
 	api.POST("/auth/logout", authHandler.Logout)
 	api.GET("/auth/me", middleware.RequireUser(authService), authHandler.Me)
+	api.GET("/focus-sessions/summary", middleware.RequireUser(authService), focusHandler.Summary)
 	api.POST("/focus-sessions", middleware.RequireUser(authService), focusHandler.Create)
 
 	settingsGroup := api.Group("/settings", middleware.RequireUser(authService))

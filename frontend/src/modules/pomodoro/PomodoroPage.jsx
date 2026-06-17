@@ -14,6 +14,7 @@ import {
 } from '../../lib/music';
 import { fetchChengduWeather } from '../../lib/weather';
 import {
+  getFocusSessionSummary,
   getPomodoroSettings,
   listTodos,
   recordFocusSession,
@@ -62,6 +63,19 @@ function getBeijingTimeParts(currentDate) {
 
 function getLocalDate(value) {
   return value.toLocaleDateString('en-CA');
+}
+
+function formatTodayFocusDuration(seconds) {
+  const safeSeconds = Math.max(0, seconds);
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const remainingSeconds = safeSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
 function SettingsIcon() {
@@ -149,6 +163,7 @@ export default function PomodoroPage({
   const [selectedFocusTodoType, setSelectedFocusTodoType] = useState('');
   const [isFocusTaskMenuOpen, setIsFocusTaskMenuOpen] = useState(false);
   const [focusBindingError, setFocusBindingError] = useState('');
+  const [todayFocusSeconds, setTodayFocusSeconds] = useState(0);
   const [activeFeedbackButton, setActiveFeedbackButton] = useState('');
   const [weatherState, setWeatherState] = useState({
     status: 'loading',
@@ -227,6 +242,9 @@ export default function PomodoroPage({
     focusSessionToRecordRef.current = null;
     recordFocusSession(session)
       .then(() => {
+        if (session.sessionDate === getLocalDate(new Date())) {
+          setTodayFocusSeconds((seconds) => seconds + session.durationSeconds);
+        }
         onFocusTodoCompleted();
       })
       .catch(() => {
@@ -418,6 +436,8 @@ export default function PomodoroPage({
   const focusStatusLabel = selectedFocusTodoTitle || '未绑定任务';
   const currentRound = (timerState.completedFocusSessions % settings.longBreakInterval) + 1;
   const { dateLabel, timeLabel } = getBeijingTimeParts(currentDate);
+  const todayDate = getLocalDate(currentDate);
+  const todayFocusLabel = `今日专注 ${formatTodayFocusDuration(todayFocusSeconds)}`;
   const isBreakPhase = timerState.phase !== TIMER_PHASES.FOCUS;
   const nextPhaseLabel =
     currentRound === settings.longBreakInterval ? PHASE_LABELS[TIMER_PHASES.LONG_BREAK] : PHASE_LABELS[TIMER_PHASES.SHORT_BREAK];
@@ -428,6 +448,27 @@ export default function PomodoroPage({
         ? '天气暂时不可用'
         : '天气加载中...';
 
+  useEffect(() => {
+    let isDisposed = false;
+
+    getFocusSessionSummary(todayDate)
+      .then((summary) => {
+        if (isDisposed) {
+          return;
+        }
+
+        setTodayFocusSeconds(summary?.durationSeconds ?? 0);
+      })
+      .catch(() => {
+        if (!isDisposed) {
+          setTodayFocusSeconds(0);
+        }
+      });
+
+    return () => {
+      isDisposed = true;
+    };
+  }, [todayDate]);
 
   const showButtonFeedback = (buttonKey) => {
     if (feedbackTimeoutRef.current) {
@@ -474,11 +515,15 @@ export default function PomodoroPage({
       return;
     }
 
+    const sessionDate = getLocalDate(new Date());
     await recordFocusSession({
       todoId: Number(selectedFocusTodoId),
       durationSeconds,
-      sessionDate: getLocalDate(new Date()),
+      sessionDate,
     });
+    if (sessionDate === todayDate) {
+      setTodayFocusSeconds((seconds) => seconds + durationSeconds);
+    }
     onFocusTodoCompleted();
   };
 
@@ -901,7 +946,7 @@ export default function PomodoroPage({
       {renderImmersiveAmbientStrip()}
 
       <div className="immersive-phase-group">
-        <span className="immersive-phase-pill">{currentPhaseLabel}</span>
+        <span className="immersive-phase-pill" title="今日累计专注时长">{todayFocusLabel}</span>
         <span className="immersive-phase-pill secondary-pill">{timerState.isRunning ? '运行中' : '待开始'}</span>
         {renderFocusTaskButton('immersive-phase-pill secondary-pill')}
       </div>

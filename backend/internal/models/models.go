@@ -37,3 +37,8 @@ type PomodoroSettings struct {
 	AutoStartNextSession bool   `json:"autoStartNextSession"`
 	UpdatedAt            string `json:"updatedAt,omitempty"`
 }
+
+type FocusSummary struct {
+	SessionDate     string `json:"sessionDate"`
+	DurationSeconds int64  `json:"durationSeconds"`
+}

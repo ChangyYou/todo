@@ -51,6 +51,14 @@ beforeEach(() => {
       };
     }
 
+    if (url.startsWith('/api/focus-sessions/summary') && method === 'GET') {
+      const durationSeconds = todos.reduce((total, todo) => total + (todo.focusSeconds ?? 0), 0);
+      return {
+        ok: true,
+        json: async () => ({ summary: { sessionDate: '2026-06-15', durationSeconds } }),
+      };
+    }
+
     if (url === '/api/settings/pomodoro' && method === 'PATCH') {
       pomodoroSettings = {
         ...pomodoroSettings,
@@ -230,7 +238,8 @@ describe('App', () => {
     expect(within(banner).getByText('Focus Tomato')).toBeInTheDocument();
     expect(screen.getByText('Chengdu, CN')).toBeInTheDocument();
     expect(screen.getByText('25:00')).toBeInTheDocument();
-    expect(screen.getAllByText('专注时间')).toHaveLength(2);
+    expect(screen.getByText('今日专注 0:00')).toBeInTheDocument();
+    expect(screen.getByText('专注时间')).toBeInTheDocument();
     expect(screen.getByText('16:34')).toBeInTheDocument();
     expect(screen.queryByText('北京时间')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '开始' })).toBeInTheDocument();
@@ -365,6 +374,7 @@ describe('App', () => {
     });
 
     expect(within(todoPanel).getByText('已专注 0:05')).toBeInTheDocument();
+    expect(screen.getByText('今日专注 0:05')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '未绑定任务' })).toBeDisabled();
   });
 
@@ -567,7 +577,8 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '跳过休息' }));
 
-    expect(screen.getAllByText('专注时间')).toHaveLength(2);
+    expect(screen.getByText('今日专注 0:00')).toBeInTheDocument();
+    expect(screen.getByText('专注时间')).toBeInTheDocument();
     expect(screen.getByText('01:00')).toBeInTheDocument();
     expect(screen.getByText('待开始')).toBeInTheDocument();
   });
