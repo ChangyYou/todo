@@ -29,6 +29,14 @@ type Habit struct {
 	UpdatedAt string  `json:"updatedAt"`
 }
 
+type FocusScene struct {
+	ID        int64  `json:"id"`
+	Title     string `json:"title"`
+	Active    bool   `json:"active"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
 type PomodoroSettings struct {
 	FocusMinutes         int    `json:"focusMinutes"`
 	ShortBreakMinutes    int    `json:"shortBreakMinutes"`
@@ -125,20 +133,23 @@ type ReviewCalendarDay struct {
 	IsToday         bool                  `json:"isToday"`
 	CompletedTasks  int64                 `json:"completedTasks"`
 	CompletedHabits int64                 `json:"completedHabits"`
+	SceneCount      int64                 `json:"sceneCount"`
 	FocusSeconds    int64                 `json:"focusSeconds"`
 	Entries         []ReviewCalendarEntry `json:"entries"`
 	Tasks           []ReviewTaskStat      `json:"tasks"`
 }
 
 type ReviewCalendarEntry struct {
-	TodoID int64  `json:"todoId,omitempty"`
-	Type   string `json:"type"`
-	Title  string `json:"title"`
-	Meta   string `json:"meta,omitempty"`
+	TodoID  int64  `json:"todoId,omitempty"`
+	SceneID int64  `json:"sceneId,omitempty"`
+	Type    string `json:"type"`
+	Title   string `json:"title"`
+	Meta    string `json:"meta,omitempty"`
 }
 
 type ReviewTaskStat struct {
 	TodoID       int64  `json:"todoId"`
+	SceneID      int64  `json:"sceneId,omitempty"`
 	Title        string `json:"title"`
 	SourceType   string `json:"sourceType"`
 	Completed    bool   `json:"completed"`

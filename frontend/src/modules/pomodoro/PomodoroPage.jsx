@@ -18,6 +18,7 @@ import { fetchChengduWeather } from '../../lib/weather';
 import {
   getFocusSessionSummary,
   getPomodoroSettings,
+  listScenes,
   listTodos,
   recordFocusSession,
   updatePomodoroSettings,
@@ -144,6 +145,7 @@ export default function PomodoroPage({
   const musicPanelRef = useRef(null);
   const musicButtonRef = useRef(null);
   const focusTaskMenuRef = useRef(null);
+  const sceneMenuRef = useRef(null);
   const feedbackTimeoutRef = useRef(null);
   const focusSessionToRecordRef = useRef(null);
   const focusBindingStartRemainingRef = useRef(null);
@@ -163,6 +165,10 @@ export default function PomodoroPage({
   const [selectedFocusTodoId, setSelectedFocusTodoId] = useState('');
   const [selectedFocusTodoTitle, setSelectedFocusTodoTitle] = useState('');
   const [selectedFocusTodoType, setSelectedFocusTodoType] = useState('');
+  const [focusScenes, setFocusScenes] = useState([]);
+  const [selectedSceneId, setSelectedSceneId] = useState('');
+  const [selectedSceneTitle, setSelectedSceneTitle] = useState('');
+  const [isSceneMenuOpen, setIsSceneMenuOpen] = useState(false);
   const [isFocusTaskMenuOpen, setIsFocusTaskMenuOpen] = useState(false);
   const [focusBindingError, setFocusBindingError] = useState('');
   const [todayFocusSeconds, setTodayFocusSeconds] = useState(0);
@@ -218,11 +224,12 @@ export default function PomodoroPage({
           currentState.phase === TIMER_PHASES.FOCUS &&
           currentState.isRunning &&
           currentState.remainingSeconds === 1 &&
-          selectedFocusTodoId
+          (selectedFocusTodoId || selectedSceneId)
         ) {
           const startedAtRemaining = focusBindingStartRemainingRef.current ?? currentState.totalSeconds;
           focusSessionToRecordRef.current = {
-            todoId: Number(selectedFocusTodoId),
+            todoId: selectedFocusTodoId ? Number(selectedFocusTodoId) : 0,
+            sceneId: selectedFocusTodoId ? 0 : Number(selectedSceneId),
             durationSeconds: Math.max(1, startedAtRemaining - currentState.remainingSeconds + 1),
             sessionDate: getLocalDate(new Date()),
           };
@@ -234,7 +241,7 @@ export default function PomodoroPage({
     }, 1000);
 
     return () => window.clearInterval(intervalId);
-  }, [settings, timerState.isRunning, selectedFocusTodoId]);
+  }, [settings, timerState.isRunning, selectedFocusTodoId, selectedSceneId]);
 
   useEffect(() => {
     const session = focusSessionToRecordRef.current;
@@ -263,6 +270,32 @@ export default function PomodoroPage({
 
     return () => window.clearInterval(intervalId);
   }, []);
+
+  useEffect(() => {
+    let isDisposed = false;
+    listScenes()
+      .then((scenes) => {
+        if (isDisposed) return;
+        setFocusScenes(scenes);
+        setSelectedSceneId((currentId) => {
+          if (!currentId) return '';
+          const matchingScene = scenes.find((scene) => String(scene.id) === currentId);
+          if (!matchingScene) {
+            setSelectedSceneTitle('');
+            return '';
+          }
+          setSelectedSceneTitle(matchingScene.title);
+          return currentId;
+        });
+      })
+      .catch(() => {
+        if (isDisposed) return;
+        setFocusScenes([]);
+      });
+    return () => {
+      isDisposed = true;
+    };
+  }, [focusStatsRefreshSignal]);
 
   useEffect(() => {
     let isDisposed = false;
@@ -335,13 +368,13 @@ export default function PomodoroPage({
 
   useEffect(() => {
     if (
-      selectedFocusTodoId &&
+      (selectedFocusTodoId || selectedSceneId) &&
       timerState.phase === TIMER_PHASES.FOCUS &&
       focusBindingStartRemainingRef.current == null
     ) {
       focusBindingStartRemainingRef.current = timerState.remainingSeconds;
     }
-  }, [selectedFocusTodoId, timerState.phase, timerState.remainingSeconds]);
+  }, [selectedFocusTodoId, selectedSceneId, timerState.phase, timerState.remainingSeconds]);
 
   useEffect(() => {
     if (!unbindFocusSignal) {
@@ -438,6 +471,7 @@ export default function PomodoroPage({
 
   const currentPhaseLabel = PHASE_LABELS[timerState.phase];
   const focusStatusLabel = selectedFocusTodoTitle || '未绑定任务';
+  const sceneStatusLabel = selectedSceneTitle || '绑定场景';
   const currentRound = (timerState.completedFocusSessions % settings.longBreakInterval) + 1;
   const { dateLabel, timeLabel } = getBeijingTimeParts(currentDate);
   const todayDate = getLocalDate(currentDate);
@@ -509,7 +543,7 @@ export default function PomodoroPage({
   };
 
   const persistCurrentFocusDuration = async () => {
-    if (!selectedFocusTodoId || timerState.phase !== TIMER_PHASES.FOCUS) {
+    if ((!selectedFocusTodoId && !selectedSceneId) || timerState.phase !== TIMER_PHASES.FOCUS) {
       return;
     }
 
@@ -521,7 +555,8 @@ export default function PomodoroPage({
 
     const sessionDate = getLocalDate(new Date());
     await recordFocusSession({
-      todoId: Number(selectedFocusTodoId),
+      todoId: selectedFocusTodoId ? Number(selectedFocusTodoId) : 0,
+      sceneId: selectedFocusTodoId ? 0 : Number(selectedSceneId),
       durationSeconds,
       sessionDate,
     });
@@ -529,7 +564,9 @@ export default function PomodoroPage({
       setTodayFocusSeconds((seconds) => seconds + durationSeconds);
     }
     setFocusStatsRefreshSignal((signal) => signal + 1);
-    onFocusTodoCompleted();
+    if (selectedFocusTodoId) {
+      onFocusTodoCompleted();
+    }
   };
 
   const handleClearFocusTodoBinding = async () => {
@@ -753,6 +790,52 @@ export default function PomodoroPage({
     </span>
   );
 
+  const renderSceneButton = (className) => (
+    <span className="focus-task-menu-wrap" ref={sceneMenuRef}>
+      <button
+        type="button"
+        className={`${className} task-pill task-pill-button`}
+        title={sceneStatusLabel}
+        aria-haspopup="menu"
+        aria-expanded={isSceneMenuOpen}
+        onClick={() => setIsSceneMenuOpen((open) => !open)}
+      >
+        {sceneStatusLabel}
+      </button>
+      {isSceneMenuOpen ? (
+        <div className="focus-task-menu" role="menu" aria-label="选择专注场景">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setSelectedSceneId('');
+              setSelectedSceneTitle('');
+              setIsSceneMenuOpen(false);
+            }}
+          >
+            不绑定场景
+          </button>
+          {focusScenes.map((scene) => (
+            <button
+              type="button"
+              role="menuitem"
+              key={scene.id}
+              onClick={() => {
+                setSelectedSceneId(String(scene.id));
+                setSelectedSceneTitle(scene.title);
+                setIsSceneMenuOpen(false);
+                focusBindingStartRemainingRef.current = timerState.phase === TIMER_PHASES.FOCUS ? timerState.remainingSeconds : null;
+              }}
+            >
+              {scene.title}
+            </button>
+          ))}
+          {focusScenes.length === 0 ? <span className="focus-task-menu-empty">还没有场景</span> : null}
+        </div>
+      ) : null}
+    </span>
+  );
+
   const renderTimerControls = (className = 'controls') => (
     <div className={className}>
       <button
@@ -952,7 +1035,7 @@ export default function PomodoroPage({
 
       <div className="immersive-phase-group">
         <span className="immersive-phase-pill" title="今日累计专注时长">{todayFocusLabel}</span>
-        <span className="immersive-phase-pill secondary-pill">{timerState.isRunning ? '运行中' : '待开始'}</span>
+        {renderSceneButton('immersive-phase-pill secondary-pill')}
         {renderFocusTaskButton('immersive-phase-pill secondary-pill')}
       </div>
       {renderSkipChoicePanel()}
@@ -970,8 +1053,16 @@ export default function PomodoroPage({
   );
 
   const handlePagePointerDown = (event) => {
-    if (!isSettingsOpen && !isSkipChoiceOpen && !isMusicPanelOpen && !isFocusTaskMenuOpen) {
+    if (!isSettingsOpen && !isSkipChoiceOpen && !isMusicPanelOpen && !isFocusTaskMenuOpen && !isSceneMenuOpen) {
       return;
+    }
+
+    if (isSceneMenuOpen && sceneMenuRef.current?.contains(event.target)) {
+      return;
+    }
+
+    if (isSceneMenuOpen) {
+      setIsSceneMenuOpen(false);
     }
 
     if (isFocusTaskMenuOpen && focusTaskMenuRef.current?.contains(event.target)) {

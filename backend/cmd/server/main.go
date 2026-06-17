@@ -16,6 +16,7 @@ import (
 	"todo/backend/internal/habits"
 	"todo/backend/internal/http/handlers"
 	"todo/backend/internal/http/middleware"
+	"todo/backend/internal/scenes"
 	"todo/backend/internal/settings"
 	"todo/backend/internal/todos"
 )
@@ -45,11 +46,13 @@ func main() {
 	authService := auth.NewService(database, inviteCode)
 	focusService := focus.NewService(database)
 	habitService := habits.NewService(database)
+	sceneService := scenes.NewService(database)
 	settingsService := settings.NewService(database)
 	todoService := todos.NewService(database)
 	authHandler := handlers.NewAuthHandler(authService)
 	focusHandler := handlers.NewFocusHandler(focusService)
 	habitHandler := handlers.NewHabitHandler(habitService)
+	sceneHandler := handlers.NewSceneHandler(sceneService)
 	settingsHandler := handlers.NewSettingsHandler(settingsService)
 	todoHandler := handlers.NewTodoHandler(todoService)
 
@@ -78,6 +81,12 @@ func main() {
 	habitsGroup.POST("", habitHandler.Create)
 	habitsGroup.PATCH("/:id", habitHandler.Update)
 	habitsGroup.DELETE("/:id", habitHandler.Delete)
+
+	scenesGroup := api.Group("/scenes", middleware.RequireUser(authService))
+	scenesGroup.GET("", sceneHandler.List)
+	scenesGroup.POST("", sceneHandler.Create)
+	scenesGroup.PATCH("/:id", sceneHandler.Update)
+	scenesGroup.DELETE("/:id", sceneHandler.Delete)
 
 	todosGroup := api.Group("/todos", middleware.RequireUser(authService))
 	todosGroup.GET("", todoHandler.List)

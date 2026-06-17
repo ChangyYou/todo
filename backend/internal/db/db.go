@@ -79,11 +79,21 @@ func migrate(database *sql.DB) error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL,
 			todo_id INTEGER NOT NULL,
+			scene_id INTEGER,
 			duration_seconds INTEGER NOT NULL,
 			session_date TEXT NOT NULL,
 			created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 			FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS focus_scenes (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			title TEXT NOT NULL,
+			active INTEGER NOT NULL DEFAULT 1,
+			created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS pomodoro_settings (
 			user_id INTEGER PRIMARY KEY,
@@ -124,6 +134,9 @@ func migrate(database *sql.DB) error {
 	if err := ensureColumn(database, "habits", "end_date", `ALTER TABLE habits ADD COLUMN end_date TEXT`); err != nil {
 		return err
 	}
+	if err := ensureColumn(database, "focus_sessions", "scene_id", `ALTER TABLE focus_sessions ADD COLUMN scene_id INTEGER`); err != nil {
+		return err
+	}
 	if _, err := database.Exec(`DROP INDEX IF EXISTS idx_todos_user_habit_date`); err != nil {
 		return err
 	}
@@ -133,6 +146,8 @@ func migrate(database *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_habits_user_active ON habits(user_id, active)`,
 		`CREATE INDEX IF NOT EXISTS idx_focus_sessions_user_date ON focus_sessions(user_id, session_date)`,
 		`CREATE INDEX IF NOT EXISTS idx_focus_sessions_todo ON focus_sessions(todo_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_focus_sessions_scene ON focus_sessions(scene_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_focus_scenes_user_active ON focus_scenes(user_id, active)`,
 	}
 
 	for _, statement := range indexStatements {

@@ -22,7 +22,7 @@ func NewService(database *sql.DB) *Service {
 	return &Service{db: database}
 }
 
-func (s *Service) Create(userID, todoID int64, durationSeconds int, sessionDate string) error {
+func (s *Service) Create(userID, todoID, sceneID int64, durationSeconds int, sessionDate string) error {
 	sessionDate = strings.TrimSpace(sessionDate)
 	if sessionDate == "" {
 		sessionDate = time.Now().Format("2006-01-02")
@@ -30,27 +30,45 @@ func (s *Service) Create(userID, todoID int64, durationSeconds int, sessionDate 
 	if _, err := time.Parse("2006-01-02", sessionDate); err != nil {
 		return ErrInvalidFocusSession
 	}
-	if userID <= 0 || todoID <= 0 || durationSeconds <= 0 {
+	if userID <= 0 || durationSeconds <= 0 || (todoID <= 0 && sceneID <= 0) {
 		return ErrInvalidFocusSession
 	}
 
-	var exists int
-	err := s.db.QueryRow(
-		"SELECT 1 FROM todos WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
-		todoID,
-		userID,
-	).Scan(&exists)
-	if errors.Is(err, sql.ErrNoRows) {
-		return ErrInvalidFocusSession
-	}
-	if err != nil {
-		return err
+	if todoID > 0 {
+		var exists int
+		err := s.db.QueryRow(
+			"SELECT 1 FROM todos WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+			todoID,
+			userID,
+		).Scan(&exists)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrInvalidFocusSession
+		}
+		if err != nil {
+			return err
+		}
 	}
 
-	_, err = s.db.Exec(
-		"INSERT INTO focus_sessions (user_id, todo_id, duration_seconds, session_date) VALUES (?, ?, ?, ?)",
+	if sceneID > 0 {
+		var exists int
+		err := s.db.QueryRow(
+			"SELECT 1 FROM focus_scenes WHERE id = ? AND user_id = ? AND active = 1",
+			sceneID,
+			userID,
+		).Scan(&exists)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrInvalidFocusSession
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err := s.db.Exec(
+		"INSERT INTO focus_sessions (user_id, todo_id, scene_id, duration_seconds, session_date) VALUES (?, ?, ?, ?, ?)",
 		userID,
 		todoID,
+		nullableSceneID(sceneID),
 		durationSeconds,
 		sessionDate,
 	)
@@ -188,6 +206,9 @@ func (s *Service) ReviewCalendar(userID int64, year, month int) (models.ReviewCa
 	if err := s.fillReviewTaskStats(userID, gridStart.Format("2006-01-02"), gridEnd.Format("2006-01-02"), calendar.Days, byDate); err != nil {
 		return models.ReviewCalendar{}, err
 	}
+	if err := s.fillReviewSceneStats(userID, gridStart.Format("2006-01-02"), gridEnd.Format("2006-01-02"), calendar.Days, byDate); err != nil {
+		return models.ReviewCalendar{}, err
+	}
 
 	return calendar, nil
 }
@@ -247,13 +268,16 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 	rows, err := s.db.Query(
 		`SELECT focus_sessions.session_date,
 		        focus_sessions.todo_id,
-		        COALESCE(todos.title, '已删除任务') AS title,
+		        COALESCE(focus_sessions.scene_id, 0) AS scene_id,
+		        COALESCE(todos.title, focus_scenes.title, '已删除任务') AS title,
+		        CASE WHEN focus_sessions.scene_id IS NOT NULL THEN 'scene' ELSE 'focus' END AS entry_type,
 		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS duration_seconds,
 		        COUNT(*) AS session_count
 		   FROM focus_sessions
 		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id
+		   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
 		  WHERE focus_sessions.user_id = ? AND focus_sessions.session_date BETWEEN ? AND ?
-		  GROUP BY focus_sessions.session_date, focus_sessions.todo_id, title
+		  GROUP BY focus_sessions.session_date, focus_sessions.todo_id, scene_id, title, entry_type
 		  ORDER BY focus_sessions.session_date ASC, duration_seconds DESC`,
 		userID,
 		startDate,
@@ -267,10 +291,12 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 	for rows.Next() {
 		var date string
 		var todoID int64
+		var sceneID int64
 		var title string
+		var entryType string
 		var durationSeconds int64
 		var sessionCount int64
-		if err := rows.Scan(&date, &todoID, &title, &durationSeconds, &sessionCount); err != nil {
+		if err := rows.Scan(&date, &todoID, &sceneID, &title, &entryType, &durationSeconds, &sessionCount); err != nil {
 			return err
 		}
 		index, ok := byDate[date]
@@ -278,12 +304,16 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 			continue
 		}
 		days[index].FocusSeconds += durationSeconds
+		if entryType == "scene" {
+			days[index].SceneCount++
+		}
 		if len(days[index].Entries) < 4 {
 			days[index].Entries = append(days[index].Entries, models.ReviewCalendarEntry{
-				TodoID: todoID,
-				Type:   "focus",
-				Title:  title,
-				Meta:   formatReviewFocusMeta(durationSeconds, sessionCount),
+				TodoID:  todoID,
+				SceneID: sceneID,
+				Type:    entryType,
+				Title:   title,
+				Meta:    formatReviewFocusMeta(durationSeconds, sessionCount),
 			})
 		}
 	}
@@ -332,6 +362,46 @@ func (s *Service) fillReviewTaskStats(userID int64, startDate, endDate string, d
 			continue
 		}
 		item.Completed = completed == 1
+		days[index].Tasks = append(days[index].Tasks, item)
+	}
+
+	return rows.Err()
+}
+
+func (s *Service) fillReviewSceneStats(userID int64, startDate, endDate string, days []models.ReviewCalendarDay, byDate map[string]int) error {
+	rows, err := s.db.Query(
+		`SELECT focus_sessions.scene_id,
+		        focus_sessions.session_date,
+		        COALESCE(focus_scenes.title, '已删除场景') AS title,
+		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS focus_seconds,
+		        COUNT(*) AS session_count
+		   FROM focus_sessions
+		   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
+		  WHERE focus_sessions.user_id = ?
+		    AND focus_sessions.scene_id IS NOT NULL
+		    AND focus_sessions.session_date BETWEEN ? AND ?
+		  GROUP BY focus_sessions.scene_id, focus_sessions.session_date, title
+		  ORDER BY focus_sessions.session_date ASC, focus_seconds DESC`,
+		userID,
+		startDate,
+		endDate,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item models.ReviewTaskStat
+		var date string
+		if err := rows.Scan(&item.SceneID, &date, &item.Title, &item.FocusSeconds, &item.SessionCount); err != nil {
+			return err
+		}
+		index, ok := byDate[date]
+		if !ok {
+			continue
+		}
+		item.SourceType = "scene"
 		days[index].Tasks = append(days[index].Tasks, item)
 	}
 
@@ -716,6 +786,13 @@ func buildEmptyReviewDays(gridStart, monthStart, now time.Time) []models.ReviewC
 		})
 	}
 	return days
+}
+
+func nullableSceneID(sceneID int64) interface{} {
+	if sceneID <= 0 {
+		return nil
+	}
+	return sceneID
 }
 
 func formatReviewFocusMeta(durationSeconds int64, sessionCount int64) string {

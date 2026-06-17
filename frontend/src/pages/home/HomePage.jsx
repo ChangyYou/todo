@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { logout } from '../../lib/api';
 import HabitLauncher from '../../modules/habits/HabitLauncher';
 import PomodoroPage from '../../modules/pomodoro/PomodoroPage';
+import SceneLauncher from '../../modules/scenes/SceneLauncher';
 import TodoListModule from '../../modules/todolist/TodoListModule';
 
 export default function HomePage({ user, onLoggedOut }) {
@@ -62,6 +63,7 @@ export default function HomePage({ user, onLoggedOut }) {
         />
       </aside>
       <HabitLauncher onHabitCreated={() => setTodoRefreshSignal((signal) => signal + 1)} />
+      <SceneLauncher />
       <button
         type="button"
         className={`home-todo-toggle ${isTodoDrawerOpen ? 'open' : 'closed'}`}

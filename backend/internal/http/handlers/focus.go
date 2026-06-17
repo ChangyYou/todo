@@ -18,6 +18,7 @@ type FocusHandler struct {
 
 type createFocusSessionRequest struct {
 	TodoID          int64  `json:"todoId"`
+	SceneID         int64  `json:"sceneId"`
 	DurationSeconds int    `json:"durationSeconds"`
 	SessionDate     string `json:"sessionDate"`
 }
@@ -140,7 +141,7 @@ func (h *FocusHandler) Create(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	err := h.focus.Create(user.ID, request.TodoID, request.DurationSeconds, request.SessionDate)
+	err := h.focus.Create(user.ID, request.TodoID, request.SceneID, request.DurationSeconds, request.SessionDate)
 	if errors.Is(err, focus.ErrInvalidFocusSession) {
 		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "专注记录不正确"})
 		return

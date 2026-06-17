@@ -86,6 +86,31 @@ export async function deleteHabit(habitId) {
   await request(`/api/habits/${habitId}`, { method: 'DELETE' });
 }
 
+export async function listScenes() {
+  const payload = await request('/api/scenes');
+  return payload.scenes ?? [];
+}
+
+export async function createScene(scene) {
+  const payload = await request('/api/scenes', {
+    method: 'POST',
+    body: scene,
+  });
+  return payload.scene;
+}
+
+export async function updateScene(sceneId, patch) {
+  const payload = await request(`/api/scenes/${sceneId}`, {
+    method: 'PATCH',
+    body: patch,
+  });
+  return payload.scene;
+}
+
+export async function deleteScene(sceneId) {
+  await request(`/api/scenes/${sceneId}`, { method: 'DELETE' });
+}
+
 export async function updateTodo(todoId, patch) {
   const payload = await request(`/api/todos/${todoId}`, {
     method: 'PATCH',

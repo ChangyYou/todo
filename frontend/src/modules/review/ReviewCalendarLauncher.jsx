@@ -82,6 +82,9 @@ function DaySummary({ day }) {
   if (day.completedHabits > 0) {
     items.push(`习惯 ${day.completedHabits}`);
   }
+  if (day.sceneCount > 0) {
+    items.push(`场景 ${day.sceneCount}`);
+  }
 
   if (items.length === 0) {
     return null;
@@ -225,7 +228,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                   className={`review-day-cell ${day.inCurrentMonth ? '' : 'muted'} ${day.isToday ? 'today' : ''}`}
                   aria-label={`${day.date} 复盘`}
                   onClick={() => {
-                    setSelectedDate(day.date);
+                    setSelectedDate((date) => (date === day.date ? '' : day.date));
                     setDetailErrorMessage('');
                   }}
                 >
@@ -261,6 +264,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
               <div className="review-detail-summary">
                 <span>任务 {selectedDay.completedTasks}</span>
                 <span>习惯 {selectedDay.completedHabits}</span>
+                <span>场景 {selectedDay.sceneCount}</span>
                 <span>专注 {formatDuration(selectedDay.focusSeconds)}</span>
               </div>
               {detailErrorMessage ? <p className="review-error" role="alert">{detailErrorMessage}</p> : null}
@@ -268,20 +272,22 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                 {selectedDay.tasks.length > 0 ? selectedDay.tasks.map((task) => (
                   <article key={task.todoId} className="review-task-row">
                     <div className="review-task-main">
-                      <span className={`review-task-badge ${task.sourceType}`}>{task.sourceType === 'habit' ? '习惯' : '任务'}</span>
+                      <span className={`review-task-badge ${task.sourceType}`}>{task.sourceType === 'habit' ? '习惯' : task.sourceType === 'scene' ? '场景' : '任务'}</span>
                       <strong>{task.title}</strong>
                       <small>{task.completed ? '已完成' : '未完成'} · 专注 {formatDetailDuration(task.focusSeconds)} · {task.sessionCount} 个番茄</small>
                     </div>
-                    <button
-                      type="button"
-                      className="review-delete-button has-tooltip"
-                      aria-label={`永久删除 ${task.title}`}
-                      data-tooltip="永久删除"
-                      disabled={deleteStatus === 'deleting'}
-                      onClick={() => handleDeleteTask(task)}
-                    >
-                      <TrashIcon />
-                    </button>
+                    {task.sourceType !== 'scene' ? (
+                      <button
+                        type="button"
+                        className="review-delete-button has-tooltip"
+                        aria-label={`永久删除 ${task.title}`}
+                        data-tooltip="永久删除"
+                        disabled={deleteStatus === 'deleting'}
+                        onClick={() => handleDeleteTask(task)}
+                      >
+                        <TrashIcon />
+                      </button>
+                    ) : null}
                   </article>
                 )) : (
                   <p className="review-empty">这一天还没有可复盘的任务。</p>

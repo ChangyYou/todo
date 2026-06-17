@@ -23,6 +23,7 @@ function createReviewCalendarMock(deletedTodoIds = new Set()) {
       isToday: day === 15 && inCurrentMonth,
       completedTasks: 0,
       completedHabits: 0,
+      sceneCount: 0,
       focusSeconds: 0,
       entries: [],
       tasks: [],
@@ -36,16 +37,19 @@ function createReviewCalendarMock(deletedTodoIds = new Set()) {
     isToday: false,
     completedTasks: 1,
     completedHabits: 1,
+    sceneCount: 1,
     focusSeconds: 1500,
     entries: [
       { todoId: 101, type: 'task', title: '写日报', meta: '完成' },
       { todoId: 102, type: 'habit', title: '运动30分钟', meta: '打卡' },
       { todoId: 103, type: 'focus', title: '阅读 Go 后端', meta: '25m' },
+      { sceneId: 201, type: 'scene', title: '运动', meta: '15m' },
     ].filter((entry) => !deletedTodoIds.has(entry.todoId)),
     tasks: [
       { todoId: 101, title: '写日报', sourceType: 'todo', completed: true, focusSeconds: 0, sessionCount: 0, completedAt: '2026-06-10 09:00:00' },
       { todoId: 102, title: '运动30分钟', sourceType: 'habit', completed: true, focusSeconds: 0, sessionCount: 0, completedAt: '2026-06-10 10:00:00' },
       { todoId: 103, title: '阅读 Go 后端', sourceType: 'todo', completed: false, focusSeconds: 1500, sessionCount: 1, completedAt: '' },
+      { todoId: 0, sceneId: 201, title: '运动', sourceType: 'scene', completed: false, focusSeconds: 900, sessionCount: 1, completedAt: '' },
     ].filter((task) => !deletedTodoIds.has(task.todoId)),
   };
 
@@ -58,6 +62,7 @@ function createReviewCalendarMock(deletedTodoIds = new Set()) {
 
 beforeEach(() => {
   let habits = [];
+  let scenes = [{ id: 1, title: '运动', active: true }];
   const deletedReviewTodoIds = new Set();
   let pomodoroSettings = {
     focusMinutes: 25,
@@ -161,6 +166,23 @@ beforeEach(() => {
       return {
         ok: true,
         json: async () => ({ calendar: createReviewCalendarMock(deletedReviewTodoIds) }),
+      };
+    }
+
+    if (url === '/api/scenes' && method === 'GET') {
+      return {
+        ok: true,
+        json: async () => ({ scenes }),
+      };
+    }
+
+    if (url === '/api/scenes' && method === 'POST') {
+      const body = JSON.parse(options.body);
+      const scene = { id: 2, title: body.title, active: true };
+      scenes = [scene, ...scenes];
+      return {
+        ok: true,
+        json: async () => ({ scene }),
       };
     }
 
@@ -690,7 +712,7 @@ describe('App', () => {
     expect(screen.getByText('今日专注 0:00')).toBeInTheDocument();
     expect(screen.getByText('专注时间')).toBeInTheDocument();
     expect(screen.getByText('01:00')).toBeInTheDocument();
-    expect(screen.getByText('待开始')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '绑定场景' })).toBeInTheDocument();
   });
 
   it('offers skip choices during focus and can enter break without counting completion', async () => {
@@ -710,7 +732,7 @@ describe('App', () => {
 
     expect(screen.getAllByText('短休息').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('05:00')).toBeInTheDocument();
-    expect(screen.getByText('待开始')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '绑定场景' })).toBeInTheDocument();
     expect(screen.getByText('1 / 4')).toBeInTheDocument();
   });
 
