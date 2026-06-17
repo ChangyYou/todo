@@ -37,6 +37,7 @@ const PHASE_COPY = {
   [TIMER_PHASES.SHORT_BREAK]: '放松一下，等会儿继续出发。',
   [TIMER_PHASES.LONG_BREAK]: '这一轮辛苦了，慢慢休息更久一点。',
 };
+const MIN_RECORDABLE_FOCUS_SECONDS = 5;
 
 const SETTINGS_FIELDS = [
   { key: 'focusMinutes', label: '专注时长（分钟）' },
@@ -211,7 +212,7 @@ const PomodoroPage = forwardRef(function PomodoroPage({
 
     const startedAtRemaining = focusBindingStartRemainingRef.current ?? timerState.totalSeconds;
     const durationSeconds = Math.max(0, startedAtRemaining - timerState.remainingSeconds);
-    if (durationSeconds <= 0) {
+    if (durationSeconds <= MIN_RECORDABLE_FOCUS_SECONDS) {
       return null;
     }
 

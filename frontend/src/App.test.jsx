@@ -599,14 +599,14 @@ describe('App', () => {
     fireEvent.click(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
 
     act(() => {
-      vi.advanceTimersByTime(5_000);
+      vi.advanceTimersByTime(6_000);
     });
 
     fireEvent.click(within(todoPanel).getByLabelText('完成任务 整理今天最重要的三件事'));
     await act(async () => {});
 
     expect(within(todoPanel).getByText('0 项')).toBeInTheDocument();
-    expect(screen.getByText('今日专注 0:05')).toBeInTheDocument();
+    expect(screen.getByText('今日专注 0:06')).toBeInTheDocument();
     expect(screen.getByText('把注意力留给眼前这一件事。')).toBeInTheDocument();
   });
 
@@ -897,6 +897,50 @@ describe('App', () => {
     expect(screen.getByText('01:00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '开始' })).toBeInTheDocument();
     expect(screen.getByText('1 / 4')).toBeInTheDocument();
+  });
+
+  it('does not record focus time at five seconds or less', async () => {
+    vi.useFakeTimers();
+    await renderAtPath('/pomodoro');
+
+    fireEvent.click(screen.getByRole('button', { name: '打开设置' }));
+    fireEvent.change(screen.getByLabelText('专注时长（分钟）'), {
+      target: { value: '1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '开始' }));
+
+    act(() => {
+      vi.advanceTimersByTime(5_000);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '结束专注' }));
+    });
+
+    expect(window.fetch.mock.calls.some(([url]) => url === '/api/focus-sessions')).toBe(false);
+    expect(screen.getByText('今日专注 0:00')).toBeInTheDocument();
+    expect(screen.getByText('01:00')).toBeInTheDocument();
+  });
+
+  it('does not record focus time when resetting the timer', async () => {
+    vi.useFakeTimers();
+    await renderAtPath('/pomodoro');
+
+    fireEvent.click(screen.getByRole('button', { name: '打开设置' }));
+    fireEvent.change(screen.getByLabelText('专注时长（分钟）'), {
+      target: { value: '1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '开始' }));
+
+    act(() => {
+      vi.advanceTimersByTime(6_000);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '重置' }));
+
+    expect(window.fetch.mock.calls.some(([url]) => url === '/api/focus-sessions')).toBe(false);
+    expect(screen.getByText('今日专注 0:00')).toBeInTheDocument();
+    expect(screen.getByText('01:00')).toBeInTheDocument();
   });
 
   it('uses focus mode as the only pomodoro view', async () => {

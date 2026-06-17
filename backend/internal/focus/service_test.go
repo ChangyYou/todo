@@ -1,6 +1,7 @@
 package focus
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -24,6 +25,9 @@ func TestCreateAllowsUnboundFocusSession(t *testing.T) {
 	}
 
 	service := NewService(database)
+	if err := service.Create(userID, 0, 0, 5, "2026-06-17"); !errors.Is(err, ErrInvalidFocusSession) {
+		t.Fatalf("expected five-second session to be rejected, got %v", err)
+	}
 	if err := service.Create(userID, 0, 0, 6, "2026-06-17"); err != nil {
 		t.Fatal(err)
 	}
@@ -66,6 +70,17 @@ func TestReviewCalendarIncludesSceneFocusSessions(t *testing.T) {
 	}
 	sceneID, err := result.LastInsertId()
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := database.Exec(
+		`INSERT INTO focus_sessions (user_id, todo_id, scene_id, duration_seconds, session_date) VALUES (?, ?, ?, ?, ?)`,
+		userID,
+		0,
+		nil,
+		300,
+		"2026-06-17",
+	); err != nil {
 		t.Fatal(err)
 	}
 
@@ -117,8 +132,8 @@ func TestReviewCalendarIncludesSceneFocusSessions(t *testing.T) {
 			continue
 		}
 		targetDayFound = true
-		if day.FocusSeconds != 1500 {
-			t.Fatalf("expected focus seconds 1500, got %d", day.FocusSeconds)
+		if day.FocusSeconds != 1800 {
+			t.Fatalf("expected focus seconds 1800, got %d", day.FocusSeconds)
 		}
 		if day.SceneCount != 1 {
 			t.Fatalf("expected scene count 1, got %d", day.SceneCount)

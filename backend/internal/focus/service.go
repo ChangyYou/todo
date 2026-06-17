@@ -12,7 +12,10 @@ import (
 
 var ErrInvalidFocusSession = errors.New("invalid focus session")
 
-const maxStatsRangeDays = 366
+const (
+	maxStatsRangeDays         = 366
+	minRecordableFocusSeconds = 5
+)
 
 type Service struct {
 	db *sql.DB
@@ -30,7 +33,7 @@ func (s *Service) Create(userID, todoID, sceneID int64, durationSeconds int, ses
 	if _, err := time.Parse("2006-01-02", sessionDate); err != nil {
 		return ErrInvalidFocusSession
 	}
-	if userID <= 0 || durationSeconds <= 0 {
+	if userID <= 0 || durationSeconds <= minRecordableFocusSeconds {
 		return ErrInvalidFocusSession
 	}
 
