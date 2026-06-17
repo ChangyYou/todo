@@ -3313,16 +3313,28 @@ select {
     order: 2;
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+    justify-items: stretch;
   }
 
   .focus-task-menu-wrap {
     min-width: 0;
+    width: 100%;
+  }
+
+  .immersive-phase-group > .immersive-phase-pill:first-child {
+    grid-column: 1 / -1;
+    width: fit-content;
+    min-width: min(168px, 62vw);
+    justify-self: center;
+    padding-inline: 18px;
+    font-size: 0.82rem;
   }
 
   .immersive-phase-pill {
     max-width: 100%;
+    width: 100%;
     min-width: 0;
     min-height: 38px;
     padding: 0 10px;
@@ -3642,8 +3654,13 @@ select {
 
   .immersive-phase-pill {
     min-height: 34px;
-    padding: 0 12px;
+    padding: 0 10px;
     font-size: 0.74rem;
+  }
+
+  .immersive-phase-group > .immersive-phase-pill:first-child {
+    min-width: min(156px, 68vw);
+    font-size: 0.78rem;
   }
 
   .immersive-ambient-pill {
