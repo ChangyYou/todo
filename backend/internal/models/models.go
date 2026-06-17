@@ -109,3 +109,26 @@ type FocusStatsEntry struct {
 	SessionDate     string `json:"sessionDate"`
 	CreatedAt       string `json:"createdAt"`
 }
+
+type ReviewCalendar struct {
+	Year  int                 `json:"year"`
+	Month int                 `json:"month"`
+	Days  []ReviewCalendarDay `json:"days"`
+}
+
+type ReviewCalendarDay struct {
+	Date            string                `json:"date"`
+	Day             int                   `json:"day"`
+	InCurrentMonth  bool                  `json:"inCurrentMonth"`
+	IsToday         bool                  `json:"isToday"`
+	CompletedTasks  int64                 `json:"completedTasks"`
+	CompletedHabits int64                 `json:"completedHabits"`
+	FocusSeconds    int64                 `json:"focusSeconds"`
+	Entries         []ReviewCalendarEntry `json:"entries"`
+}
+
+type ReviewCalendarEntry struct {
+	Type  string `json:"type"`
+	Title string `json:"title"`
+	Meta  string `json:"meta,omitempty"`
+}

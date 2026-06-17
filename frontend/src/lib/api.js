@@ -127,6 +127,19 @@ export async function getFocusStats({ start, end, period } = {}) {
   return payload.stats;
 }
 
+export async function getReviewCalendar({ year, month } = {}) {
+  const params = new URLSearchParams();
+  if (year) {
+    params.set('year', year);
+  }
+  if (month) {
+    params.set('month', month);
+  }
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const payload = await request(`/api/review-calendar${query}`);
+  return payload.calendar;
+}
+
 export async function getPomodoroSettings() {
   const payload = await request('/api/settings/pomodoro');
   return payload.settings;

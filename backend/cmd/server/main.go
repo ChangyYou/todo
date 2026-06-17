@@ -64,6 +64,7 @@ func main() {
 	api.POST("/auth/logout", authHandler.Logout)
 	api.GET("/auth/me", middleware.RequireUser(authService), authHandler.Me)
 	api.GET("/focus-stats", middleware.RequireUser(authService), focusHandler.Stats)
+	api.GET("/review-calendar", middleware.RequireUser(authService), focusHandler.ReviewCalendar)
 	api.GET("/focus-sessions/summary", middleware.RequireUser(authService), focusHandler.Summary)
 	api.POST("/focus-sessions", middleware.RequireUser(authService), focusHandler.Create)
 

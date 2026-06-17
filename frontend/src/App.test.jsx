@@ -12,6 +12,44 @@ async function renderAtPath(pathname) {
   return result;
 }
 
+function createReviewCalendarMock() {
+  const days = Array.from({ length: 42 }, (_, index) => {
+    const day = index < 1 ? 31 : index > 30 ? index - 30 : index;
+    const inCurrentMonth = index >= 1 && index <= 30;
+    return {
+      date: inCurrentMonth ? `2026-06-${String(day).padStart(2, '0')}` : `2026-05-${String(day).padStart(2, '0')}`,
+      day,
+      inCurrentMonth,
+      isToday: day === 15 && inCurrentMonth,
+      completedTasks: 0,
+      completedHabits: 0,
+      focusSeconds: 0,
+      entries: [],
+    };
+  });
+
+  days[10] = {
+    date: '2026-06-10',
+    day: 10,
+    inCurrentMonth: true,
+    isToday: false,
+    completedTasks: 1,
+    completedHabits: 1,
+    focusSeconds: 1500,
+    entries: [
+      { type: 'task', title: '写日报', meta: '完成' },
+      { type: 'habit', title: '运动30分钟', meta: '打卡' },
+      { type: 'focus', title: '阅读 Go 后端', meta: '25m' },
+    ],
+  };
+
+  return {
+    year: 2026,
+    month: 6,
+    days,
+  };
+}
+
 beforeEach(() => {
   let habits = [];
   let pomodoroSettings = {
@@ -109,6 +147,13 @@ beforeEach(() => {
             ],
           },
         }),
+      };
+    }
+
+    if (url.startsWith('/api/review-calendar') && method === 'GET') {
+      return {
+        ok: true,
+        json: async () => ({ calendar: createReviewCalendarMock() }),
       };
     }
 
@@ -711,6 +756,20 @@ describe('App', () => {
     expect(screen.getByText('最近完成率趋势')).toBeInTheDocument();
     expect(screen.getByText('本周打卡进度')).toBeInTheDocument();
     expect(screen.getByText('最近番茄数趋势')).toBeInTheDocument();
+  });
+
+  it('opens the personal review calendar from the bottom launcher', async () => {
+    vi.setSystemTime(new Date('2026-06-15T08:00:00+08:00'));
+    await renderAtPath('/pomodoro');
+
+    fireEvent.click(screen.getByRole('button', { name: '打开个人复盘' }));
+
+    expect(await screen.findByRole('dialog', { name: '个人复盘' })).toBeInTheDocument();
+    expect(screen.getByText('2026年6月')).toBeInTheDocument();
+    expect(screen.getByText('写日报')).toBeInTheDocument();
+    expect(screen.getByText('运动30分钟')).toBeInTheDocument();
+    expect(screen.getByText('阅读 Go 后端')).toBeInTheDocument();
+    expect(screen.getByText('专注 25m')).toBeInTheDocument();
   });
 
   it('loads an official netease playlist iframe from a valid playlist url', async () => {

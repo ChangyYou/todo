@@ -151,6 +151,138 @@ func (s *Service) Stats(userID int64, startDate, endDate, period string) (models
 	return stats, nil
 }
 
+func (s *Service) ReviewCalendar(userID int64, year, month int) (models.ReviewCalendar, error) {
+	if userID <= 0 {
+		return models.ReviewCalendar{}, ErrInvalidFocusSession
+	}
+	now := time.Now()
+	if year == 0 {
+		year = now.Year()
+	}
+	if month == 0 {
+		month = int(now.Month())
+	}
+	if month < 1 || month > 12 {
+		return models.ReviewCalendar{}, ErrInvalidFocusSession
+	}
+
+	firstOfMonth := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+	gridStart := firstOfMonth.AddDate(0, 0, -int(firstOfMonth.Weekday()))
+	gridEnd := gridStart.AddDate(0, 0, 41)
+	calendar := models.ReviewCalendar{
+		Year:  year,
+		Month: month,
+		Days:  buildEmptyReviewDays(gridStart, firstOfMonth, now),
+	}
+	byDate := make(map[string]int, len(calendar.Days))
+	for index, day := range calendar.Days {
+		byDate[day.Date] = index
+	}
+
+	if err := s.fillReviewTodos(userID, gridStart.Format("2006-01-02"), gridEnd.Format("2006-01-02"), calendar.Days, byDate); err != nil {
+		return models.ReviewCalendar{}, err
+	}
+	if err := s.fillReviewFocus(userID, gridStart.Format("2006-01-02"), gridEnd.Format("2006-01-02"), calendar.Days, byDate); err != nil {
+		return models.ReviewCalendar{}, err
+	}
+
+	return calendar, nil
+}
+
+func (s *Service) fillReviewTodos(userID int64, startDate, endDate string, days []models.ReviewCalendarDay, byDate map[string]int) error {
+	rows, err := s.db.Query(
+		`SELECT todo_date, source_type, title
+		   FROM todos
+		  WHERE user_id = ?
+		    AND completed = 1
+		    AND todo_date BETWEEN ? AND ?
+		  ORDER BY completed_at ASC, id ASC`,
+		userID,
+		startDate,
+		endDate,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var date string
+		var sourceType string
+		var title string
+		if err := rows.Scan(&date, &sourceType, &title); err != nil {
+			return err
+		}
+		index, ok := byDate[date]
+		if !ok {
+			continue
+		}
+		entryType := "task"
+		meta := "完成"
+		if sourceType == "habit" {
+			entryType = "habit"
+			meta = "打卡"
+			days[index].CompletedHabits++
+		} else {
+			days[index].CompletedTasks++
+		}
+		if len(days[index].Entries) < 4 {
+			days[index].Entries = append(days[index].Entries, models.ReviewCalendarEntry{
+				Type:  entryType,
+				Title: title,
+				Meta:  meta,
+			})
+		}
+	}
+
+	return rows.Err()
+}
+
+func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days []models.ReviewCalendarDay, byDate map[string]int) error {
+	rows, err := s.db.Query(
+		`SELECT focus_sessions.session_date,
+		        COALESCE(todos.title, '已删除任务') AS title,
+		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS duration_seconds,
+		        COUNT(*) AS session_count
+		   FROM focus_sessions
+		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id
+		  WHERE focus_sessions.user_id = ? AND focus_sessions.session_date BETWEEN ? AND ?
+		  GROUP BY focus_sessions.session_date, focus_sessions.todo_id, title
+		  ORDER BY focus_sessions.session_date ASC, duration_seconds DESC`,
+		userID,
+		startDate,
+		endDate,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var date string
+		var title string
+		var durationSeconds int64
+		var sessionCount int64
+		if err := rows.Scan(&date, &title, &durationSeconds, &sessionCount); err != nil {
+			return err
+		}
+		index, ok := byDate[date]
+		if !ok {
+			continue
+		}
+		days[index].FocusSeconds += durationSeconds
+		if len(days[index].Entries) < 4 {
+			days[index].Entries = append(days[index].Entries, models.ReviewCalendarEntry{
+				Type:  "focus",
+				Title: title,
+				Meta:  formatReviewFocusMeta(durationSeconds, sessionCount),
+			})
+		}
+	}
+
+	return rows.Err()
+}
+
 func (s *Service) overview(userID int64) (models.FocusStatsOverview, error) {
 	today := time.Now().Format("2006-01-02")
 	var overview models.FocusStatsOverview
@@ -455,6 +587,35 @@ func buildEmptyHabitWeek(now time.Time) []models.FocusStatsHabitDay {
 		})
 	}
 	return result
+}
+
+func buildEmptyReviewDays(gridStart, monthStart, now time.Time) []models.ReviewCalendarDay {
+	days := make([]models.ReviewCalendarDay, 0, 42)
+	currentMonth := monthStart.Month()
+	today := now.Format("2006-01-02")
+	for offset := 0; offset < 42; offset++ {
+		day := gridStart.AddDate(0, 0, offset)
+		date := day.Format("2006-01-02")
+		days = append(days, models.ReviewCalendarDay{
+			Date:           date,
+			Day:            day.Day(),
+			InCurrentMonth: day.Month() == currentMonth,
+			IsToday:        date == today,
+			Entries:        make([]models.ReviewCalendarEntry, 0),
+		})
+	}
+	return days
+}
+
+func formatReviewFocusMeta(durationSeconds int64, sessionCount int64) string {
+	minutes := durationSeconds / 60
+	if minutes <= 0 {
+		minutes = 1
+	}
+	if sessionCount > 1 {
+		return strconv.FormatInt(minutes, 10) + "m · " + strconv.FormatInt(sessionCount, 10) + "轮"
+	}
+	return strconv.FormatInt(minutes, 10) + "m"
 }
 
 func defaultPeriodStart(end time.Time, period string) time.Time {

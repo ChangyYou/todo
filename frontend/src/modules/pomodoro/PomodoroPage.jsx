@@ -13,6 +13,7 @@ import {
   parseNeteasePlaylistInput,
 } from '../../lib/music';
 import FocusStatsLauncher from '../focusStats/FocusStatsLauncher';
+import ReviewCalendarLauncher from '../review/ReviewCalendarLauncher';
 import { fetchChengduWeather } from '../../lib/weather';
 import {
   getFocusSessionSummary,
@@ -1059,6 +1060,7 @@ export default function PomodoroPage({
       </div>
 
       <div className="settings-launcher">
+        <ReviewCalendarLauncher refreshSignal={focusStatsRefreshSignal} />
         <FocusStatsLauncher refreshSignal={focusStatsRefreshSignal} />
         <button
           type="button"
