@@ -122,6 +122,18 @@ function SkipIcon() {
   );
 }
 
+function SceneBindIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 3.2 19.6 7.6v8.8L12 20.8l-7.6-4.4V7.6L12 3.2Zm0 2.3L6.4 8.72v6.56L12 18.5l5.6-3.22V8.72L12 5.5Z"
+        fill="currentColor"
+      />
+      <path d="M12 8.2a3.8 3.8 0 1 1 0 7.6 3.8 3.8 0 0 1 0-7.6Z" fill="currentColor" opacity=".42" />
+    </svg>
+  );
+}
+
 function MusicIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -501,6 +513,9 @@ export default function PomodoroPage({
 
   const currentPhaseLabel = PHASE_LABELS[timerState.phase];
   const sceneStatusLabel = selectedSceneTitle || '绑定场景';
+  const selectedScene = selectedSceneId
+    ? focusScenes.find((scene) => String(scene.id) === selectedSceneId)
+    : null;
   const currentRound = (timerState.completedFocusSessions % settings.longBreakInterval) + 1;
   const { dateLabel, timeLabel } = getBeijingTimeParts(currentDate);
   const todayDate = getLocalDate(currentDate);
@@ -795,13 +810,17 @@ export default function PomodoroPage({
     <span className="focus-task-menu-wrap" ref={sceneMenuRef}>
       <button
         type="button"
-        className={`${className} task-pill task-pill-button`}
+        className={`${className} task-pill-button has-tooltip ${selectedScene ? 'has-scene' : ''}`}
+        aria-label="绑定场景"
+        data-tooltip={sceneStatusLabel}
         title={sceneStatusLabel}
         aria-haspopup="menu"
         aria-expanded={isSceneMenuOpen}
+        style={selectedScene ? { '--scene-color': selectedScene.color || '#4b8768' } : undefined}
         onClick={() => setIsSceneMenuOpen((open) => !open)}
       >
-        {sceneStatusLabel}
+        <SceneBindIcon />
+        {selectedScene ? <span className="scene-control-dot" aria-hidden="true" /> : null}
       </button>
       {isSceneMenuOpen ? (
         <div className="focus-task-menu" role="menu" aria-label="选择专注场景">

@@ -1578,14 +1578,33 @@ select {
 }
 
 .scene-control-button {
-  min-width: 112px;
-  max-width: 190px;
+  position: relative;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
   min-height: 44px;
-  padding: 0 18px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
   justify-content: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.scene-control-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.scene-control-dot {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--scene-color, #4b8768);
+  box-shadow:
+    0 0 0 2px rgba(247, 250, 242, 0.92),
+    0 0 0 4px color-mix(in srgb, var(--scene-color, #4b8768) 18%, transparent);
 }
 
 .primary-button,
