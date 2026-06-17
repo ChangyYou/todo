@@ -75,6 +75,14 @@ function getSceneStyle(color) {
   return color ? { '--review-scene-color': color } : undefined;
 }
 
+function getReviewTaskMeta(task) {
+  const focusMeta = `专注 ${formatDetailDuration(task.focusSeconds)} · ${task.sessionCount} 个番茄`;
+  if (task.sourceType === 'scene') {
+    return `场景 ${task.sceneTitle || task.title || '默认'} · ${focusMeta}`;
+  }
+  return `${task.completed ? '已完成' : '未完成'} · 场景 ${task.sceneTitle || '默认'} · ${focusMeta}`;
+}
+
 function DaySummary({ day }) {
   const items = [];
   if (day.focusSeconds > 0) {
@@ -305,9 +313,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                     <div className="review-task-main">
                       <span className={`review-task-badge ${task.sourceType}`}>{task.sourceType === 'habit' ? '习惯' : task.sourceType === 'scene' ? '场景' : '任务'}</span>
                       <strong>{task.title}</strong>
-                      <small>
-                        {task.completed ? '已完成' : '未完成'} · 场景 {task.sceneTitle || '默认'} · 专注 {formatDetailDuration(task.focusSeconds)} · {task.sessionCount} 个番茄
-                      </small>
+                      <small>{getReviewTaskMeta(task)}</small>
                     </div>
                     {task.sourceType !== 'scene' ? (
                       <button

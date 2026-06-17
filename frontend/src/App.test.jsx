@@ -892,6 +892,8 @@ describe('App', () => {
     expect(within(detail).getByText('写日报')).toBeInTheDocument();
     expect(within(detail).getAllByText('已完成 · 场景 默认 · 专注 0s · 0 个番茄')).toHaveLength(2);
     expect(within(detail).getByText('未完成 · 场景 运动 · 专注 25:00 · 1 个番茄')).toBeInTheDocument();
+    expect(within(detail).getByText('场景 运动 · 专注 15:00 · 1 个番茄')).toBeInTheDocument();
+    expect(within(detail).queryByText('未完成 · 场景 运动 · 专注 15:00 · 1 个番茄')).not.toBeInTheDocument();
 
     fireEvent.click(within(detail).getByRole('button', { name: '永久删除 写日报' }));
 
