@@ -3482,6 +3482,31 @@ select {
     border-radius: 22px;
   }
 
+  .review-panel-header {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .review-month-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 34px minmax(46px, auto);
+    gap: 6px;
+    align-items: center;
+  }
+
+  .review-month-controls strong {
+    min-width: 0;
+    font-size: 0.92rem;
+  }
+
+  .review-today-button {
+    min-width: 46px;
+    white-space: nowrap;
+    padding-inline: 10px;
+  }
+
   .focus-stats-content {
     max-height: calc(min(76svh, 680px) - 92px);
   }
