@@ -57,29 +57,94 @@ function PeriodSelect({ value, onChange }) {
   );
 }
 
-function getTrendTooltip(item, valueKey, formatValue) {
+function buildTrendDetail(item, valueKey, formatValue) {
   const value = item[valueKey] ?? 0;
   if (valueKey === 'durationSeconds') {
-    return `${item.label}：专注 ${formatDuration(value)}；${item.sessionCount ?? 0} 个番茄`;
+    return {
+      title: `${item.label} 专注详情`,
+      rows: [
+        { label: '专注时长', value: formatDuration(value) },
+        { label: '番茄数', value: `${item.sessionCount ?? 0} 个` },
+        { label: '统计范围', value: `${item.startDate} - ${item.endDate}` },
+      ],
+    };
   }
   if (valueKey === 'taskCompletionRate') {
-    return `${item.label}：完成率 ${formatValue(value)}；完成 ${item.taskCompleted ?? 0}/${item.taskTotal ?? 0}`;
+    return {
+      title: `${item.label} 完成率详情`,
+      rows: [
+        { label: '完成率', value: formatValue(value) },
+        { label: '完成情况', value: `${item.taskCompleted ?? 0}/${item.taskTotal ?? 0}` },
+        { label: '统计范围', value: `${item.startDate} - ${item.endDate}` },
+      ],
+    };
   }
   if (valueKey === 'sessionCount') {
-    return `${item.label}：${value} 个番茄；专注 ${formatDuration(item.durationSeconds ?? 0)}`;
+    return {
+      title: `${item.label} 番茄详情`,
+      rows: [
+        { label: '番茄数', value: `${value} 个` },
+        { label: '专注时长', value: formatDuration(item.durationSeconds ?? 0) },
+        { label: '统计范围', value: `${item.startDate} - ${item.endDate}` },
+      ],
+    };
   }
-  return `${item.label}：${formatValue(value)}`;
+  return {
+    title: `${item.label} 统计详情`,
+    rows: [{ label: '数值', value: formatValue(value) }],
+  };
 }
 
-function getHabitTooltip(day) {
+function buildHabitDetail(day) {
   const completed = day.completedHabits ?? [];
   const pending = day.pendingHabits ?? [];
-  const completedText = completed.length > 0 ? completed.join('、') : '无';
-  const pendingText = pending.length > 0 ? pending.join('、') : '无';
-  return `${day.date}：已完成 ${completedText}；未完成 ${pendingText}`;
+  return {
+    title: `${day.date} 打卡详情`,
+    rows: [
+      { label: '完成情况', value: `${day.checked ?? 0}/${day.total ?? 0}` },
+      { label: '完成率', value: `${day.completion ?? 0}%` },
+    ],
+    groups: [
+      { label: '已完成', items: completed },
+      { label: '未完成', items: pending },
+    ],
+  };
 }
 
-function TrendCard({ title, period, onPeriodChange, items, valueKey, maxValue, formatValue, percent = false }) {
+function DetailDialog({ detail, onClose }) {
+  if (!detail) {
+    return null;
+  }
+
+  return (
+    <section className="focus-stats-detail" role="dialog" aria-label={detail.title}>
+      <div className="focus-stats-detail-header">
+        <h3>{detail.title}</h3>
+        <button type="button" onClick={onClose}>关闭</button>
+      </div>
+      <div className="focus-stats-detail-grid">
+        {detail.rows.map((row) => (
+          <div key={row.label} className="focus-stats-detail-row">
+            <span>{row.label}</span>
+            <strong>{row.value}</strong>
+          </div>
+        ))}
+      </div>
+      {detail.groups?.length ? (
+        <div className="focus-stats-detail-groups">
+          {detail.groups.map((group) => (
+            <div key={group.label} className="focus-stats-detail-group">
+              <span>{group.label}</span>
+              <p>{group.items.length > 0 ? group.items.join('、') : '无'}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function TrendCard({ title, period, onPeriodChange, items, valueKey, maxValue, formatValue, percent = false, onSelect }) {
   return (
     <div className="focus-stats-chart-card">
       <div className="focus-stats-chart-header">
@@ -96,12 +161,16 @@ function TrendCard({ title, period, onPeriodChange, items, valueKey, maxValue, f
           {items.map((item) => {
             const value = item[valueKey] ?? 0;
             const height = maxValue > 0 ? Math.max(4, (value / maxValue) * 100) : 4;
-            const tooltip = getTrendTooltip(item, valueKey, formatValue);
             return (
               <div key={`${item.startDate}-${item.label}-${valueKey}`} className="focus-stats-chart-bar-item">
-                <div className="focus-stats-chart-track" title={tooltip}>
+                <button
+                  type="button"
+                  className="focus-stats-chart-track"
+                  aria-label={`${item.label} ${title}详情`}
+                  onClick={() => onSelect(buildTrendDetail(item, valueKey, formatValue))}
+                >
                   <span style={{ height: `${height}%` }} />
-                </div>
+                </button>
                 <small>{item.label}</small>
               </div>
             );
@@ -118,6 +187,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
   const [stats, setStats] = useState(null);
   const [status, setStatus] = useState('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [selectedDetail, setSelectedDetail] = useState(null);
   const launcherRef = useRef(null);
 
   useEffect(() => {
@@ -133,6 +203,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
           return;
         }
         setStats(nextStats);
+        setSelectedDetail(null);
         setStatus('ready');
         setErrorMessage('');
       })
@@ -219,6 +290,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
                 valueKey="durationSeconds"
                 maxValue={maxFocusSeconds}
                 formatValue={(value) => `${Math.round(value / 60)}m`}
+                onSelect={setSelectedDetail}
               />
 
               <TrendCard
@@ -230,6 +302,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
                 maxValue={100}
                 formatValue={(value) => `${value}%`}
                 percent
+                onSelect={setSelectedDetail}
               />
 
               <TrendCard
@@ -240,23 +313,32 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
                 valueKey="sessionCount"
                 maxValue={maxPomodoros}
                 formatValue={(value) => String(value)}
+                onSelect={setSelectedDetail}
               />
 
               <section className="focus-stats-habits" aria-label="本周打卡进度">
                 <h3>本周打卡进度</h3>
                 <div className="focus-stats-habit-row">
                   {habitWeek.map((day) => (
-                    <div key={day.date} className="focus-stats-habit-day" title={getHabitTooltip(day)}>
+                    <button
+                      type="button"
+                      key={day.date}
+                      className="focus-stats-habit-day"
+                      aria-label={`${day.date} 打卡详情`}
+                      onClick={() => setSelectedDetail(buildHabitDetail(day))}
+                    >
                       <div className="focus-stats-habit-ring" style={{ '--habit-progress': `${day.completion ?? 0}%` }}>
                         <span>{day.total > 0 ? `${day.checked}/${day.total}` : ''}</span>
                       </div>
                       <small>{day.label}</small>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </section>
             </div>
           ) : null}
+
+          <DetailDialog detail={selectedDetail} onClose={() => setSelectedDetail(null)} />
         </section>
       ) : null}
     </div>

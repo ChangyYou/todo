@@ -768,10 +768,24 @@ describe('App', () => {
     expect(screen.getByText('最近完成率趋势')).toBeInTheDocument();
     expect(screen.getByText('本周打卡进度')).toBeInTheDocument();
     expect(screen.getByText('最近番茄数趋势')).toBeInTheDocument();
-    expect(screen.getByTitle('今天：专注 35分钟；1 个番茄')).toBeInTheDocument();
-    expect(screen.getByTitle('今天：完成率 67%；完成 2/3')).toBeInTheDocument();
-    expect(screen.getByTitle('今天：1 个番茄；专注 35分钟')).toBeInTheDocument();
-    expect(screen.getByTitle('2026-06-15：已完成 运动30分钟；未完成 阅读')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '今天 最近专注时长趋势详情' }));
+    expect(screen.getByRole('dialog', { name: '今天 专注详情' })).toBeInTheDocument();
+    expect(screen.getByText('35分钟')).toBeInTheDocument();
+    expect(screen.getByText('1 个')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '今天 最近完成率趋势详情' }));
+    expect(screen.getByRole('dialog', { name: '今天 完成率详情' })).toBeInTheDocument();
+    expect(screen.getByText('67%')).toBeInTheDocument();
+    expect(screen.getByText('2/3')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '今天 最近番茄数趋势详情' }));
+    expect(screen.getByRole('dialog', { name: '今天 番茄详情' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '2026-06-15 打卡详情' }));
+    expect(screen.getByRole('dialog', { name: '2026-06-15 打卡详情' })).toBeInTheDocument();
+    expect(screen.getByText('运动30分钟')).toBeInTheDocument();
+    expect(screen.getByText('阅读')).toBeInTheDocument();
   });
 
   it('opens the personal review calendar from the bottom launcher', async () => {

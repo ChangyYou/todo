@@ -2813,12 +2813,22 @@ select {
 .focus-stats-chart-track {
   width: 12px;
   height: 150px;
+  padding: 0;
+  border: 0;
   border-radius: 999px;
   display: flex;
   align-items: end;
   overflow: hidden;
   background: rgba(43, 70, 61, 0.05);
-  cursor: help;
+  cursor: pointer;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.focus-stats-chart-track:hover,
+.focus-stats-chart-track:focus-visible {
+  transform: translateY(-2px);
+  background: rgba(67, 122, 94, 0.12);
+  outline: none;
 }
 
 .focus-stats-chart.percent .focus-stats-chart-track {
@@ -2844,10 +2854,20 @@ select {
 }
 
 .focus-stats-habit-day {
+  border: 0;
+  padding: 0;
+  background: transparent;
   display: grid;
   justify-items: center;
   gap: 8px;
-  cursor: help;
+  cursor: pointer;
+  font: inherit;
+}
+
+.focus-stats-habit-day:hover .focus-stats-habit-ring,
+.focus-stats-habit-day:focus-visible .focus-stats-habit-ring {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(67, 122, 94, 0.12);
 }
 
 .focus-stats-habit-ring {
@@ -2860,6 +2880,7 @@ select {
   background:
     radial-gradient(circle at center, rgba(247, 250, 242, 0.98) 56%, transparent 57%),
     conic-gradient(#4b8768 var(--habit-progress), rgba(43, 70, 61, 0.06) 0);
+  transition: box-shadow 160ms ease, transform 160ms ease;
 }
 
 .focus-stats-habit-ring span {
@@ -2885,6 +2906,81 @@ select {
 
 .focus-stats-error {
   color: #8c4d40;
+}
+
+.focus-stats-detail {
+  position: absolute;
+  right: 22px;
+  top: 96px;
+  z-index: 3;
+  width: min(360px, calc(100% - 44px));
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(249, 251, 246, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 20px 42px rgba(69, 91, 76, 0.2);
+  backdrop-filter: blur(18px);
+}
+
+.focus-stats-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.focus-stats-detail-header h3 {
+  margin: 0;
+  color: #1f3c33;
+  font-size: 1.02rem;
+}
+
+.focus-stats-detail-header button {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(71, 126, 99, 0.1);
+  color: #2d624b;
+  cursor: pointer;
+}
+
+.focus-stats-detail-grid,
+.focus-stats-detail-groups {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.focus-stats-detail-row,
+.focus-stats-detail-group {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.52);
+  border: 1px solid rgba(43, 70, 61, 0.07);
+}
+
+.focus-stats-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.focus-stats-detail-row span,
+.focus-stats-detail-group span {
+  color: rgba(43, 70, 61, 0.54);
+  font-size: 0.8rem;
+}
+
+.focus-stats-detail-row strong {
+  color: #1f3c33;
+  font-size: 0.9rem;
+}
+
+.focus-stats-detail-group p {
+  margin: 5px 0 0;
+  color: #1f3c33;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .side-card-kicker {
