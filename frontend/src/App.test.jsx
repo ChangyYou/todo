@@ -867,6 +867,38 @@ describe('App', () => {
     expect(screen.getByText('2 / 4')).toBeInTheDocument();
   });
 
+  it('records focus time when ending focus without entering break', async () => {
+    vi.useFakeTimers();
+    await renderAtPath('/pomodoro');
+
+    fireEvent.click(screen.getByRole('button', { name: '打开设置' }));
+    fireEvent.change(screen.getByLabelText('专注时长（分钟）'), {
+      target: { value: '1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '开始' }));
+
+    act(() => {
+      vi.advanceTimersByTime(6_000);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '结束专注' }));
+    });
+
+    const focusCall = window.fetch.mock.calls.find(([url]) => url === '/api/focus-sessions');
+    expect(focusCall).toBeTruthy();
+    expect(JSON.parse(focusCall[1].body)).toMatchObject({
+      todoId: 0,
+      sceneId: 0,
+      durationSeconds: 6,
+    });
+    expect(screen.getByText('今日专注 0:06')).toBeInTheDocument();
+    expect(screen.getByText('专注时间')).toBeInTheDocument();
+    expect(screen.getByText('01:00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '开始' })).toBeInTheDocument();
+    expect(screen.getByText('1 / 4')).toBeInTheDocument();
+  });
+
   it('uses focus mode as the only pomodoro view', async () => {
     await renderAtPath('/pomodoro');
 

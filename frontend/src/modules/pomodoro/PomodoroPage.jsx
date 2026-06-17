@@ -115,6 +115,14 @@ function ResetIcon() {
   );
 }
 
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 7h10v10H7V7Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 function SkipIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -662,13 +670,16 @@ const PomodoroPage = forwardRef(function PomodoroPage({
     const shouldPersistFocus =
       timerState.phase === TIMER_PHASES.FOCUS &&
       timerState.isRunning &&
-      (action === 'pause' || action === 'skipFocusCompleted');
+      (action === 'pause' || action === 'skipFocusCompleted' || action === 'endFocus');
     if (shouldPersistFocus) {
       try {
         await persistCurrentFocusDuration({ notifyTodoRefresh: false });
       } catch (error) {
         setFocusBindingError(error instanceof Error ? error.message : '专注记录保存失败');
       }
+    }
+    if (['reset', 'endFocus', 'skipBreak', 'skipFocusCompleted', 'skipFocusIncomplete'].includes(action)) {
+      focusBindingStartRemainingRef.current = null;
     }
     setTimerState((state) => getNextTimerState(state, action, settings));
   };
@@ -963,6 +974,20 @@ const PomodoroPage = forwardRef(function PomodoroPage({
       >
         <ResetIcon />
       </button>
+      {!isBreakPhase ? (
+        <button
+          type="button"
+          className={`ghost-button timer-action-button has-tooltip ${getFeedbackClassName('end-focus')}`}
+          aria-label="结束专注"
+          data-tooltip="结束专注"
+          onClick={() => {
+            showButtonFeedback('end-focus');
+            handleTimerAction('endFocus');
+          }}
+        >
+          <StopIcon />
+        </button>
+      ) : null}
       {isBreakPhase ? (
         <button
           type="button"

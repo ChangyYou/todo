@@ -100,6 +100,19 @@ export function getNextTimerState(state, action, settings = createDefaultSetting
     );
   }
 
+  if (action === 'endFocus') {
+    if (state.phase !== TIMER_PHASES.FOCUS) {
+      return state;
+    }
+
+    return createPhaseState(
+      TIMER_PHASES.FOCUS,
+      settings,
+      state.completedFocusSessions,
+      false,
+    );
+  }
+
   if (action === 'skipBreak') {
     if (state.phase === TIMER_PHASES.FOCUS) {
       return state;

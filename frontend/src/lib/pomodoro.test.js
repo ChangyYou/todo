@@ -93,6 +93,25 @@ describe('getNextTimerState', () => {
     });
   });
 
+  it('ends focus without increasing the completed count or entering break', () => {
+    const settings = createDefaultSettings();
+    const state = {
+      phase: TIMER_PHASES.FOCUS,
+      totalSeconds: 1500,
+      remainingSeconds: 900,
+      isRunning: true,
+      completedFocusSessions: 2,
+    };
+
+    expect(getNextTimerState(state, 'endFocus', settings)).toEqual({
+      phase: TIMER_PHASES.FOCUS,
+      totalSeconds: 1500,
+      remainingSeconds: 1500,
+      isRunning: false,
+      completedFocusSessions: 2,
+    });
+  });
+
   it('moves from focus into short break automatically by default', () => {
     const settings = createDefaultSettings();
     const state = {
