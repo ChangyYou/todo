@@ -58,6 +58,7 @@ func migrate(database *sql.DB) error {
 			priority TEXT NOT NULL DEFAULT 'medium',
 			source_type TEXT NOT NULL DEFAULT 'todo',
 			habit_id INTEGER,
+			deleted_at TEXT,
 			created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -113,12 +114,18 @@ func migrate(database *sql.DB) error {
 	if err := ensureColumn(database, "todos", "priority", `ALTER TABLE todos ADD COLUMN priority TEXT NOT NULL DEFAULT 'medium'`); err != nil {
 		return err
 	}
+	if err := ensureColumn(database, "todos", "deleted_at", `ALTER TABLE todos ADD COLUMN deleted_at TEXT`); err != nil {
+		return err
+	}
 	if err := ensureColumn(database, "habits", "end_date", `ALTER TABLE habits ADD COLUMN end_date TEXT`); err != nil {
+		return err
+	}
+	if _, err := database.Exec(`DROP INDEX IF EXISTS idx_todos_user_habit_date`); err != nil {
 		return err
 	}
 
 	indexStatements := []string{
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_todos_user_habit_date ON todos(user_id, habit_id, todo_date) WHERE habit_id IS NOT NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_todos_user_habit_date ON todos(user_id, habit_id, todo_date) WHERE habit_id IS NOT NULL AND deleted_at IS NULL`,
 		`CREATE INDEX IF NOT EXISTS idx_habits_user_active ON habits(user_id, active)`,
 		`CREATE INDEX IF NOT EXISTS idx_focus_sessions_user_date ON focus_sessions(user_id, session_date)`,
 		`CREATE INDEX IF NOT EXISTS idx_focus_sessions_todo ON focus_sessions(todo_id)`,

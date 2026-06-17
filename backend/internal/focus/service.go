@@ -32,7 +32,11 @@ func (s *Service) Create(userID, todoID int64, durationSeconds int, sessionDate 
 	}
 
 	var exists int
-	err := s.db.QueryRow("SELECT 1 FROM todos WHERE id = ? AND user_id = ?", todoID, userID).Scan(&exists)
+	err := s.db.QueryRow(
+		"SELECT 1 FROM todos WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+		todoID,
+		userID,
+	).Scan(&exists)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrInvalidFocusSession
 	}

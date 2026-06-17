@@ -38,10 +38,10 @@ func (s *Service) List(userID int64, todoDate string) ([]models.Todo, error) {
 		return nil, err
 	}
 
-	filterClause := "todos.user_id = ? AND todos.completed = 0"
+	filterClause := "todos.user_id = ? AND todos.completed = 0 AND todos.deleted_at IS NULL"
 	args := []interface{}{userID}
 	if todoDate != "" {
-		filterClause = "todos.user_id = ? AND todos.todo_date = ?"
+		filterClause = "todos.user_id = ? AND todos.todo_date = ? AND todos.deleted_at IS NULL"
 		args = append(args, habitDate)
 	}
 
@@ -166,7 +166,13 @@ func (s *Service) Update(userID, todoID int64, title *string, completed *bool, t
 }
 
 func (s *Service) Delete(userID, todoID int64) error {
-	_, err := s.db.Exec(`DELETE FROM todos WHERE id = ? AND user_id = ?`, todoID, userID)
+	_, err := s.db.Exec(
+		`UPDATE todos
+		 SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+		todoID,
+		userID,
+	)
 	return err
 }
 
@@ -184,7 +190,7 @@ func (s *Service) byID(userID, todoID int64) (models.Todo, error) {
 		        todos.updated_at
 		 FROM todos
 		 LEFT JOIN focus_sessions ON focus_sessions.todo_id = todos.id AND focus_sessions.user_id = todos.user_id
-		 WHERE todos.id = ? AND todos.user_id = ?
+		 WHERE todos.id = ? AND todos.user_id = ? AND todos.deleted_at IS NULL
 		 GROUP BY todos.id`,
 		todoID,
 		userID,

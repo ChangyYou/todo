@@ -112,8 +112,9 @@ func (s *Service) Delete(userID, habitID int64) error {
 	}
 
 	_, err := s.db.Exec(
-		`DELETE FROM todos
-		 WHERE user_id = ? AND habit_id = ? AND source_type = 'habit' AND todo_date >= ?`,
+		`UPDATE todos
+		 SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+		 WHERE user_id = ? AND habit_id = ? AND source_type = 'habit' AND todo_date >= ? AND deleted_at IS NULL`,
 		userID,
 		habitID,
 		today(),
@@ -136,7 +137,7 @@ func (s *Service) syncGeneratedTodos(userID int64, habit models.Habit) error {
 	if _, err := s.db.Exec(
 		`UPDATE todos
 		 SET title = ?, updated_at = CURRENT_TIMESTAMP
-		 WHERE user_id = ? AND habit_id = ? AND source_type = 'habit' AND todo_date >= ?`,
+		 WHERE user_id = ? AND habit_id = ? AND source_type = 'habit' AND todo_date >= ? AND deleted_at IS NULL`,
 		habit.Title,
 		userID,
 		habit.ID,
@@ -146,8 +147,9 @@ func (s *Service) syncGeneratedTodos(userID int64, habit models.Habit) error {
 	}
 
 	_, err := s.db.Exec(
-		`DELETE FROM todos
-		 WHERE user_id = ? AND habit_id = ? AND source_type = 'habit' AND todo_date >= ?
+		`UPDATE todos
+		 SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+		 WHERE user_id = ? AND habit_id = ? AND source_type = 'habit' AND todo_date >= ? AND deleted_at IS NULL
 		   AND (todo_date < ? OR (? IS NOT NULL AND todo_date > ?))`,
 		userID,
 		habit.ID,
