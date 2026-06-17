@@ -59,8 +59,10 @@ function PeriodSelect({ value, onChange }) {
 
 function buildTrendDetail(item, valueKey, formatValue) {
   const value = item[valueKey] ?? 0;
+  const key = `trend:${valueKey}:${item.startDate}:${item.endDate}`;
   if (valueKey === 'durationSeconds') {
     return {
+      key,
       title: `${item.label} 专注详情`,
       rows: [
         { label: '专注时长', value: formatDuration(value) },
@@ -71,6 +73,7 @@ function buildTrendDetail(item, valueKey, formatValue) {
   }
   if (valueKey === 'taskCompletionRate') {
     return {
+      key,
       title: `${item.label} 完成率详情`,
       rows: [
         { label: '完成率', value: formatValue(value) },
@@ -81,6 +84,7 @@ function buildTrendDetail(item, valueKey, formatValue) {
   }
   if (valueKey === 'sessionCount') {
     return {
+      key,
       title: `${item.label} 番茄详情`,
       rows: [
         { label: '番茄数', value: `${value} 个` },
@@ -90,6 +94,7 @@ function buildTrendDetail(item, valueKey, formatValue) {
     };
   }
   return {
+    key,
     title: `${item.label} 统计详情`,
     rows: [{ label: '数值', value: formatValue(value) }],
   };
@@ -99,6 +104,7 @@ function buildHabitDetail(day) {
   const completed = day.completedHabits ?? [];
   const pending = day.pendingHabits ?? [];
   return {
+    key: `habit:${day.date}`,
     title: `${day.date} 打卡详情`,
     rows: [
       { label: '完成情况', value: `${day.checked ?? 0}/${day.total ?? 0}` },
@@ -111,13 +117,13 @@ function buildHabitDetail(day) {
   };
 }
 
-function DetailDialog({ detail, onClose }) {
+function DetailDialog({ detail, onClose, detailRef }) {
   if (!detail) {
     return null;
   }
 
   return (
-    <section className="focus-stats-detail" role="dialog" aria-label={detail.title}>
+    <section className="focus-stats-detail" role="dialog" aria-label={detail.title} ref={detailRef}>
       <div className="focus-stats-detail-header">
         <h3>{detail.title}</h3>
         <button type="button" onClick={onClose}>关闭</button>
@@ -167,6 +173,7 @@ function TrendCard({ title, period, onPeriodChange, items, valueKey, maxValue, f
                   type="button"
                   className="focus-stats-chart-track"
                   aria-label={`${item.label} ${title}详情`}
+                  onMouseDown={(event) => event.stopPropagation()}
                   onClick={() => onSelect(buildTrendDetail(item, valueKey, formatValue))}
                 >
                   <span style={{ height: `${height}%` }} />
@@ -189,6 +196,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
   const [errorMessage, setErrorMessage] = useState('');
   const [selectedDetail, setSelectedDetail] = useState(null);
   const launcherRef = useRef(null);
+  const detailRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -235,6 +243,28 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
     window.addEventListener('mousedown', handleMouseDown);
     return () => window.removeEventListener('mousedown', handleMouseDown);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !selectedDetail) {
+      return undefined;
+    }
+
+    const handleMouseDown = (event) => {
+      if (detailRef.current?.contains(event.target)) {
+        return;
+      }
+      setSelectedDetail(null);
+    };
+
+    window.addEventListener('mousedown', handleMouseDown);
+    return () => window.removeEventListener('mousedown', handleMouseDown);
+  }, [isOpen, selectedDetail]);
+
+  const handleSelectDetail = (detail) => {
+    setSelectedDetail((currentDetail) => (
+      currentDetail?.key === detail.key ? null : detail
+    ));
+  };
 
   const periods = stats?.periods ?? [];
   const overview = stats?.overview ?? {};
@@ -290,7 +320,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
                 valueKey="durationSeconds"
                 maxValue={maxFocusSeconds}
                 formatValue={(value) => `${Math.round(value / 60)}m`}
-                onSelect={setSelectedDetail}
+                onSelect={handleSelectDetail}
               />
 
               <TrendCard
@@ -302,7 +332,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
                 maxValue={100}
                 formatValue={(value) => `${value}%`}
                 percent
-                onSelect={setSelectedDetail}
+                onSelect={handleSelectDetail}
               />
 
               <TrendCard
@@ -313,7 +343,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
                 valueKey="sessionCount"
                 maxValue={maxPomodoros}
                 formatValue={(value) => String(value)}
-                onSelect={setSelectedDetail}
+                onSelect={handleSelectDetail}
               />
 
               <section className="focus-stats-habits" aria-label="本周打卡进度">
@@ -325,7 +355,8 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
                       key={day.date}
                       className="focus-stats-habit-day"
                       aria-label={`${day.date} 打卡详情`}
-                      onClick={() => setSelectedDetail(buildHabitDetail(day))}
+                      onMouseDown={(event) => event.stopPropagation()}
+                      onClick={() => handleSelectDetail(buildHabitDetail(day))}
                     >
                       <div className="focus-stats-habit-ring" style={{ '--habit-progress': `${day.completion ?? 0}%` }}>
                         <span>{day.total > 0 ? `${day.checked}/${day.total}` : ''}</span>
@@ -338,7 +369,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
             </div>
           ) : null}
 
-          <DetailDialog detail={selectedDetail} onClose={() => setSelectedDetail(null)} />
+          <DetailDialog detail={selectedDetail} onClose={() => setSelectedDetail(null)} detailRef={detailRef} />
         </section>
       ) : null}
     </div>

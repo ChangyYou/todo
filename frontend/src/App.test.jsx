@@ -796,6 +796,14 @@ describe('App', () => {
     expect(screen.getByText('35分钟')).toBeInTheDocument();
     expect(screen.getByText('1 个')).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('button', { name: '今天 最近专注时长趋势详情' }));
+    expect(screen.queryByRole('dialog', { name: '今天 专注详情' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '今天 最近专注时长趋势详情' }));
+    expect(screen.getByRole('dialog', { name: '今天 专注详情' })).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole('dialog', { name: '专注统计' }));
+    expect(screen.queryByRole('dialog', { name: '今天 专注详情' })).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByRole('button', { name: '今天 最近完成率趋势详情' }));
     expect(screen.getByRole('dialog', { name: '今天 完成率详情' })).toBeInTheDocument();
     expect(screen.getByText('67%')).toBeInTheDocument();
@@ -847,6 +855,21 @@ describe('App', () => {
       url === '/api/review-todos/101' && options?.method === 'DELETE'
     ));
     expect(deleteCall).toBeTruthy();
+  });
+
+  it('closes review day detail when clicking the empty review panel area', async () => {
+    vi.setSystemTime(new Date('2026-06-15T08:00:00+08:00'));
+    await renderAtPath('/pomodoro');
+
+    fireEvent.click(screen.getByRole('button', { name: '打开个人复盘' }));
+    expect(await screen.findByText('写日报')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '2026-06-10 复盘' }));
+    expect(await screen.findByRole('dialog', { name: '2026-06-10 当日复盘详情' })).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByRole('dialog', { name: '个人复盘' }));
+
+    expect(screen.queryByRole('dialog', { name: '2026-06-10 当日复盘详情' })).not.toBeInTheDocument();
   });
 
   it('loads an official netease playlist iframe from a valid playlist url', async () => {

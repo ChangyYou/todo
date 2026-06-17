@@ -219,6 +219,7 @@ func (s *Service) fillReviewTodos(userID int64, startDate, endDate string, days 
 		   FROM todos
 		  WHERE user_id = ?
 		    AND completed = 1
+		    AND deleted_at IS NULL
 		    AND todo_date BETWEEN ? AND ?
 		  ORDER BY completed_at ASC, id ASC`,
 		userID,
@@ -269,7 +270,7 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 		`SELECT focus_sessions.session_date,
 		        focus_sessions.todo_id,
 		        COALESCE(focus_sessions.scene_id, 0) AS scene_id,
-		        COALESCE(todos.title, focus_scenes.title, '已删除任务') AS title,
+		        COALESCE(todos.title, focus_scenes.title, '') AS title,
 		        CASE WHEN focus_sessions.scene_id IS NOT NULL THEN 'scene' ELSE 'focus' END AS entry_type,
 		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS duration_seconds,
 		        COUNT(*) AS session_count
@@ -290,7 +291,7 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 
 	for rows.Next() {
 		var date string
-		var todoID int64
+		var todoID sql.NullInt64
 		var sceneID int64
 		var title string
 		var entryType string
@@ -307,9 +308,13 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 		if entryType == "scene" {
 			days[index].SceneCount++
 		}
-		if len(days[index].Entries) < 4 {
+		if title != "" && len(days[index].Entries) < 4 {
+			entryTodoID := int64(0)
+			if todoID.Valid {
+				entryTodoID = todoID.Int64
+			}
 			days[index].Entries = append(days[index].Entries, models.ReviewCalendarEntry{
-				TodoID:  todoID,
+				TodoID:  entryTodoID,
 				SceneID: sceneID,
 				Type:    entryType,
 				Title:   title,
@@ -334,6 +339,7 @@ func (s *Service) fillReviewTaskStats(userID int64, startDate, endDate string, d
 		   FROM todos
 		   LEFT JOIN focus_sessions ON focus_sessions.todo_id = todos.id AND focus_sessions.user_id = todos.user_id
 		  WHERE todos.user_id = ?
+		    AND todos.deleted_at IS NULL
 		    AND todos.todo_date BETWEEN ? AND ?
 		  GROUP BY todos.id
 		 HAVING todos.completed = 1 OR COUNT(focus_sessions.id) > 0

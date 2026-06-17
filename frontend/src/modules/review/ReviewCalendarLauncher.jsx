@@ -107,6 +107,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
   const [deleteStatus, setDeleteStatus] = useState('idle');
   const [detailErrorMessage, setDetailErrorMessage] = useState('');
   const launcherRef = useRef(null);
+  const detailRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -152,6 +153,23 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
     window.addEventListener('mousedown', handleMouseDown);
     return () => window.removeEventListener('mousedown', handleMouseDown);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !selectedDate) {
+      return undefined;
+    }
+
+    const handleMouseDown = (event) => {
+      if (detailRef.current?.contains(event.target)) {
+        return;
+      }
+      setSelectedDate('');
+      setDetailErrorMessage('');
+    };
+
+    window.addEventListener('mousedown', handleMouseDown);
+    return () => window.removeEventListener('mousedown', handleMouseDown);
+  }, [isOpen, selectedDate]);
 
   const monthTitle = useMemo(() => `${viewMonth.year}年${viewMonth.month}月`, [viewMonth]);
   const selectedDay = useMemo(() => (
@@ -227,6 +245,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                   key={day.date}
                   className={`review-day-cell ${day.inCurrentMonth ? '' : 'muted'} ${day.isToday ? 'today' : ''}`}
                   aria-label={`${day.date} 复盘`}
+                  onMouseDown={(event) => event.stopPropagation()}
                   onClick={() => {
                     setSelectedDate((date) => (date === day.date ? '' : day.date));
                     setDetailErrorMessage('');
@@ -251,7 +270,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
           ) : null}
 
           {selectedDay ? (
-            <section className="review-detail-panel" role="dialog" aria-label={`${selectedDay.date} 当日复盘详情`}>
+            <section className="review-detail-panel" role="dialog" aria-label={`${selectedDay.date} 当日复盘详情`} ref={detailRef}>
               <div className="review-detail-header">
                 <div>
                   <p className="review-kicker">Day Detail</p>
