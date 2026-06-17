@@ -75,6 +75,7 @@ beforeEach(() => {
     { id: 1, title: '整理今天最重要的三件事', completed: false, todoDate: '2026-06-15', priority: 'high', sourceType: 'todo', focusSeconds: 0 },
     { id: 2, title: '完成一轮 25 分钟专注', completed: true, todoDate: '2026-06-15', priority: 'medium', sourceType: 'todo', focusSeconds: 0 },
   ];
+  let focusSessionSeconds = 0;
 
   vi.spyOn(window, 'fetch').mockImplementation(async (input, options = {}) => {
     const url = String(input);
@@ -102,10 +103,9 @@ beforeEach(() => {
     }
 
     if (url.startsWith('/api/focus-sessions/summary') && method === 'GET') {
-      const durationSeconds = todos.reduce((total, todo) => total + (todo.focusSeconds ?? 0), 0);
       return {
         ok: true,
-        json: async () => ({ summary: { sessionDate: '2026-06-15', durationSeconds } }),
+        json: async () => ({ summary: { sessionDate: '2026-06-15', durationSeconds: focusSessionSeconds } }),
       };
     }
 
@@ -134,6 +134,24 @@ beforeEach(() => {
               { label: '13日', startDate: '2026-06-13', endDate: '2026-06-13', durationSeconds: 0, sessionCount: 0, taskTotal: 0, taskCompleted: 0, taskCompletionRate: 0 },
               { label: '14日', startDate: '2026-06-14', endDate: '2026-06-14', durationSeconds: 0, sessionCount: 0, taskTotal: 0, taskCompleted: 0, taskCompletionRate: 0 },
               { label: '今天', startDate: '2026-06-15', endDate: '2026-06-15', durationSeconds: 2100, sessionCount: 1, taskTotal: 3, taskCompleted: 2, taskCompletionRate: 67 },
+            ],
+            scenePeriods: [
+              { label: '9日', startDate: '2026-06-09', endDate: '2026-06-09', durationSeconds: 0, scenes: [] },
+              { label: '10日', startDate: '2026-06-10', endDate: '2026-06-10', durationSeconds: 600, scenes: [{ sceneId: 0, title: '默认场景', color: '#8ca39a', durationSeconds: 600, sessionCount: 1, percentage: 100 }] },
+              { label: '11日', startDate: '2026-06-11', endDate: '2026-06-11', durationSeconds: 0, scenes: [] },
+              { label: '12日', startDate: '2026-06-12', endDate: '2026-06-12', durationSeconds: 1200, scenes: [{ sceneId: 2, title: '学习', color: '#6f9fc7', durationSeconds: 1200, sessionCount: 1, percentage: 100 }] },
+              { label: '13日', startDate: '2026-06-13', endDate: '2026-06-13', durationSeconds: 0, scenes: [] },
+              { label: '14日', startDate: '2026-06-14', endDate: '2026-06-14', durationSeconds: 0, scenes: [] },
+              {
+                label: '今天',
+                startDate: '2026-06-15',
+                endDate: '2026-06-15',
+                durationSeconds: 2100,
+                scenes: [
+                  { sceneId: 1, title: '运动', color: '#e0a458', durationSeconds: 1500, sessionCount: 1, percentage: 71 },
+                  { sceneId: 0, title: '默认场景', color: '#8ca39a', durationSeconds: 600, sessionCount: 1, percentage: 29 },
+                ],
+              },
             ],
             habitWeek: [
               { date: '2026-06-15', label: '一', total: 2, checked: 1, completion: 50, completedHabits: ['运动30分钟'], pendingHabits: ['阅读'] },
@@ -303,6 +321,7 @@ beforeEach(() => {
 
     if (url === '/api/focus-sessions' && method === 'POST') {
       const body = JSON.parse(options.body);
+      focusSessionSeconds += body.durationSeconds;
       todos = todos.map((todo) => (
         todo.id === body.todoId
           ? { ...todo, focusSeconds: (todo.focusSeconds ?? 0) + body.durationSeconds }
@@ -386,6 +405,7 @@ describe('App', () => {
   });
 
   it('lets users manage task list items beside the pomodoro module', async () => {
+    vi.setSystemTime(new Date('2026-06-17T08:00:00+08:00'));
     await renderAtPath('/');
 
     const todoPanel = screen.getByRole('complementary', { name: '任务清单' });
@@ -994,6 +1014,7 @@ describe('App', () => {
     expect(screen.getByText('今日番茄')).toBeInTheDocument();
     expect(screen.getByText('总专注时长')).toBeInTheDocument();
     expect(screen.getByText('最近专注时长趋势')).toBeInTheDocument();
+    expect(screen.getByText('最近场景分布')).toBeInTheDocument();
     expect(screen.getByText('最近完成率趋势')).toBeInTheDocument();
     expect(screen.getByText('本周打卡进度')).toBeInTheDocument();
     expect(screen.getByText('最近番茄数趋势')).toBeInTheDocument();
@@ -1010,6 +1031,11 @@ describe('App', () => {
     expect(screen.getByRole('dialog', { name: '今天 专注详情' })).toBeInTheDocument();
     fireEvent.mouseDown(screen.getByRole('dialog', { name: '专注统计' }));
     expect(screen.queryByRole('dialog', { name: '今天 专注详情' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '今天 场景分布详情' }));
+    expect(screen.getByRole('dialog', { name: '今天 场景分布' })).toBeInTheDocument();
+    expect(screen.getByText(/运动: 25分钟 · 71% · 1 个番茄/)).toBeInTheDocument();
+    expect(screen.getByText(/默认场景: 10分钟 · 29% · 1 个番茄/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '今天 最近完成率趋势详情' }));
     expect(screen.getByRole('dialog', { name: '今天 完成率详情' })).toBeInTheDocument();

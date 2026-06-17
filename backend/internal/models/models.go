@@ -53,16 +53,17 @@ type FocusSummary struct {
 }
 
 type FocusStats struct {
-	StartDate string               `json:"startDate"`
-	EndDate   string               `json:"endDate"`
-	Period    string               `json:"period"`
-	Overview  FocusStatsOverview   `json:"overview"`
-	Summary   FocusStatsSummary    `json:"summary"`
-	Periods   []FocusStatsPeriod   `json:"periods"`
-	HabitWeek []FocusStatsHabitDay `json:"habitWeek"`
-	Daily     []FocusStatsDay      `json:"daily"`
-	ByTask    []FocusStatsTask     `json:"byTask"`
-	Recent    []FocusStatsEntry    `json:"recent"`
+	StartDate    string                  `json:"startDate"`
+	EndDate      string                  `json:"endDate"`
+	Period       string                  `json:"period"`
+	Overview     FocusStatsOverview      `json:"overview"`
+	Summary      FocusStatsSummary       `json:"summary"`
+	Periods      []FocusStatsPeriod      `json:"periods"`
+	ScenePeriods []FocusStatsScenePeriod `json:"scenePeriods"`
+	HabitWeek    []FocusStatsHabitDay    `json:"habitWeek"`
+	Daily        []FocusStatsDay         `json:"daily"`
+	ByTask       []FocusStatsTask        `json:"byTask"`
+	Recent       []FocusStatsEntry       `json:"recent"`
 }
 
 type FocusStatsSummary struct {
@@ -88,6 +89,23 @@ type FocusStatsPeriod struct {
 	TaskTotal          int64  `json:"taskTotal"`
 	TaskCompleted      int64  `json:"taskCompleted"`
 	TaskCompletionRate int64  `json:"taskCompletionRate"`
+}
+
+type FocusStatsScenePeriod struct {
+	Label           string                 `json:"label"`
+	StartDate       string                 `json:"startDate"`
+	EndDate         string                 `json:"endDate"`
+	DurationSeconds int64                  `json:"durationSeconds"`
+	Scenes          []FocusStatsSceneSlice `json:"scenes"`
+}
+
+type FocusStatsSceneSlice struct {
+	SceneID         int64  `json:"sceneId"`
+	Title           string `json:"title"`
+	Color           string `json:"color"`
+	DurationSeconds int64  `json:"durationSeconds"`
+	SessionCount    int64  `json:"sessionCount"`
+	Percentage      int64  `json:"percentage"`
 }
 
 type FocusStatsHabitDay struct {

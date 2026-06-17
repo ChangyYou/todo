@@ -35,6 +35,14 @@ function formatDuration(seconds = 0, compact = false) {
   return '0分钟';
 }
 
+function formatPercentage(value = 0) {
+  return `${Math.round(value)}%`;
+}
+
+function sceneColor(color) {
+  return color || '#8ca39a';
+}
+
 function StatCard({ label, value }) {
   return (
     <div className="focus-stats-overview-card">
@@ -117,6 +125,27 @@ function buildHabitDetail(day) {
   };
 }
 
+function buildSceneDetail(period) {
+  const scenes = period.scenes ?? [];
+  return {
+    key: `scene:${period.startDate}:${period.endDate}`,
+    title: `${period.label} 场景分布`,
+    rows: [
+      { label: '专注时长', value: formatDuration(period.durationSeconds ?? 0) },
+      { label: '场景数量', value: `${scenes.length} 个` },
+      { label: '统计范围', value: `${period.startDate} - ${period.endDate}` },
+    ],
+    groups: [
+      {
+        label: '分布明细',
+        items: scenes.map((scene) => (
+          `${scene.title}: ${formatDuration(scene.durationSeconds ?? 0)} · ${formatPercentage(scene.percentage ?? 0)} · ${scene.sessionCount ?? 0} 个番茄`
+        )),
+      },
+    ],
+  };
+}
+
 function DetailDialog({ detail, onClose, detailRef }) {
   if (!detail) {
     return null;
@@ -185,6 +214,83 @@ function TrendCard({ title, period, onPeriodChange, items, valueKey, maxValue, f
         </div>
       </div>
     </div>
+  );
+}
+
+function SceneDistributionCard({ period, onPeriodChange, items, onSelect }) {
+  const legend = [];
+  const seenSceneKeys = new Set();
+  items.forEach((item) => {
+    (item.scenes ?? []).forEach((scene) => {
+      const key = `${scene.sceneId}:${scene.title}`;
+      if (seenSceneKeys.has(key)) {
+        return;
+      }
+      seenSceneKeys.add(key);
+      legend.push(scene);
+    });
+  });
+
+  return (
+    <section className="focus-stats-chart-card">
+      <div className="focus-stats-chart-header">
+        <h3>最近场景分布</h3>
+        <PeriodSelect value={period} onChange={onPeriodChange} />
+      </div>
+      <div className="focus-stats-scene-chart">
+        <div className="focus-stats-chart-axis" aria-hidden="true">
+          <span>100%</span>
+          <span>50%</span>
+          <span>0%</span>
+        </div>
+        <div className="focus-stats-scene-bars">
+          {items.map((item) => {
+            const total = item.durationSeconds ?? 0;
+            const scenes = item.scenes ?? [];
+            return (
+              <div key={`${item.startDate}-${item.endDate}-scenes`} className="focus-stats-scene-bar-item">
+                <button
+                  type="button"
+                  className="focus-stats-scene-track"
+                  aria-label={`${item.label} 场景分布详情`}
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={() => onSelect(buildSceneDetail(item))}
+                >
+                  {total > 0 ? (
+                    scenes.map((scene) => (
+                      <span
+                        key={`${scene.sceneId}-${scene.title}`}
+                        className="focus-stats-scene-segment"
+                        style={{
+                          height: `${Math.max(2, scene.percentage ?? 0)}%`,
+                          '--scene-color': sceneColor(scene.color),
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <span className="focus-stats-scene-empty" />
+                  )}
+                </button>
+                <small>{item.label}</small>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="focus-stats-scene-legend" aria-label="场景图例">
+        {legend.length > 0 ? legend.slice(0, 5).map((scene) => (
+          <span key={`${scene.sceneId}-${scene.title}`}>
+            <i style={{ '--scene-color': sceneColor(scene.color) }} />
+            {scene.title}
+          </span>
+        )) : (
+          <span>
+            <i style={{ '--scene-color': '#8ca39a' }} />
+            暂无场景数据
+          </span>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -267,6 +373,7 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
   };
 
   const periods = stats?.periods ?? [];
+  const scenePeriods = stats?.scenePeriods ?? [];
   const overview = stats?.overview ?? {};
   const habitWeek = stats?.habitWeek ?? [];
   const maxFocusSeconds = Math.max(300, ...periods.map((item) => item.durationSeconds ?? 0));
@@ -320,6 +427,13 @@ export default function FocusStatsLauncher({ refreshSignal = 0 } = {}) {
                 valueKey="durationSeconds"
                 maxValue={maxFocusSeconds}
                 formatValue={(value) => `${Math.round(value / 60)}m`}
+                onSelect={handleSelectDetail}
+              />
+
+              <SceneDistributionCard
+                period={period}
+                onPeriodChange={setPeriod}
+                items={scenePeriods}
                 onSelect={handleSelectDetail}
               />
 

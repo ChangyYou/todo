@@ -116,14 +116,15 @@ func (s *Service) Stats(userID int64, startDate, endDate, period string) (models
 	}
 
 	stats := models.FocusStats{
-		StartDate: start.Format("2006-01-02"),
-		EndDate:   end.Format("2006-01-02"),
-		Period:    period,
-		Periods:   periods,
-		Daily:     buildEmptyDailyStats(start, end),
-		HabitWeek: buildEmptyHabitWeek(time.Now()),
-		ByTask:    make([]models.FocusStatsTask, 0),
-		Recent:    make([]models.FocusStatsEntry, 0),
+		StartDate:    start.Format("2006-01-02"),
+		EndDate:      end.Format("2006-01-02"),
+		Period:       period,
+		Periods:      periods,
+		ScenePeriods: buildEmptyScenePeriods(periods),
+		Daily:        buildEmptyDailyStats(start, end),
+		HabitWeek:    buildEmptyHabitWeek(time.Now()),
+		ByTask:       make([]models.FocusStatsTask, 0),
+		Recent:       make([]models.FocusStatsEntry, 0),
 	}
 
 	if err := s.db.QueryRow(
@@ -144,6 +145,9 @@ func (s *Service) Stats(userID int64, startDate, endDate, period string) (models
 		return models.FocusStats{}, err
 	}
 	if err := s.fillTaskCompletionStats(userID, stats.Periods); err != nil {
+		return models.FocusStats{}, err
+	}
+	if err := s.fillScenePeriodStats(userID, stats.ScenePeriods); err != nil {
 		return models.FocusStats{}, err
 	}
 	overview, err := s.overview(userID)
@@ -627,6 +631,66 @@ func (s *Service) fillTaskCompletionStats(userID int64, periods []models.FocusSt
 	return nil
 }
 
+func (s *Service) fillScenePeriodStats(userID int64, periods []models.FocusStatsScenePeriod) error {
+	for index := range periods {
+		rows, err := s.db.Query(
+			`SELECT COALESCE(focus_sessions.scene_id, 0) AS scene_id,
+			        CASE
+			          WHEN focus_sessions.scene_id IS NULL THEN '默认场景'
+			          WHEN focus_scenes.id IS NULL THEN '已删除场景'
+			          ELSE focus_scenes.title
+			        END AS title,
+			        CASE
+			          WHEN focus_sessions.scene_id IS NULL THEN '#8ca39a'
+			          WHEN focus_scenes.id IS NULL THEN '#9aa5a0'
+			          ELSE COALESCE(focus_scenes.color, '#4b8768')
+			        END AS color,
+			        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS duration_seconds,
+			        COUNT(*) AS session_count
+			   FROM focus_sessions
+			   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
+			  WHERE focus_sessions.user_id = ?
+			    AND focus_sessions.session_date BETWEEN ? AND ?
+			  GROUP BY scene_id, title, color
+			  ORDER BY duration_seconds DESC, session_count DESC, title ASC`,
+			userID,
+			periods[index].StartDate,
+			periods[index].EndDate,
+		)
+		if err != nil {
+			return err
+		}
+
+		scenes := make([]models.FocusStatsSceneSlice, 0)
+		var totalSeconds int64
+		for rows.Next() {
+			var scene models.FocusStatsSceneSlice
+			if err := rows.Scan(&scene.SceneID, &scene.Title, &scene.Color, &scene.DurationSeconds, &scene.SessionCount); err != nil {
+				rows.Close()
+				return err
+			}
+			totalSeconds += scene.DurationSeconds
+			scenes = append(scenes, scene)
+		}
+		if err := rows.Close(); err != nil {
+			return err
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+
+		if totalSeconds > 0 {
+			for sceneIndex := range scenes {
+				scenes[sceneIndex].Percentage = (scenes[sceneIndex].DurationSeconds*100 + totalSeconds/2) / totalSeconds
+			}
+		}
+		periods[index].DurationSeconds = totalSeconds
+		periods[index].Scenes = scenes
+	}
+
+	return nil
+}
+
 func (s *Service) habitWeek(userID int64, now time.Time) ([]models.FocusStatsHabitDay, error) {
 	result := buildEmptyHabitWeek(now)
 	for index := range result {
@@ -859,6 +923,19 @@ func buildEmptyPeriodStats(start, end time.Time, period string) []models.FocusSt
 		return periods[len(periods)-7:]
 	}
 	return periods
+}
+
+func buildEmptyScenePeriods(periods []models.FocusStatsPeriod) []models.FocusStatsScenePeriod {
+	result := make([]models.FocusStatsScenePeriod, 0, len(periods))
+	for _, period := range periods {
+		result = append(result, models.FocusStatsScenePeriod{
+			Label:     period.Label,
+			StartDate: period.StartDate,
+			EndDate:   period.EndDate,
+			Scenes:    make([]models.FocusStatsSceneSlice, 0),
+		})
+	}
+	return result
 }
 
 func buildEmptyHabitWeek(now time.Time) []models.FocusStatsHabitDay {

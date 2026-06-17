@@ -169,6 +169,75 @@ func TestReviewCalendarIncludesSceneFocusSessions(t *testing.T) {
 	}
 }
 
+func TestStatsIncludesSceneDistribution(t *testing.T) {
+	database, err := db.Open(filepath.Join(t.TempDir(), "todo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+
+	result, err := database.Exec(`INSERT INTO users (username, password_hash) VALUES (?, ?)`, "tester", "hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	userID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err = database.Exec(`INSERT INTO focus_scenes (user_id, title, color) VALUES (?, ?, ?)`, userID, "运动", "#6f9fc7")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sceneID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := database.Exec(
+		`INSERT INTO focus_sessions (user_id, todo_id, scene_id, duration_seconds, session_date) VALUES (?, ?, ?, ?, ?)`,
+		userID,
+		0,
+		sceneID,
+		600,
+		"2026-06-17",
+	); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(
+		`INSERT INTO focus_sessions (user_id, todo_id, scene_id, duration_seconds, session_date) VALUES (?, ?, ?, ?, ?)`,
+		userID,
+		0,
+		nil,
+		300,
+		"2026-06-17",
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := NewService(database).Stats(userID, "2026-06-11", "2026-06-17", "day")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(stats.ScenePeriods) != 7 {
+		t.Fatalf("expected 7 scene periods, got %d", len(stats.ScenePeriods))
+	}
+	today := stats.ScenePeriods[len(stats.ScenePeriods)-1]
+	if today.DurationSeconds != 900 {
+		t.Fatalf("expected scene period duration 900, got %d", today.DurationSeconds)
+	}
+	if len(today.Scenes) != 2 {
+		t.Fatalf("expected two scene slices, got %+v", today.Scenes)
+	}
+	if today.Scenes[0].Title != "运动" || today.Scenes[0].Color != "#6f9fc7" || today.Scenes[0].DurationSeconds != 600 || today.Scenes[0].Percentage != 67 {
+		t.Fatalf("unexpected first scene slice: %+v", today.Scenes[0])
+	}
+	if today.Scenes[1].Title != "默认场景" || today.Scenes[1].SceneID != 0 || today.Scenes[1].DurationSeconds != 300 || today.Scenes[1].Percentage != 33 {
+		t.Fatalf("unexpected default scene slice: %+v", today.Scenes[1])
+	}
+}
+
 func TestReviewCalendarDoesNotDuplicateCompletedFocusedTodoEntry(t *testing.T) {
 	database, err := db.Open(filepath.Join(t.TempDir(), "todo.db"))
 	if err != nil {
