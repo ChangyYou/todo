@@ -7,6 +7,43 @@ import (
 	"todo/backend/internal/db"
 )
 
+func TestCreateAllowsUnboundFocusSession(t *testing.T) {
+	database, err := db.Open(filepath.Join(t.TempDir(), "todo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+
+	result, err := database.Exec(`INSERT INTO users (username, password_hash) VALUES (?, ?)`, "tester", "hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	userID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	service := NewService(database)
+	if err := service.Create(userID, 0, 0, 6, "2026-06-17"); err != nil {
+		t.Fatal(err)
+	}
+
+	summary, err := service.SummaryByDate(userID, "2026-06-17")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.DurationSeconds != 6 {
+		t.Fatalf("unexpected summary: %+v", summary)
+	}
+	var sessionCount int
+	if err := database.QueryRow(`SELECT COUNT(*) FROM focus_sessions WHERE user_id = ?`, userID).Scan(&sessionCount); err != nil {
+		t.Fatal(err)
+	}
+	if sessionCount != 1 {
+		t.Fatalf("expected one focus session, got %d", sessionCount)
+	}
+}
+
 func TestReviewCalendarIncludesSceneFocusSessions(t *testing.T) {
 	database, err := db.Open(filepath.Join(t.TempDir(), "todo.db"))
 	if err != nil {

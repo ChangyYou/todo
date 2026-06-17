@@ -197,11 +197,11 @@ const PomodoroPage = forwardRef(function PomodoroPage({
   });
 
   function getCurrentFocusSession() {
-    if ((!selectedFocusTodoId && !selectedSceneId) || timerState.phase !== TIMER_PHASES.FOCUS) {
+    if (timerState.phase !== TIMER_PHASES.FOCUS) {
       return null;
     }
 
-    const startedAtRemaining = focusBindingStartRemainingRef.current ?? timerState.remainingSeconds;
+    const startedAtRemaining = focusBindingStartRemainingRef.current ?? timerState.totalSeconds;
     const durationSeconds = Math.max(0, startedAtRemaining - timerState.remainingSeconds);
     if (durationSeconds <= 0) {
       return null;
@@ -659,7 +659,11 @@ const PomodoroPage = forwardRef(function PomodoroPage({
   );
 
   const handleTimerAction = async (action) => {
-    if (action === 'pause' && timerState.phase === TIMER_PHASES.FOCUS && timerState.isRunning) {
+    const shouldPersistFocus =
+      timerState.phase === TIMER_PHASES.FOCUS &&
+      timerState.isRunning &&
+      (action === 'pause' || action === 'skipFocusCompleted');
+    if (shouldPersistFocus) {
       try {
         await persistCurrentFocusDuration({ notifyTodoRefresh: false });
       } catch (error) {
@@ -669,8 +673,8 @@ const PomodoroPage = forwardRef(function PomodoroPage({
     setTimerState((state) => getNextTimerState(state, action, settings));
   };
 
-  const handleFocusSkipChoice = (action) => {
-    handleTimerAction(action);
+  const handleFocusSkipChoice = async (action) => {
+    await handleTimerAction(action);
     setIsSkipChoiceOpen(false);
   };
 

@@ -30,7 +30,7 @@ func (s *Service) Create(userID, todoID, sceneID int64, durationSeconds int, ses
 	if _, err := time.Parse("2006-01-02", sessionDate); err != nil {
 		return ErrInvalidFocusSession
 	}
-	if userID <= 0 || durationSeconds <= 0 || (todoID <= 0 && sceneID <= 0) {
+	if userID <= 0 || durationSeconds <= 0 {
 		return ErrInvalidFocusSession
 	}
 
@@ -711,7 +711,7 @@ func (s *Service) listTaskStats(userID int64, startDate, endDate string) ([]mode
 		        COUNT(*) AS session_count
 		   FROM focus_sessions
 		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id
-		  WHERE focus_sessions.user_id = ? AND focus_sessions.session_date BETWEEN ? AND ?
+		  WHERE focus_sessions.user_id = ? AND focus_sessions.session_date BETWEEN ? AND ? AND focus_sessions.todo_id > 0
 		  GROUP BY focus_sessions.todo_id, title
 		  ORDER BY duration_seconds DESC, session_count DESC, focus_sessions.todo_id DESC
 		  LIMIT 8`,
@@ -739,12 +739,17 @@ func (s *Service) listTaskStats(userID int64, startDate, endDate string) ([]mode
 func (s *Service) listRecentStats(userID int64, startDate, endDate string) ([]models.FocusStatsEntry, error) {
 	rows, err := s.db.Query(
 		`SELECT focus_sessions.todo_id,
-		        COALESCE(todos.title, '已删除任务') AS title,
+		        CASE
+		          WHEN focus_sessions.todo_id > 0 THEN COALESCE(todos.title, '已删除任务')
+		          WHEN focus_sessions.scene_id IS NOT NULL THEN COALESCE(focus_scenes.title, '已删除场景')
+		          ELSE '自由专注'
+		        END AS title,
 		        focus_sessions.duration_seconds,
 		        focus_sessions.session_date,
 		        focus_sessions.created_at
 		   FROM focus_sessions
 		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id
+		   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
 		  WHERE focus_sessions.user_id = ? AND focus_sessions.session_date BETWEEN ? AND ?
 		  ORDER BY focus_sessions.created_at DESC, focus_sessions.id DESC
 		  LIMIT 6`,

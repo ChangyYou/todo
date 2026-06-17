@@ -836,6 +836,37 @@ describe('App', () => {
     expect(screen.getByText('1 / 4')).toBeInTheDocument();
   });
 
+  it('records focus time and a tomato when skipping focus as completed', async () => {
+    vi.useFakeTimers();
+    await renderAtPath('/pomodoro');
+
+    fireEvent.click(screen.getByRole('button', { name: '打开设置' }));
+    fireEvent.change(screen.getByLabelText('专注时长（分钟）'), {
+      target: { value: '1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '开始' }));
+
+    act(() => {
+      vi.advanceTimersByTime(6_000);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '跳过' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '算完成，进入休息' }));
+    });
+
+    const focusCall = window.fetch.mock.calls.find(([url]) => url === '/api/focus-sessions');
+    expect(focusCall).toBeTruthy();
+    expect(JSON.parse(focusCall[1].body)).toMatchObject({
+      todoId: 0,
+      sceneId: 0,
+      durationSeconds: 6,
+    });
+    expect(screen.getByText('今日专注 0:06')).toBeInTheDocument();
+    expect(screen.getAllByText('短休息').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('2 / 4')).toBeInTheDocument();
+  });
+
   it('uses focus mode as the only pomodoro view', async () => {
     await renderAtPath('/pomodoro');
 
