@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { deleteReviewTodo, getReviewCalendar } from '../../lib/api';
+import {
+  deleteFocusSession,
+  deleteReviewTodo,
+  getReviewCalendar,
+  listScenes,
+  updateFocusSession,
+} from '../../lib/api';
 
 const WEEK_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 const WEEK_COMPACT_ROW_HEIGHT = 30;
@@ -73,9 +79,25 @@ function shiftDate(dateValue, offset) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function minutesToClock(minutes) {
+  const safeMinutes = Math.max(0, Math.min((24 * 60) - 1, minutes));
+  const hour = Math.floor(safeMinutes / 60);
+  const minute = safeMinutes % 60;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
 function parseTimeToMinutes(value = '') {
   const [hour = 0, minute = 0] = value.split(':').map(Number);
   return Math.max(0, Math.min(WEEK_DAY_MINUTES, (hour * 60) + minute));
+}
+
+function getEditableEndTime(event) {
+  const startTime = event.startTime || '09:00';
+  const endTime = event.endTime || startTime;
+  if (parseTimeToMinutes(endTime) <= parseTimeToMinutes(startTime)) {
+    return minutesToClock(parseTimeToMinutes(startTime) + 1);
+  }
+  return endTime;
 }
 
 function getWeekTimelineOffset(minutes) {
@@ -223,10 +245,23 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
   const [selectedDate, setSelectedDate] = useState('');
   const [status, setStatus] = useState('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [reviewReloadSignal, setReviewReloadSignal] = useState(0);
   const [deleteStatus, setDeleteStatus] = useState('idle');
   const [detailErrorMessage, setDetailErrorMessage] = useState('');
+  const [selectedWeekEvent, setSelectedWeekEvent] = useState(null);
+  const [weekEventForm, setWeekEventForm] = useState({
+    title: '',
+    sessionDate: '',
+    startTime: '',
+    endTime: '',
+    sceneId: '0',
+  });
+  const [scenes, setScenes] = useState([]);
+  const [weekEventStatus, setWeekEventStatus] = useState('idle');
+  const [weekEventErrorMessage, setWeekEventErrorMessage] = useState('');
   const launcherRef = useRef(null);
   const detailRef = useRef(null);
+  const weekEventDetailRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -261,7 +296,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
     return () => {
       isDisposed = true;
     };
-  }, [isOpen, viewMonth, viewDate, viewMode, refreshSignal]);
+  }, [isOpen, viewMonth, viewDate, viewMode, refreshSignal, reviewReloadSignal]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -280,7 +315,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !selectedDate) {
+    if (!isOpen || (!selectedDate && !selectedWeekEvent)) {
       return undefined;
     }
 
@@ -288,19 +323,122 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
       if (detailRef.current?.contains(event.target)) {
         return;
       }
+      if (weekEventDetailRef.current?.contains(event.target)) {
+        return;
+      }
       setSelectedDate('');
+      setSelectedWeekEvent(null);
       setDetailErrorMessage('');
+      setWeekEventErrorMessage('');
     };
 
     window.addEventListener('mousedown', handleMouseDown);
     return () => window.removeEventListener('mousedown', handleMouseDown);
-  }, [isOpen, selectedDate]);
+  }, [isOpen, selectedDate, selectedWeekEvent]);
+
+  useEffect(() => {
+    if (!isOpen || !selectedWeekEvent) {
+      return undefined;
+    }
+
+    let isDisposed = false;
+    listScenes()
+      .then((nextScenes) => {
+        if (!isDisposed) {
+          setScenes(nextScenes);
+        }
+      })
+      .catch(() => {
+        if (!isDisposed) {
+          setScenes([]);
+        }
+      });
+
+    return () => {
+      isDisposed = true;
+    };
+  }, [isOpen, selectedWeekEvent]);
 
   const monthTitle = useMemo(() => `${viewMonth.year}年${viewMonth.month}月`, [viewMonth]);
   const weekTitle = useMemo(() => (week ? `${week.startDate} - ${week.endDate}` : '本周'), [week]);
   const selectedDay = useMemo(() => (
     calendar?.days.find((day) => day.date === selectedDate) ?? null
   ), [calendar, selectedDate]);
+
+  const refreshReview = () => setReviewReloadSignal((value) => value + 1);
+
+  const handleOpenWeekEvent = (event, day) => {
+    if (event.type !== 'focus') {
+      return;
+    }
+    if (selectedWeekEvent?.id === event.id) {
+      setSelectedWeekEvent(null);
+      setWeekEventErrorMessage('');
+      return;
+    }
+
+    const sessionDate = event.sessionDate || day.date;
+    const startTime = event.startTime || '09:00';
+    const endTime = getEditableEndTime(event);
+    setSelectedDate('');
+    setDetailErrorMessage('');
+    setSelectedWeekEvent({ ...event, sessionDate });
+    setWeekEventForm({
+      title: event.title || '番茄专注',
+      sessionDate,
+      startTime,
+      endTime,
+      sceneId: event.sceneId ? String(event.sceneId) : '0',
+    });
+    setWeekEventErrorMessage('');
+  };
+
+  const handleSaveWeekEvent = async (event) => {
+    event.preventDefault();
+    if (!selectedWeekEvent) {
+      return;
+    }
+
+    setWeekEventStatus('saving');
+    setWeekEventErrorMessage('');
+    try {
+      await updateFocusSession(selectedWeekEvent.id, {
+        title: weekEventForm.title.trim(),
+        sceneId: Number(weekEventForm.sceneId),
+        sessionDate: weekEventForm.sessionDate,
+        startTime: weekEventForm.startTime,
+        endTime: weekEventForm.endTime,
+      });
+      setWeekEventStatus('idle');
+      setSelectedWeekEvent(null);
+      refreshReview();
+    } catch (error) {
+      setWeekEventStatus('error');
+      setWeekEventErrorMessage(error instanceof Error ? error.message : '保存专注记录失败');
+    }
+  };
+
+  const handleDeleteWeekEvent = async () => {
+    if (!selectedWeekEvent) {
+      return;
+    }
+    const confirmed = window.confirm(`永久删除「${selectedWeekEvent.title}」这条专注记录？这个操作不能撤销。`);
+    if (!confirmed) {
+      return;
+    }
+
+    setWeekEventStatus('deleting');
+    setWeekEventErrorMessage('');
+    try {
+      await deleteFocusSession(selectedWeekEvent.id);
+      setWeekEventStatus('idle');
+      setSelectedWeekEvent(null);
+      refreshReview();
+    } catch (error) {
+      setWeekEventStatus('error');
+      setWeekEventErrorMessage(error instanceof Error ? error.message : '删除专注记录失败');
+    }
+  };
 
   const handleDeleteTask = async (task) => {
     const confirmed = window.confirm(`永久删除「${task.title}」以及它的全部专注记录？这个操作不能撤销。`);
@@ -424,15 +562,19 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                         const eventLayouts = getWeekEventLayouts(day.events);
                         return (
                           day.events.map((event, index) => (
-                            <article
+                            <button
+                              type="button"
                               key={`${event.type}-${event.id}-${event.startTime}`}
                               className={`review-week-event ${event.type}`}
+                              aria-label={event.type === 'focus' ? `查看专注记录 ${event.title}` : `${event.title}`}
                               style={getWeekEventStyle(event, eventLayouts.get(index))}
+                              onMouseDown={(mouseEvent) => mouseEvent.stopPropagation()}
+                              onClick={() => handleOpenWeekEvent(event, day)}
                             >
                               <strong>{event.title}</strong>
                               <span>{event.startTime}-{event.endTime}</span>
                               {event.meta ? <small>{event.meta}</small> : null}
-                            </article>
+                            </button>
                           ))
                         );
                       })()}
@@ -441,6 +583,77 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                 ))}
               </div>
             </div>
+          ) : null}
+
+          {selectedWeekEvent ? (
+            <section className="review-detail-panel review-focus-editor-panel" role="dialog" aria-label={`${selectedWeekEvent.title} 专注记录详情`} ref={weekEventDetailRef}>
+              <div className="review-detail-header">
+                <div>
+                  <p className="review-kicker">Focus Record</p>
+                  <h3>专注记录详情</h3>
+                </div>
+                <button type="button" className="review-today-button" onClick={() => setSelectedWeekEvent(null)}>
+                  关闭
+                </button>
+              </div>
+              {weekEventErrorMessage ? <p className="review-error" role="alert">{weekEventErrorMessage}</p> : null}
+              <form className="review-focus-editor-form" onSubmit={handleSaveWeekEvent}>
+                <label>
+                  <span>记录名称</span>
+                  <input
+                    value={weekEventForm.title}
+                    placeholder="例如 番茄专注"
+                    onChange={(event) => setWeekEventForm((form) => ({ ...form, title: event.target.value }))}
+                  />
+                </label>
+                <div className="review-focus-editor-grid">
+                  <label>
+                    <span>日期</span>
+                    <input
+                      type="date"
+                      value={weekEventForm.sessionDate}
+                      onChange={(event) => setWeekEventForm((form) => ({ ...form, sessionDate: event.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    <span>开始</span>
+                    <input
+                      type="time"
+                      value={weekEventForm.startTime}
+                      onChange={(event) => setWeekEventForm((form) => ({ ...form, startTime: event.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    <span>结束</span>
+                    <input
+                      type="time"
+                      value={weekEventForm.endTime}
+                      onChange={(event) => setWeekEventForm((form) => ({ ...form, endTime: event.target.value }))}
+                    />
+                  </label>
+                </div>
+                <label>
+                  <span>场景</span>
+                  <select
+                    value={weekEventForm.sceneId}
+                    onChange={(event) => setWeekEventForm((form) => ({ ...form, sceneId: event.target.value }))}
+                  >
+                    <option value="0">默认场景</option>
+                    {scenes.map((scene) => (
+                      <option key={scene.id} value={scene.id}>{scene.title}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="review-focus-editor-actions">
+                  <button type="submit" className="review-save-button" disabled={weekEventStatus === 'saving' || weekEventStatus === 'deleting'}>
+                    {weekEventStatus === 'saving' ? '保存中...' : '保存'}
+                  </button>
+                  <button type="button" className="review-danger-button" disabled={weekEventStatus === 'saving' || weekEventStatus === 'deleting'} onClick={handleDeleteWeekEvent}>
+                    {weekEventStatus === 'deleting' ? '删除中...' : '永久删除'}
+                  </button>
+                </div>
+              </form>
+            </section>
           ) : null}
 
           {selectedDay ? (

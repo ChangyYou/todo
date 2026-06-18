@@ -21,6 +21,14 @@ type Service struct {
 	db *sql.DB
 }
 
+type FocusSessionPatch struct {
+	Title       *string
+	SceneID     *int64
+	SessionDate string
+	StartTime   string
+	EndTime     string
+}
+
 func NewService(database *sql.DB) *Service {
 	return &Service{db: database}
 }
@@ -77,6 +85,100 @@ func (s *Service) Create(userID, todoID, sceneID int64, durationSeconds int, ses
 		time.Now().Format(time.RFC3339),
 	)
 	return err
+}
+
+func (s *Service) UpdateSession(userID, sessionID int64, patch FocusSessionPatch) error {
+	if userID <= 0 || sessionID <= 0 {
+		return ErrInvalidFocusSession
+	}
+
+	sessionDate := strings.TrimSpace(patch.SessionDate)
+	startTime := strings.TrimSpace(patch.StartTime)
+	endTime := strings.TrimSpace(patch.EndTime)
+	if sessionDate == "" || startTime == "" || endTime == "" {
+		return ErrInvalidFocusSession
+	}
+
+	startAt, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" "+startTime, time.Local)
+	if err != nil {
+		return ErrInvalidFocusSession
+	}
+	endAt, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" "+endTime, time.Local)
+	if err != nil {
+		return ErrInvalidFocusSession
+	}
+	if !endAt.After(startAt) {
+		endAt = startAt.Add(time.Minute)
+	}
+
+	var sceneID int64
+	if patch.SceneID != nil {
+		sceneID = *patch.SceneID
+	}
+	if sceneID > 0 {
+		var exists int
+		err := s.db.QueryRow(
+			"SELECT 1 FROM focus_scenes WHERE id = ? AND user_id = ? AND active = 1",
+			sceneID,
+			userID,
+		).Scan(&exists)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrInvalidFocusSession
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	var title string
+	if patch.Title != nil {
+		title = strings.TrimSpace(*patch.Title)
+	}
+	result, err := s.db.Exec(
+		`UPDATE focus_sessions
+		    SET title = ?,
+		        scene_id = ?,
+		        duration_seconds = ?,
+		        session_date = ?,
+		        created_at = ?
+		  WHERE id = ? AND user_id = ?`,
+		nullableString(title),
+		nullableSceneID(sceneID),
+		int(endAt.Sub(startAt).Seconds()),
+		sessionDate,
+		endAt.Format(time.RFC3339),
+		sessionID,
+		userID,
+	)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (s *Service) DeleteSession(userID, sessionID int64) error {
+	if userID <= 0 || sessionID <= 0 {
+		return ErrInvalidFocusSession
+	}
+	result, err := s.db.Exec(`DELETE FROM focus_sessions WHERE id = ? AND user_id = ?`, sessionID, userID)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (s *Service) SummaryByDate(userID int64, sessionDate string) (models.FocusSummary, error) {
@@ -319,6 +421,7 @@ func (s *Service) fillReviewWeekFocus(userID int64, startDate, endDate string, d
 		        focus_sessions.todo_id,
 		        COALESCE(focus_sessions.scene_id, 0) AS scene_id,
 		        CASE
+		          WHEN TRIM(COALESCE(focus_sessions.title, '')) != '' THEN focus_sessions.title
 		          WHEN focus_sessions.todo_id > 0 THEN COALESCE(todos.title, '已删除任务')
 		          WHEN focus_sessions.scene_id IS NOT NULL THEN COALESCE(focus_scenes.title, '已删除场景')
 		          ELSE '番茄专注'
@@ -356,6 +459,8 @@ func (s *Service) fillReviewWeekFocus(userID int64, startDate, endDate string, d
 		}
 		event.Type = "focus"
 		event.Meta = formatReviewFocusMeta(durationSeconds, 1)
+		event.SessionDate = date
+		event.DurationSeconds = durationSeconds
 		event.StartTime, event.EndTime = reviewFocusTimeRange(date, createdAt, durationSeconds)
 		days[index].Events = append(days[index].Events, event)
 	}
@@ -420,7 +525,7 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 		`SELECT focus_sessions.session_date,
 		        focus_sessions.todo_id,
 		        COALESCE(focus_sessions.scene_id, 0) AS scene_id,
-		        COALESCE(todos.title, focus_scenes.title, '') AS title,
+		        COALESCE(NULLIF(TRIM(focus_sessions.title), ''), todos.title, focus_scenes.title, '') AS title,
 		        CASE
 		          WHEN focus_sessions.todo_id > 0 THEN 'focus'
 		          WHEN focus_sessions.scene_id IS NOT NULL THEN 'scene'
@@ -437,7 +542,7 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 		  GROUP BY focus_sessions.session_date,
 		           focus_sessions.todo_id,
 		           scene_id,
-		           COALESCE(todos.title, focus_scenes.title, ''),
+		           COALESCE(NULLIF(TRIM(focus_sessions.title), ''), todos.title, focus_scenes.title, ''),
 		           scene_title,
 		           scene_color,
 		           entry_type
@@ -626,7 +731,10 @@ func (s *Service) fillReviewSceneStats(userID int64, startDate, endDate string, 
 		    AND focus_sessions.scene_id IS NOT NULL
 		    AND focus_sessions.todo_id <= 0
 		    AND focus_sessions.session_date BETWEEN ? AND ?
-		  GROUP BY focus_sessions.scene_id, focus_sessions.session_date, title, scene_color
+		  GROUP BY focus_sessions.scene_id,
+		           focus_sessions.session_date,
+		           COALESCE(focus_scenes.title, '已删除场景'),
+		           COALESCE(focus_scenes.color, '#4b8768')
 		  ORDER BY focus_sessions.session_date ASC, focus_seconds DESC`,
 		userID,
 		startDate,
@@ -791,8 +899,8 @@ func (s *Service) fillScenePeriodStats(userID int64, periods []models.FocusStats
 			   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
 			  WHERE focus_sessions.user_id = ?
 			    AND focus_sessions.session_date BETWEEN ? AND ?
-			  GROUP BY scene_id, title, color
-			  ORDER BY duration_seconds DESC, session_count DESC, title ASC`,
+			  GROUP BY 1, 2, 3
+			  ORDER BY duration_seconds DESC, session_count DESC, 2 ASC`,
 			userID,
 			periods[index].StartDate,
 			periods[index].EndDate,
@@ -919,7 +1027,7 @@ func (s *Service) listTaskStats(userID int64, startDate, endDate string) ([]mode
 		   FROM focus_sessions
 		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id
 		  WHERE focus_sessions.user_id = ? AND focus_sessions.session_date BETWEEN ? AND ? AND focus_sessions.todo_id > 0
-		  GROUP BY focus_sessions.todo_id, title
+		  GROUP BY focus_sessions.todo_id, COALESCE(todos.title, '已删除任务')
 		  ORDER BY duration_seconds DESC, session_count DESC, focus_sessions.todo_id DESC
 		  LIMIT 8`,
 		userID,
@@ -947,6 +1055,7 @@ func (s *Service) listRecentStats(userID int64, startDate, endDate string) ([]mo
 	rows, err := s.db.Query(
 		`SELECT focus_sessions.todo_id,
 		        CASE
+		          WHEN TRIM(COALESCE(focus_sessions.title, '')) != '' THEN focus_sessions.title
 		          WHEN focus_sessions.todo_id > 0 THEN COALESCE(todos.title, '已删除任务')
 		          WHEN focus_sessions.scene_id IS NOT NULL THEN COALESCE(focus_scenes.title, '已删除场景')
 		          ELSE '自由专注'
@@ -1167,6 +1276,14 @@ func nullableSceneID(sceneID int64) interface{} {
 		return nil
 	}
 	return sceneID
+}
+
+func nullableString(value string) interface{} {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return value
 }
 
 func formatReviewFocusMeta(durationSeconds int64, sessionCount int64) string {

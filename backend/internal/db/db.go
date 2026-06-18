@@ -85,6 +85,7 @@ func migrate(database *sql.DB) error {
 			user_id INTEGER NOT NULL,
 			todo_id INTEGER NOT NULL,
 			scene_id INTEGER,
+			title TEXT,
 			duration_seconds INTEGER NOT NULL,
 			session_date TEXT NOT NULL,
 			created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -156,6 +157,9 @@ func migrate(database *sql.DB) error {
 		return err
 	}
 	if err := ensureColumn(database, "focus_sessions", "scene_id", `ALTER TABLE focus_sessions ADD COLUMN scene_id INTEGER`); err != nil {
+		return err
+	}
+	if err := ensureColumn(database, "focus_sessions", "title", `ALTER TABLE focus_sessions ADD COLUMN title TEXT`); err != nil {
 		return err
 	}
 	if err := ensureColumn(database, "focus_scenes", "color", `ALTER TABLE focus_scenes ADD COLUMN color TEXT NOT NULL DEFAULT '#4b8768'`); err != nil {

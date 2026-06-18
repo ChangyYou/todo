@@ -24,6 +24,14 @@ type createFocusSessionRequest struct {
 	SessionDate     string `json:"sessionDate"`
 }
 
+type updateFocusSessionRequest struct {
+	Title       *string `json:"title"`
+	SceneID     *int64  `json:"sceneId"`
+	SessionDate string  `json:"sessionDate"`
+	StartTime   string  `json:"startTime"`
+	EndTime     string  `json:"endTime"`
+}
+
 func NewFocusHandler(focusService *focus.Service) *FocusHandler {
 	return &FocusHandler{focus: focusService}
 }
@@ -168,6 +176,80 @@ func (h *FocusHandler) Create(ctx context.Context, c *app.RequestContext) {
 	}
 
 	writeJSON(ctx, c, consts.StatusCreated, map[string]string{"status": "ok"})
+}
+
+func (h *FocusHandler) UpdateSession(ctx context.Context, c *app.RequestContext) {
+	user, ok := CurrentUser(c)
+	if !ok {
+		writeJSON(ctx, c, consts.StatusUnauthorized, map[string]string{"error": "请先登录"})
+		return
+	}
+
+	sessionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || sessionID <= 0 {
+		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "专注记录 ID 不正确"})
+		return
+	}
+
+	var request updateFocusSessionRequest
+	if err := c.BindAndValidate(&request); err != nil {
+		if jsonErr := json.Unmarshal(c.Request.Body(), &request); jsonErr != nil {
+			writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "请求格式不正确"})
+			return
+		}
+	}
+
+	err = h.focus.UpdateSession(user.ID, sessionID, focus.FocusSessionPatch{
+		Title:       request.Title,
+		SceneID:     request.SceneID,
+		SessionDate: request.SessionDate,
+		StartTime:   request.StartTime,
+		EndTime:     request.EndTime,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		writeJSON(ctx, c, consts.StatusNotFound, map[string]string{"error": "专注记录不存在"})
+		return
+	}
+	if errors.Is(err, focus.ErrInvalidFocusSession) {
+		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "专注记录不正确"})
+		return
+	}
+	if err != nil {
+		writeJSON(ctx, c, consts.StatusInternalServerError, map[string]string{"error": "专注记录暂时不可用"})
+		return
+	}
+
+	writeJSON(ctx, c, consts.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *FocusHandler) DeleteSession(ctx context.Context, c *app.RequestContext) {
+	user, ok := CurrentUser(c)
+	if !ok {
+		writeJSON(ctx, c, consts.StatusUnauthorized, map[string]string{"error": "请先登录"})
+		return
+	}
+
+	sessionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || sessionID <= 0 {
+		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "专注记录 ID 不正确"})
+		return
+	}
+
+	err = h.focus.DeleteSession(user.ID, sessionID)
+	if errors.Is(err, sql.ErrNoRows) {
+		writeJSON(ctx, c, consts.StatusNotFound, map[string]string{"error": "专注记录不存在"})
+		return
+	}
+	if errors.Is(err, focus.ErrInvalidFocusSession) {
+		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "专注记录 ID 不正确"})
+		return
+	}
+	if err != nil {
+		writeJSON(ctx, c, consts.StatusInternalServerError, map[string]string{"error": "删除专注记录失败"})
+		return
+	}
+
+	writeJSON(ctx, c, consts.StatusOK, map[string]string{"status": "ok"})
 }
 
 func parseOptionalInt(value string) (int, error) {

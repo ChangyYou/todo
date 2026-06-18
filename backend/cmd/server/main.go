@@ -71,6 +71,8 @@ func main() {
 	api.DELETE("/review-todos/:id", middleware.RequireUser(authService), focusHandler.DeleteReviewTodo)
 	api.GET("/focus-sessions/summary", middleware.RequireUser(authService), focusHandler.Summary)
 	api.POST("/focus-sessions", middleware.RequireUser(authService), focusHandler.Create)
+	api.PATCH("/focus-sessions/:id", middleware.RequireUser(authService), focusHandler.UpdateSession)
+	api.DELETE("/focus-sessions/:id", middleware.RequireUser(authService), focusHandler.DeleteSession)
 
 	settingsGroup := api.Group("/settings", middleware.RequireUser(authService))
 	settingsGroup.GET("/pomodoro", settingsHandler.GetPomodoro)

@@ -2904,6 +2904,7 @@ select {
   left: 8px;
   right: 8px;
   padding: 6px 8px;
+  border: 0;
   border-radius: 8px;
   display: grid;
   align-content: start;
@@ -2913,6 +2914,21 @@ select {
   border-left: 4px solid var(--review-scene-color, #4b8768);
   color: #1f3c33;
   box-shadow: 0 8px 18px rgba(78, 101, 83, 0.08);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  appearance: none;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+.review-week-event:hover,
+.review-week-event:focus-visible {
+  filter: saturate(1.08);
+  box-shadow: 0 12px 24px rgba(78, 101, 83, 0.13);
+}
+
+.review-week-event:active {
+  transform: translateY(1px) scale(0.99);
 }
 
 .review-week-event.todo {
@@ -2936,6 +2952,81 @@ select {
 .review-week-event small {
   color: rgba(43, 70, 61, 0.58);
   font-size: 0.68rem;
+}
+
+.review-focus-editor-panel {
+  width: min(520px, calc(100vw - 48px));
+}
+
+.review-focus-editor-form {
+  display: grid;
+  gap: 14px;
+}
+
+.review-focus-editor-form label {
+  display: grid;
+  gap: 7px;
+  color: rgba(43, 70, 61, 0.68);
+  font-size: 0.78rem;
+}
+
+.review-focus-editor-form input,
+.review-focus-editor-form select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(43, 70, 61, 0.1);
+  border-radius: 16px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.62);
+  color: #1f3c33;
+  font: inherit;
+  outline: none;
+}
+
+.review-focus-editor-form input:focus,
+.review-focus-editor-form select:focus {
+  border-color: rgba(75, 135, 104, 0.5);
+  box-shadow: 0 0 0 4px rgba(75, 135, 104, 0.12);
+}
+
+.review-focus-editor-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 10px;
+}
+
+.review-focus-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.review-save-button,
+.review-danger-button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 18px;
+  color: #f7faf2;
+  font: inherit;
+  cursor: pointer;
+}
+
+.review-save-button {
+  background: linear-gradient(180deg, #5e987d, #3f715e);
+  box-shadow: 0 12px 22px rgba(63, 113, 94, 0.2);
+}
+
+.review-danger-button {
+  background: rgba(150, 72, 56, 0.16);
+  color: #964838;
+}
+
+.review-save-button:disabled,
+.review-danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .focus-stats-panel {

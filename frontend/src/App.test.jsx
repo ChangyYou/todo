@@ -74,8 +74,10 @@ function createReviewWeekMock() {
       id: 1,
       type: 'focus',
       title: '番茄专注',
+      sessionDate: '2026-06-15',
       startTime: '09:00',
       endTime: '09:25',
+      durationSeconds: 1500,
       meta: '25m · 1 个番茄',
       color: '#8ca39a',
     },
@@ -94,8 +96,10 @@ function createReviewWeekMock() {
       type: 'focus',
       sceneId: 1,
       title: '运动',
+      sessionDate: '2026-06-15',
       startTime: '23:08',
       endTime: '23:08',
+      durationSeconds: 7,
       meta: '7s',
       color: '#d89a5b',
     },
@@ -103,8 +107,10 @@ function createReviewWeekMock() {
       id: 4,
       type: 'focus',
       title: '番茄专注',
+      sessionDate: '2026-06-15',
       startTime: '23:43',
       endTime: '23:44',
+      durationSeconds: 60,
       meta: '1m',
       color: '#4b8768',
     },
@@ -270,6 +276,14 @@ beforeEach(() => {
 
     if (url.startsWith('/api/review-todos/') && method === 'DELETE') {
       deletedReviewTodoIds.add(Number(url.replace('/api/review-todos/', '')));
+      return { ok: true, json: async () => ({ status: 'ok' }) };
+    }
+
+    if (url.startsWith('/api/focus-sessions/') && method === 'PATCH') {
+      return { ok: true, json: async () => ({ status: 'ok' }) };
+    }
+
+    if (url.startsWith('/api/focus-sessions/') && method === 'DELETE') {
       return { ok: true, json: async () => ({ status: 'ok' }) };
     }
 
@@ -1160,6 +1174,40 @@ describe('App', () => {
     expect(screen.getByText('运动')).toBeInTheDocument();
     expect(screen.getByText('23:08-23:08')).toBeInTheDocument();
     expect(screen.getByText('23:43-23:44')).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', { name: '查看专注记录 番茄专注' })[0]);
+    const editor = await screen.findByRole('dialog', { name: '番茄专注 专注记录详情' });
+    expect(within(editor).getByText('专注记录详情')).toBeInTheDocument();
+    fireEvent.change(within(editor).getByLabelText('记录名称'), { target: { value: '晨间复盘' } });
+    fireEvent.change(within(editor).getByLabelText('日期'), { target: { value: '2026-06-16' } });
+    fireEvent.change(within(editor).getByLabelText('开始'), { target: { value: '08:30' } });
+    fireEvent.change(within(editor).getByLabelText('结束'), { target: { value: '09:10' } });
+    fireEvent.change(within(editor).getByLabelText('场景'), { target: { value: '1' } });
+    fireEvent.click(within(editor).getByRole('button', { name: '保存' }));
+
+    expect(await screen.findByRole('dialog', { name: '个人复盘' })).toBeInTheDocument();
+    const patchCall = window.fetch.mock.calls.find(([url, options]) => (
+      url === '/api/focus-sessions/1' && options?.method === 'PATCH'
+    ));
+    expect(patchCall).toBeTruthy();
+    expect(JSON.parse(patchCall[1].body)).toEqual({
+      title: '晨间复盘',
+      sceneId: 1,
+      sessionDate: '2026-06-16',
+      startTime: '08:30',
+      endTime: '09:10',
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: '查看专注记录 番茄专注' })[0]);
+    const deleteEditor = await screen.findByRole('dialog', { name: '番茄专注 专注记录详情' });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fireEvent.click(within(deleteEditor).getByRole('button', { name: '永久删除' }));
+
+    expect(window.confirm).toHaveBeenCalledWith('永久删除「番茄专注」这条专注记录？这个操作不能撤销。');
+    const deleteCall = window.fetch.mock.calls.find(([url, options]) => (
+      url === '/api/focus-sessions/1' && options?.method === 'DELETE'
+    ));
+    expect(deleteCall).toBeTruthy();
   });
 
   it('opens review day detail and permanently deletes a review task', async () => {

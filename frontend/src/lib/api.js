@@ -130,6 +130,17 @@ export async function recordFocusSession(session) {
   });
 }
 
+export async function updateFocusSession(sessionId, patch) {
+  await request(`/api/focus-sessions/${sessionId}`, {
+    method: 'PATCH',
+    body: patch,
+  });
+}
+
+export async function deleteFocusSession(sessionId) {
+  await request(`/api/focus-sessions/${sessionId}`, { method: 'DELETE' });
+}
+
 export function recordFocusSessionOnUnload(session) {
   if (!navigator.sendBeacon) {
     return false;
