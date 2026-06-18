@@ -2849,7 +2849,7 @@ select {
 
 .review-week-time-column {
   display: grid;
-  grid-template-rows: 42px repeat(8, 54px);
+  grid-template-rows: 42px repeat(16, 54px);
   border-right: 1px solid rgba(43, 70, 61, 0.08);
   color: rgba(43, 70, 61, 0.42);
   font-size: 0.72rem;
@@ -2894,7 +2894,7 @@ select {
 
 .review-week-lane {
   position: relative;
-  height: 432px;
+  height: 864px;
   background: repeating-linear-gradient(to bottom, transparent 0, transparent 53px, rgba(43, 70, 61, 0.06) 54px);
 }
 

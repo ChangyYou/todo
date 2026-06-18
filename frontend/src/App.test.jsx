@@ -89,6 +89,15 @@ function createReviewWeekMock() {
       meta: '某一时刻',
       color: '#e0a458',
     },
+    {
+      id: 3,
+      type: 'focus',
+      title: '番茄专注',
+      startTime: '23:43',
+      endTime: '23:44',
+      meta: '1m',
+      color: '#4b8768',
+    },
   ];
 
   return {
@@ -1132,10 +1141,13 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '周视图' }));
 
-    expect(await screen.findByText('番茄专注')).toBeInTheDocument();
+    expect(await screen.findAllByText('番茄专注')).toHaveLength(2);
     expect(screen.getByText('09:00-09:25')).toBeInTheDocument();
     expect(screen.getByText('开会')).toBeInTheDocument();
     expect(screen.getByText('18:00-18:00')).toBeInTheDocument();
+    expect(screen.getByText('00:00 - 07:00')).toBeInTheDocument();
+    expect(screen.getByText('21:00 - 00:00')).toBeInTheDocument();
+    expect(screen.getByText('23:43-23:44')).toBeInTheDocument();
   });
 
   it('opens review day detail and permanently deletes a review task', async () => {

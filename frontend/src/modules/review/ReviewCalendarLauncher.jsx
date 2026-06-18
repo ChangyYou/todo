@@ -2,6 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { deleteReviewTodo, getReviewCalendar } from '../../lib/api';
 
 const WEEK_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const WEEK_COMPACT_ROW_HEIGHT = 54;
+const WEEK_HOUR_ROW_HEIGHT = 54;
+const WEEK_EARLY_END_MINUTES = 7 * 60;
+const WEEK_LATE_START_MINUTES = 21 * 60;
+const WEEK_DAY_MINUTES = 24 * 60;
+const WEEK_TIMELINE_HEIGHT = WEEK_COMPACT_ROW_HEIGHT + (14 * WEEK_HOUR_ROW_HEIGHT) + WEEK_COMPACT_ROW_HEIGHT;
+const WEEK_TIMELINE_LABELS = [
+  '00:00 - 07:00',
+  ...Array.from({ length: 14 }, (_, index) => `${String(index + 7).padStart(2, '0')}:00`),
+  '21:00 - 00:00',
+];
 
 function CalendarIcon() {
   return (
@@ -60,6 +71,43 @@ function shiftDate(dateValue, offset) {
   const date = new Date(`${dateValue}T00:00:00`);
   date.setDate(date.getDate() + offset);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function parseTimeToMinutes(value = '') {
+  const [hour = 0, minute = 0] = value.split(':').map(Number);
+  return Math.max(0, Math.min(WEEK_DAY_MINUTES, (hour * 60) + minute));
+}
+
+function getWeekTimelineOffset(minutes) {
+  if (minutes <= WEEK_EARLY_END_MINUTES) {
+    return (minutes / WEEK_EARLY_END_MINUTES) * WEEK_COMPACT_ROW_HEIGHT;
+  }
+
+  if (minutes < WEEK_LATE_START_MINUTES) {
+    return WEEK_COMPACT_ROW_HEIGHT + ((minutes - WEEK_EARLY_END_MINUTES) / 60) * WEEK_HOUR_ROW_HEIGHT;
+  }
+
+  return WEEK_COMPACT_ROW_HEIGHT + (14 * WEEK_HOUR_ROW_HEIGHT) + ((minutes - WEEK_LATE_START_MINUTES) / (WEEK_DAY_MINUTES - WEEK_LATE_START_MINUTES)) * WEEK_COMPACT_ROW_HEIGHT;
+}
+
+function getWeekEventStyle(event) {
+  const startMinutes = parseTimeToMinutes(event.startTime);
+  let endMinutes = parseTimeToMinutes(event.endTime || event.startTime);
+  if (endMinutes <= startMinutes) {
+    endMinutes = Math.min(WEEK_DAY_MINUTES, startMinutes + 15);
+  }
+
+  const startOffset = getWeekTimelineOffset(startMinutes);
+  const endOffset = getWeekTimelineOffset(endMinutes);
+  const minHeight = 42;
+  const height = Math.max(minHeight, endOffset - startOffset);
+  const top = Math.min(startOffset, WEEK_TIMELINE_HEIGHT - height);
+
+  return {
+    top: `${top}px`,
+    minHeight: `${height}px`,
+    '--review-scene-color': event.color || '#4b8768',
+  };
 }
 
 function formatDuration(seconds = 0) {
@@ -317,7 +365,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
             <div className="review-week-board" aria-label={`${weekTitle}周复盘`}>
               <div className="review-week-time-column">
                 <span />
-                {['07:00', '09:00', '11:00', '13:00', '15:00', '17:00', '19:00', '21:00'].map((time) => <small key={time}>{time}</small>)}
+                {WEEK_TIMELINE_LABELS.map((time) => <small key={time}>{time}</small>)}
               </div>
               <div className="review-week-days">
                 {week.days.map((day) => (
@@ -328,14 +376,11 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                     </div>
                     <div className="review-week-lane">
                       {day.events.map((event) => {
-                        const [hour] = event.startTime.split(':').map(Number);
-                        const top = Math.max(0, (hour - 7) * 54);
-                        const durationHours = Math.max(0.6, ((Number(event.endTime.slice(0, 2)) || hour + 1) - hour));
                         return (
                           <article
                             key={`${event.type}-${event.id}-${event.startTime}`}
                             className={`review-week-event ${event.type}`}
-                            style={{ top: `${top}px`, minHeight: `${durationHours * 46}px`, '--review-scene-color': event.color || '#4b8768' }}
+                            style={getWeekEventStyle(event)}
                           >
                             <strong>{event.title}</strong>
                             <span>{event.startTime}-{event.endTime}</span>
