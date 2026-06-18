@@ -90,7 +90,7 @@ function getWeekTimelineOffset(minutes) {
   return WEEK_COMPACT_ROW_HEIGHT + (14 * WEEK_HOUR_ROW_HEIGHT) + ((minutes - WEEK_LATE_START_MINUTES) / (WEEK_DAY_MINUTES - WEEK_LATE_START_MINUTES)) * WEEK_COMPACT_ROW_HEIGHT;
 }
 
-function getWeekEventStyle(event) {
+function getWeekEventMetrics(event) {
   const startMinutes = parseTimeToMinutes(event.startTime);
   let endMinutes = parseTimeToMinutes(event.endTime || event.startTime);
   if (endMinutes <= startMinutes) {
@@ -103,11 +103,56 @@ function getWeekEventStyle(event) {
   const height = Math.max(minHeight, endOffset - startOffset);
   const top = Math.min(startOffset, WEEK_TIMELINE_HEIGHT - height);
 
+  return { top, height };
+}
+
+function getWeekEventStyle(event, layout = {}) {
+  const { top, height } = getWeekEventMetrics(event);
+  const totalColumns = layout.totalColumns || 1;
+  const column = layout.column || 0;
+  const gap = totalColumns > 1 ? 4 : 0;
+  const columnWidth = 100 / totalColumns;
+
   return {
     top: `${top}px`,
     minHeight: `${height}px`,
+    left: totalColumns > 1 ? `calc(8px + ${column * columnWidth}%)` : undefined,
+    right: totalColumns > 1 ? 'auto' : undefined,
+    width: totalColumns > 1 ? `calc(${columnWidth}% - ${8 + gap}px)` : undefined,
     '--review-scene-color': event.color || '#4b8768',
   };
+}
+
+function getWeekEventLayouts(events = []) {
+  const layoutItems = events
+    .map((event, index) => {
+      const metrics = getWeekEventMetrics(event);
+      return {
+        index,
+        top: metrics.top,
+        bottom: metrics.top + metrics.height,
+      };
+    })
+    .sort((first, second) => first.top - second.top || first.bottom - second.bottom);
+
+  const columns = [];
+  const layouts = new Map();
+  for (const item of layoutItems) {
+    let column = columns.findIndex((bottom) => bottom <= item.top);
+    if (column === -1) {
+      column = columns.length;
+      columns.push(item.bottom);
+    } else {
+      columns[column] = item.bottom;
+    }
+    layouts.set(item.index, { column });
+  }
+
+  const totalColumns = Math.max(1, columns.length);
+  for (const layout of layouts.values()) {
+    layout.totalColumns = totalColumns;
+  }
+  return layouts;
 }
 
 function formatDuration(seconds = 0) {
@@ -375,19 +420,22 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                       <strong>{day.day}</strong>
                     </div>
                     <div className="review-week-lane">
-                      {day.events.map((event) => {
+                      {(() => {
+                        const eventLayouts = getWeekEventLayouts(day.events);
                         return (
-                          <article
-                            key={`${event.type}-${event.id}-${event.startTime}`}
-                            className={`review-week-event ${event.type}`}
-                            style={getWeekEventStyle(event)}
-                          >
-                            <strong>{event.title}</strong>
-                            <span>{event.startTime}-{event.endTime}</span>
-                            {event.meta ? <small>{event.meta}</small> : null}
-                          </article>
+                          day.events.map((event, index) => (
+                            <article
+                              key={`${event.type}-${event.id}-${event.startTime}`}
+                              className={`review-week-event ${event.type}`}
+                              style={getWeekEventStyle(event, eventLayouts.get(index))}
+                            >
+                              <strong>{event.title}</strong>
+                              <span>{event.startTime}-{event.endTime}</span>
+                              {event.meta ? <small>{event.meta}</small> : null}
+                            </article>
+                          ))
                         );
-                      })}
+                      })()}
                     </div>
                   </section>
                 ))}

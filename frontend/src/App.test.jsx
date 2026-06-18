@@ -92,6 +92,16 @@ function createReviewWeekMock() {
     {
       id: 3,
       type: 'focus',
+      sceneId: 1,
+      title: '运动',
+      startTime: '23:08',
+      endTime: '23:08',
+      meta: '7s',
+      color: '#d89a5b',
+    },
+    {
+      id: 4,
+      type: 'focus',
       title: '番茄专注',
       startTime: '23:43',
       endTime: '23:44',
@@ -1147,6 +1157,8 @@ describe('App', () => {
     expect(screen.getByText('18:00-18:00')).toBeInTheDocument();
     expect(screen.getByText('00:00 - 07:00')).toBeInTheDocument();
     expect(screen.getByText('21:00 - 00:00')).toBeInTheDocument();
+    expect(screen.getByText('运动')).toBeInTheDocument();
+    expect(screen.getByText('23:08-23:08')).toBeInTheDocument();
     expect(screen.getByText('23:43-23:44')).toBeInTheDocument();
   });
 
