@@ -53,6 +53,19 @@ function createReviewCalendarMock(deletedTodoIds = new Set()) {
     ].filter((task) => !deletedTodoIds.has(task.todoId)),
   };
 
+  days[16] = {
+    date: '2026-06-16',
+    day: 16,
+    inCurrentMonth: true,
+    isToday: false,
+    completedTasks: 0,
+    completedHabits: 0,
+    sceneCount: 0,
+    focusSeconds: 7,
+    entries: [],
+    tasks: [],
+  };
+
   return {
     year: 2026,
     month: 6,
@@ -1154,6 +1167,7 @@ describe('App', () => {
     expect(screen.getByText('运动30分钟')).toBeInTheDocument();
     expect(screen.getByText('阅读 Go 后端')).toBeInTheDocument();
     expect(screen.getByText('专注 25m')).toBeInTheDocument();
+    expect(screen.queryByText('专注 0m')).not.toBeInTheDocument();
   });
 
   it('switches personal review to a weekly timeline view', async () => {

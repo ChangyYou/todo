@@ -211,7 +211,7 @@ function getReviewTaskMeta(task) {
 
 function DaySummary({ day }) {
   const items = [];
-  if (day.focusSeconds > 0) {
+  if (day.focusSeconds >= 60) {
     items.push(`专注 ${formatDuration(day.focusSeconds)}`);
   }
   if (day.completedTasks > 0) {
