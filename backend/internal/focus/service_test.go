@@ -306,3 +306,80 @@ func TestReviewCalendarDoesNotDuplicateCompletedFocusedTodoEntry(t *testing.T) {
 
 	t.Fatal("expected 2026-06-17 in review calendar")
 }
+
+func TestReviewWeekHidesSoftDeletedTodoSessions(t *testing.T) {
+	database, err := db.Open(filepath.Join(t.TempDir(), "todo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+
+	result, err := database.Exec(`INSERT INTO users (username, password_hash) VALUES (?, ?)`, "tester", "hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	userID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err = database.Exec(
+		`INSERT INTO todos (user_id, title, todo_date, priority, deleted_at) VALUES (?, ?, ?, ?, ?)`,
+		userID,
+		"已经删除的事",
+		"2026-06-17",
+		"medium",
+		"2026-06-17 10:00:00",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deletedTodoID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := database.Exec(
+		`INSERT INTO focus_sessions (user_id, todo_id, duration_seconds, session_date, created_at) VALUES (?, ?, ?, ?, ?)`,
+		userID,
+		deletedTodoID,
+		60,
+		"2026-06-17",
+		"2026-06-17 01:15:00",
+	); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(
+		`INSERT INTO focus_sessions (user_id, todo_id, duration_seconds, session_date, created_at) VALUES (?, ?, ?, ?, ?)`,
+		userID,
+		0,
+		60,
+		"2026-06-17",
+		"2026-06-17 01:15:00",
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	week, err := NewService(database).ReviewWeek(userID, 2026, 6, "2026-06-17")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, day := range week.Days {
+		if day.Date != "2026-06-17" {
+			continue
+		}
+		if len(day.Events) != 1 {
+			t.Fatalf("expected only unbound focus event, got %+v", day.Events)
+		}
+		if day.Events[0].Title != "番茄专注" {
+			t.Fatalf("expected unbound focus title, got %+v", day.Events[0])
+		}
+		if day.Events[0].StartTime != "09:14" || day.Events[0].EndTime != "09:15" {
+			t.Fatalf("expected UTC created_at to be converted to local time, got %+v", day.Events[0])
+		}
+		return
+	}
+
+	t.Fatal("expected 2026-06-17 in review week")
+}

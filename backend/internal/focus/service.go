@@ -68,12 +68,13 @@ func (s *Service) Create(userID, todoID, sceneID int64, durationSeconds int, ses
 	}
 
 	_, err := s.db.Exec(
-		"INSERT INTO focus_sessions (user_id, todo_id, scene_id, duration_seconds, session_date) VALUES (?, ?, ?, ?, ?)",
+		"INSERT INTO focus_sessions (user_id, todo_id, scene_id, duration_seconds, session_date, created_at) VALUES (?, ?, ?, ?, ?, ?)",
 		userID,
 		todoID,
 		nullableSceneID(sceneID),
 		durationSeconds,
 		sessionDate,
+		time.Now().Format(time.RFC3339),
 	)
 	return err
 }
@@ -326,10 +327,11 @@ func (s *Service) fillReviewWeekFocus(userID int64, startDate, endDate string, d
 		        focus_sessions.duration_seconds,
 		        focus_sessions.created_at
 		   FROM focus_sessions
-		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id
+		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id AND todos.deleted_at IS NULL
 		   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
 		  WHERE focus_sessions.user_id = ?
 		    AND focus_sessions.session_date BETWEEN ? AND ?
+		    AND (focus_sessions.todo_id <= 0 OR todos.id IS NOT NULL)
 		  ORDER BY focus_sessions.session_date ASC, focus_sessions.created_at ASC, focus_sessions.id ASC`,
 		userID,
 		startDate,
@@ -1147,11 +1149,11 @@ func reviewFocusTimeRange(sessionDate, createdAt string, durationSeconds int64) 
 }
 
 func parseReviewCreatedAt(sessionDate, createdAt string) time.Time {
-	layouts := []string{"2006-01-02 15:04:05", time.RFC3339}
-	for _, layout := range layouts {
-		if parsed, err := time.ParseInLocation(layout, createdAt, time.Local); err == nil {
-			return parsed
-		}
+	if parsed, err := time.Parse(time.RFC3339, createdAt); err == nil {
+		return parsed.In(time.Local)
+	}
+	if parsed, err := time.ParseInLocation("2006-01-02 15:04:05", createdAt, time.UTC); err == nil {
+		return parsed.In(time.Local)
 	}
 	parsed, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" 12:00", time.Local)
 	if err != nil {
