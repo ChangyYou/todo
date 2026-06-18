@@ -18,15 +18,25 @@ type TodoHandler struct {
 }
 
 type createTodoRequest struct {
-	Title    string `json:"title"`
-	TodoDate string `json:"todoDate"`
-	Priority string `json:"priority"`
+	Title     string `json:"title"`
+	TodoDate  string `json:"todoDate"`
+	TimeType  string `json:"timeType"`
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+	StartTime string `json:"startTime"`
+	EndTime   string `json:"endTime"`
+	Priority  string `json:"priority"`
 }
 
 type updateTodoRequest struct {
 	Title     *string `json:"title"`
 	Completed *bool   `json:"completed"`
 	TodoDate  *string `json:"todoDate"`
+	TimeType  *string `json:"timeType"`
+	StartDate *string `json:"startDate"`
+	EndDate   *string `json:"endDate"`
+	StartTime *string `json:"startTime"`
+	EndTime   *string `json:"endTime"`
 	Priority  *string `json:"priority"`
 }
 
@@ -63,7 +73,16 @@ func (h *TodoHandler) Create(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	todo, err := h.todos.Create(user.ID, request.Title, request.TodoDate, request.Priority)
+	todo, err := h.todos.Create(user.ID, todos.TodoInput{
+		Title:     request.Title,
+		TodoDate:  request.TodoDate,
+		TimeType:  request.TimeType,
+		StartDate: request.StartDate,
+		EndDate:   request.EndDate,
+		StartTime: request.StartTime,
+		EndTime:   request.EndTime,
+		Priority:  request.Priority,
+	})
 	if err != nil {
 		writeTodoError(ctx, c, err)
 		return
@@ -91,7 +110,17 @@ func (h *TodoHandler) Update(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	todo, err := h.todos.Update(user.ID, todoID, request.Title, request.Completed, request.TodoDate, request.Priority)
+	todo, err := h.todos.Update(user.ID, todoID, todos.TodoPatch{
+		Title:     request.Title,
+		Completed: request.Completed,
+		TodoDate:  request.TodoDate,
+		TimeType:  request.TimeType,
+		StartDate: request.StartDate,
+		EndDate:   request.EndDate,
+		StartTime: request.StartTime,
+		EndTime:   request.EndTime,
+		Priority:  request.Priority,
+	})
 	if err != nil {
 		writeTodoError(ctx, c, err)
 		return

@@ -223,6 +223,144 @@ func (s *Service) ReviewCalendar(userID int64, year, month int) (models.ReviewCa
 	return calendar, nil
 }
 
+func (s *Service) ReviewWeek(userID int64, year, month int, dateValue string) (models.ReviewWeek, error) {
+	if userID <= 0 {
+		return models.ReviewWeek{}, ErrInvalidFocusSession
+	}
+	now := time.Now()
+	target := now
+	dateValue = strings.TrimSpace(dateValue)
+	if dateValue != "" {
+		parsed, err := time.Parse("2006-01-02", dateValue)
+		if err != nil {
+			return models.ReviewWeek{}, ErrInvalidFocusSession
+		}
+		target = parsed
+	} else if year > 0 && month > 0 {
+		if month < 1 || month > 12 {
+			return models.ReviewWeek{}, ErrInvalidFocusSession
+		}
+		target = time.Date(year, time.Month(month), now.Day(), 0, 0, 0, 0, time.Local)
+	}
+
+	start := startOfWeek(target)
+	end := start.AddDate(0, 0, 6)
+	week := models.ReviewWeek{
+		StartDate: start.Format("2006-01-02"),
+		EndDate:   end.Format("2006-01-02"),
+		Days:      buildEmptyReviewWeekDays(start, now),
+	}
+	byDate := make(map[string]int, len(week.Days))
+	for index, day := range week.Days {
+		byDate[day.Date] = index
+	}
+	if err := s.fillReviewWeekTodos(userID, week.StartDate, week.EndDate, week.Days, byDate); err != nil {
+		return models.ReviewWeek{}, err
+	}
+	if err := s.fillReviewWeekFocus(userID, week.StartDate, week.EndDate, week.Days, byDate); err != nil {
+		return models.ReviewWeek{}, err
+	}
+	return week, nil
+}
+
+func (s *Service) fillReviewWeekTodos(userID int64, startDate, endDate string, days []models.ReviewWeekDay, byDate map[string]int) error {
+	rows, err := s.db.Query(
+		`SELECT id,
+		        title,
+		        COALESCE(start_date, todo_date) AS start_date,
+		        COALESCE(start_time, '') AS start_time,
+		        COALESCE(end_time, '') AS end_time,
+		        priority
+		   FROM todos
+		  WHERE user_id = ?
+		    AND deleted_at IS NULL
+		    AND source_type = 'todo'
+		    AND COALESCE(time_type, 'date_range') = 'moment'
+		    AND COALESCE(start_date, todo_date) BETWEEN ? AND ?
+		  ORDER BY start_date ASC, start_time ASC, id ASC`,
+		userID,
+		startDate,
+		endDate,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var event models.ReviewWeekEvent
+		var date string
+		var priority string
+		if err := rows.Scan(&event.TodoID, &event.Title, &date, &event.StartTime, &event.EndTime, &priority); err != nil {
+			return err
+		}
+		index, ok := byDate[date]
+		if !ok {
+			continue
+		}
+		event.ID = event.TodoID
+		event.Type = "todo"
+		event.Meta = priority
+		event.Color = reviewPriorityColor(priority)
+		if event.EndTime == "" {
+			event.EndTime = event.StartTime
+		}
+		days[index].Events = append(days[index].Events, event)
+	}
+
+	return rows.Err()
+}
+
+func (s *Service) fillReviewWeekFocus(userID int64, startDate, endDate string, days []models.ReviewWeekDay, byDate map[string]int) error {
+	rows, err := s.db.Query(
+		`SELECT focus_sessions.id,
+		        focus_sessions.session_date,
+		        focus_sessions.todo_id,
+		        COALESCE(focus_sessions.scene_id, 0) AS scene_id,
+		        CASE
+		          WHEN focus_sessions.todo_id > 0 THEN COALESCE(todos.title, '已删除任务')
+		          WHEN focus_sessions.scene_id IS NOT NULL THEN COALESCE(focus_scenes.title, '已删除场景')
+		          ELSE '番茄专注'
+		        END AS title,
+		        COALESCE(focus_scenes.color, '#4b8768') AS color,
+		        focus_sessions.duration_seconds,
+		        focus_sessions.created_at
+		   FROM focus_sessions
+		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id
+		   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
+		  WHERE focus_sessions.user_id = ?
+		    AND focus_sessions.session_date BETWEEN ? AND ?
+		  ORDER BY focus_sessions.session_date ASC, focus_sessions.created_at ASC, focus_sessions.id ASC`,
+		userID,
+		startDate,
+		endDate,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var event models.ReviewWeekEvent
+		var date string
+		var durationSeconds int64
+		var createdAt string
+		if err := rows.Scan(&event.ID, &date, &event.TodoID, &event.SceneID, &event.Title, &event.Color, &durationSeconds, &createdAt); err != nil {
+			return err
+		}
+		index, ok := byDate[date]
+		if !ok {
+			continue
+		}
+		event.Type = "focus"
+		event.Meta = formatReviewFocusMeta(durationSeconds, 1)
+		event.StartTime, event.EndTime = reviewFocusTimeRange(date, createdAt, durationSeconds)
+		days[index].Events = append(days[index].Events, event)
+	}
+
+	return rows.Err()
+}
+
 func (s *Service) fillReviewTodos(userID int64, startDate, endDate string, days []models.ReviewCalendarDay, byDate map[string]int) error {
 	rows, err := s.db.Query(
 		`SELECT id, todo_date, source_type, title
@@ -971,6 +1109,55 @@ func buildEmptyReviewDays(gridStart, monthStart, now time.Time) []models.ReviewC
 		})
 	}
 	return days
+}
+
+func buildEmptyReviewWeekDays(start, now time.Time) []models.ReviewWeekDay {
+	labels := []string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}
+	result := make([]models.ReviewWeekDay, 0, 7)
+	today := now.Format("2006-01-02")
+	for index := 0; index < 7; index++ {
+		day := start.AddDate(0, 0, index)
+		date := day.Format("2006-01-02")
+		result = append(result, models.ReviewWeekDay{
+			Date:    date,
+			Day:     day.Day(),
+			Label:   labels[int(day.Weekday())],
+			IsToday: date == today,
+			Events:  make([]models.ReviewWeekEvent, 0),
+		})
+	}
+	return result
+}
+
+func reviewPriorityColor(priority string) string {
+	switch priority {
+	case "high":
+		return "#d98276"
+	case "low":
+		return "#7aa987"
+	default:
+		return "#d3a950"
+	}
+}
+
+func reviewFocusTimeRange(sessionDate, createdAt string, durationSeconds int64) (string, string) {
+	end := parseReviewCreatedAt(sessionDate, createdAt)
+	start := end.Add(-time.Duration(durationSeconds) * time.Second)
+	return start.Format("15:04"), end.Format("15:04")
+}
+
+func parseReviewCreatedAt(sessionDate, createdAt string) time.Time {
+	layouts := []string{"2006-01-02 15:04:05", time.RFC3339}
+	for _, layout := range layouts {
+		if parsed, err := time.ParseInLocation(layout, createdAt, time.Local); err == nil {
+			return parsed
+		}
+	}
+	parsed, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" 12:00", time.Local)
+	if err != nil {
+		return time.Now()
+	}
+	return parsed
 }
 
 func nullableSceneID(sceneID int64) interface{} {

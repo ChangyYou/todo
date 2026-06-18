@@ -51,6 +51,17 @@ function shiftMonth(value, offset) {
   };
 }
 
+function getTodayDate() {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function shiftDate(dateValue, offset) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  date.setDate(date.getDate() + offset);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function formatDuration(seconds = 0) {
   const safeSeconds = Math.max(0, seconds);
   const hours = Math.floor(safeSeconds / 3600);
@@ -111,8 +122,11 @@ function DaySummary({ day }) {
 
 export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
   const [isOpen, setIsOpen] = useState(false);
+  const [viewMode, setViewMode] = useState('month');
   const [viewMonth, setViewMonth] = useState(() => getCurrentMonth());
+  const [viewDate, setViewDate] = useState(() => getTodayDate());
   const [calendar, setCalendar] = useState(null);
+  const [week, setWeek] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [status, setStatus] = useState('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -128,12 +142,18 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
 
     let isDisposed = false;
     setStatus('loading');
-    getReviewCalendar(viewMonth)
-      .then((nextCalendar) => {
+    getReviewCalendar(viewMode === 'week' ? { view: 'week', date: viewDate } : viewMonth)
+      .then((nextReview) => {
         if (isDisposed) {
           return;
         }
-        setCalendar(nextCalendar);
+        if (viewMode === 'week') {
+          setWeek(nextReview);
+          setCalendar(null);
+        } else {
+          setCalendar(nextReview);
+          setWeek(null);
+        }
         setStatus('ready');
         setErrorMessage('');
       })
@@ -148,7 +168,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
     return () => {
       isDisposed = true;
     };
-  }, [isOpen, viewMonth, refreshSignal]);
+  }, [isOpen, viewMonth, viewDate, viewMode, refreshSignal]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -184,6 +204,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
   }, [isOpen, selectedDate]);
 
   const monthTitle = useMemo(() => `${viewMonth.year}年${viewMonth.month}月`, [viewMonth]);
+  const weekTitle = useMemo(() => (week ? `${week.startDate} - ${week.endDate}` : '本周'), [week]);
   const selectedDay = useMemo(() => (
     calendar?.days.find((day) => day.date === selectedDate) ?? null
   ), [calendar, selectedDate]);
@@ -230,16 +251,23 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
             <div>
               <p className="review-kicker">Personal Review</p>
               <p className="review-title">个人复盘</p>
+              <div className="review-view-tabs" role="tablist" aria-label="复盘视图">
+                <button type="button" className={viewMode === 'month' ? 'active' : ''} onClick={() => setViewMode('month')}>月视图</button>
+                <button type="button" className={viewMode === 'week' ? 'active' : ''} onClick={() => setViewMode('week')}>周视图</button>
+              </div>
             </div>
             <div className="review-month-controls">
-              <button type="button" className="review-icon-button has-tooltip" aria-label="上个月" data-tooltip="上个月" onClick={() => setViewMonth((month) => shiftMonth(month, -1))}>
+              <button type="button" className="review-icon-button has-tooltip" aria-label={viewMode === 'week' ? '上一周' : '上个月'} data-tooltip={viewMode === 'week' ? '上一周' : '上个月'} onClick={() => (viewMode === 'week' ? setViewDate((date) => shiftDate(date, -7)) : setViewMonth((month) => shiftMonth(month, -1)))}>
                 <ChevronLeftIcon />
               </button>
-              <strong>{monthTitle}</strong>
-              <button type="button" className="review-icon-button has-tooltip" aria-label="下个月" data-tooltip="下个月" onClick={() => setViewMonth((month) => shiftMonth(month, 1))}>
+              <strong>{viewMode === 'week' ? weekTitle : monthTitle}</strong>
+              <button type="button" className="review-icon-button has-tooltip" aria-label={viewMode === 'week' ? '下一周' : '下个月'} data-tooltip={viewMode === 'week' ? '下一周' : '下个月'} onClick={() => (viewMode === 'week' ? setViewDate((date) => shiftDate(date, 7)) : setViewMonth((month) => shiftMonth(month, 1)))}>
                 <ChevronRightIcon />
               </button>
-              <button type="button" className="review-today-button" onClick={() => setViewMonth(getCurrentMonth())}>
+              <button type="button" className="review-today-button" onClick={() => {
+                setViewMonth(getCurrentMonth());
+                setViewDate(getTodayDate());
+              }}>
                 今天
               </button>
             </div>
@@ -248,7 +276,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
           {status === 'loading' ? <p className="review-state">复盘加载中...</p> : null}
           {errorMessage ? <p className="review-error" role="alert">{errorMessage}</p> : null}
 
-          {calendar ? (
+          {viewMode === 'month' && calendar ? (
             <div className="review-calendar" aria-label={`${monthTitle}复盘日历`}>
               {WEEK_LABELS.map((label) => <div key={label} className="review-weekday">{label}</div>)}
               {calendar.days.map((day) => (
@@ -282,6 +310,43 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                   </div>
                 </button>
               ))}
+            </div>
+          ) : null}
+
+          {viewMode === 'week' && week ? (
+            <div className="review-week-board" aria-label={`${weekTitle}周复盘`}>
+              <div className="review-week-time-column">
+                <span />
+                {['07:00', '09:00', '11:00', '13:00', '15:00', '17:00', '19:00', '21:00'].map((time) => <small key={time}>{time}</small>)}
+              </div>
+              <div className="review-week-days">
+                {week.days.map((day) => (
+                  <section key={day.date} className={`review-week-day ${day.isToday ? 'today' : ''}`} aria-label={`${day.date} 周复盘`}>
+                    <div className="review-week-day-head">
+                      <span>{day.label}</span>
+                      <strong>{day.day}</strong>
+                    </div>
+                    <div className="review-week-lane">
+                      {day.events.map((event) => {
+                        const [hour] = event.startTime.split(':').map(Number);
+                        const top = Math.max(0, (hour - 7) * 54);
+                        const durationHours = Math.max(0.6, ((Number(event.endTime.slice(0, 2)) || hour + 1) - hour));
+                        return (
+                          <article
+                            key={`${event.type}-${event.id}-${event.startTime}`}
+                            className={`review-week-event ${event.type}`}
+                            style={{ top: `${top}px`, minHeight: `${durationHours * 46}px`, '--review-scene-color': event.color || '#4b8768' }}
+                          >
+                            <strong>{event.title}</strong>
+                            <span>{event.startTime}-{event.endTime}</span>
+                            {event.meta ? <small>{event.meta}</small> : null}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
             </div>
           ) : null}
 

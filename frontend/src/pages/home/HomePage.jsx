@@ -80,7 +80,7 @@ export default function HomePage({ user, onLoggedOut }) {
         onFocusTimerChange={handleFocusTimerChange}
         onFocusTodoCompleted={handleFocusTodoCompleted}
       />
-      <aside className={`home-todo-drawer ${isTodoDrawerOpen ? 'open' : 'closed'}`} aria-label="任务清单">
+      <aside className={`home-todo-drawer ${isTodoDrawerOpen ? 'open' : 'closed'}`} aria-label="待办事项">
         <TodoListModule
           refreshSignal={todoRefreshSignal}
           focusTimerStatus={focusTimerStatus}
@@ -99,7 +99,7 @@ export default function HomePage({ user, onLoggedOut }) {
         onClick={() => setIsTodoDrawerOpen((isOpen) => !isOpen)}
       >
         <span className="home-todo-toggle-icon" aria-hidden="true" />
-        <span>{isTodoDrawerOpen ? '收起任务' : '任务清单'}</span>
+        <span>{isTodoDrawerOpen ? '收起待办' : '待办事项'}</span>
       </button>
     </>
   );

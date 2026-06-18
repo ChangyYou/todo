@@ -53,10 +53,10 @@ export async function listTodos(todoDate) {
   return payload.todos ?? [];
 }
 
-export async function createTodo({ title, todoDate, priority }) {
+export async function createTodo(todo) {
   const payload = await request('/api/todos', {
     method: 'POST',
-    body: { title, todoDate, priority },
+    body: todo,
   });
   return payload.todo;
 }
@@ -159,7 +159,7 @@ export async function getFocusStats({ start, end, period } = {}) {
   return payload.stats;
 }
 
-export async function getReviewCalendar({ year, month } = {}) {
+export async function getReviewCalendar({ year, month, view, date } = {}) {
   const params = new URLSearchParams();
   if (year) {
     params.set('year', year);
@@ -167,9 +167,15 @@ export async function getReviewCalendar({ year, month } = {}) {
   if (month) {
     params.set('month', month);
   }
+  if (view) {
+    params.set('view', view);
+  }
+  if (date) {
+    params.set('date', date);
+  }
   const query = params.toString() ? `?${params.toString()}` : '';
   const payload = await request(`/api/review-calendar${query}`);
-  return payload.calendar;
+  return view === 'week' ? payload.week : payload.calendar;
 }
 
 export async function deleteReviewTodo(todoId) {

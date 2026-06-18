@@ -60,6 +60,44 @@ function createReviewCalendarMock(deletedTodoIds = new Set()) {
   };
 }
 
+function createReviewWeekMock() {
+  const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'].map((label, index) => ({
+    date: `2026-06-${String(14 + index).padStart(2, '0')}`,
+    day: 14 + index,
+    label,
+    isToday: index === 1,
+    events: [],
+  }));
+
+  days[1].events = [
+    {
+      id: 1,
+      type: 'focus',
+      title: '番茄专注',
+      startTime: '09:00',
+      endTime: '09:25',
+      meta: '25m · 1 个番茄',
+      color: '#8ca39a',
+    },
+    {
+      id: 2,
+      todoId: 1,
+      type: 'todo',
+      title: '开会',
+      startTime: '18:00',
+      endTime: '18:00',
+      meta: '某一时刻',
+      color: '#e0a458',
+    },
+  ];
+
+  return {
+    startDate: '2026-06-14',
+    endDate: '2026-06-20',
+    days,
+  };
+}
+
 beforeEach(() => {
   let habits = [];
   let scenes = [{ id: 1, title: '运动', color: '#6f9fc7', active: true }];
@@ -181,6 +219,13 @@ beforeEach(() => {
     }
 
     if (url.startsWith('/api/review-calendar') && method === 'GET') {
+      if (url.includes('view=week')) {
+        return {
+          ok: true,
+          json: async () => ({ week: createReviewWeekMock() }),
+        };
+      }
+
       return {
         ok: true,
         json: async () => ({ calendar: createReviewCalendarMock(deletedReviewTodoIds) }),
@@ -227,6 +272,11 @@ beforeEach(() => {
         title: body.title,
         completed: false,
         todoDate: body.todoDate,
+        timeType: body.timeType ?? 'date_range',
+        startDate: body.startDate ?? body.todoDate,
+        endDate: body.endDate ?? body.todoDate,
+        startTime: body.startTime ?? '',
+        endTime: body.endTime ?? '',
         priority: body.priority ?? 'medium',
         sourceType: 'todo',
         focusSeconds: 0,
@@ -302,6 +352,11 @@ beforeEach(() => {
           title: body.title ?? todo.title,
           completed: body.completed ?? todo.completed,
           todoDate: body.todoDate ?? todo.todoDate,
+          timeType: body.timeType ?? todo.timeType,
+          startDate: body.startDate ?? todo.startDate,
+          endDate: body.endDate ?? todo.endDate,
+          startTime: body.startTime ?? todo.startTime,
+          endTime: body.endTime ?? todo.endTime,
           priority: body.priority ?? todo.priority,
         };
         return savedTodo;
@@ -360,8 +415,8 @@ describe('App', () => {
     await renderAtPath('/');
 
     expect(screen.getByText('Focus Tomato')).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: '任务清单' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '收起任务' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('complementary', { name: '待办事项' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '收起待办' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('region', { name: '沉浸专注' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '切换到卡片模式' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '切换到沉浸模式' })).not.toBeInTheDocument();
@@ -370,14 +425,14 @@ describe('App', () => {
   it('toggles the fixed daily todo drawer from the home page', async () => {
     await renderAtPath('/');
 
-    const todoPanel = screen.getByRole('complementary', { name: '任务清单' });
-    const toggleButton = screen.getByRole('button', { name: '收起任务' });
+    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
+    const toggleButton = screen.getByRole('button', { name: '收起待办' });
 
     expect(todoPanel).toHaveClass('open');
     fireEvent.click(toggleButton);
 
     expect(todoPanel).toHaveClass('closed');
-    expect(screen.getByRole('button', { name: '任务清单' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: '待办事项' })).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('renders the pomodoro module page on /pomodoro', async () => {
@@ -401,15 +456,15 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: '切换到沉浸模式' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '打开音乐面板' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '沉浸专注' })).toBeInTheDocument();
-    expect(screen.queryByRole('complementary', { name: '任务清单' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: '待办事项' })).not.toBeInTheDocument();
   });
 
   it('lets users manage task list items beside the pomodoro module', async () => {
     vi.setSystemTime(new Date('2026-06-17T08:00:00+08:00'));
     await renderAtPath('/');
 
-    const todoPanel = screen.getByRole('complementary', { name: '任务清单' });
-    expect(within(todoPanel).getByText('任务清单')).toBeInTheDocument();
+    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
+    expect(within(todoPanel).getByText('待办事项')).toBeInTheDocument();
     expect(await within(todoPanel).findByText('1 项')).toBeInTheDocument();
     expect(within(todoPanel).getByText('截止 2026-06-15')).toBeInTheDocument();
     expect(within(todoPanel).getByText('高')).toBeInTheDocument();
@@ -419,7 +474,10 @@ describe('App', () => {
     fireEvent.change(within(taskModal).getByLabelText('任务名称'), {
       target: { value: '写日报' },
     });
-    fireEvent.change(within(taskModal).getByLabelText('完成日期'), {
+    fireEvent.change(within(taskModal).getByLabelText('开始日期'), {
+      target: { value: '2026-06-17' },
+    });
+    fireEvent.change(within(taskModal).getByLabelText('结束日期'), {
       target: { value: '2026-06-18' },
     });
     fireEvent.click(within(taskModal).getByLabelText('低'));
@@ -427,7 +485,7 @@ describe('App', () => {
 
     expect(await within(todoPanel).findByText('写日报')).toBeInTheDocument();
     expect(await within(todoPanel).findByText('2 项')).toBeInTheDocument();
-    expect(within(todoPanel).getByText('截止 2026-06-18')).toBeInTheDocument();
+    expect(within(todoPanel).getByText('2026-06-17 至 2026-06-18')).toBeInTheDocument();
     expect(within(todoPanel).getByText('低')).toBeInTheDocument();
 
     fireEvent.click(within(todoPanel).getByRole('button', { name: '编辑任务 写日报' }));
@@ -435,14 +493,14 @@ describe('App', () => {
     fireEvent.change(within(taskModal).getByLabelText('任务名称'), {
       target: { value: '写日报和复盘' },
     });
-    fireEvent.change(within(taskModal).getByLabelText('完成日期'), {
+    fireEvent.change(within(taskModal).getByLabelText('结束日期'), {
       target: { value: '2026-06-19' },
     });
     fireEvent.click(within(taskModal).getByLabelText('高'));
     fireEvent.click(within(taskModal).getByRole('button', { name: '保存' }));
 
     expect(await within(todoPanel).findByText('写日报和复盘')).toBeInTheDocument();
-    expect(within(todoPanel).getByText('截止 2026-06-19')).toBeInTheDocument();
+    expect(within(todoPanel).getByText('2026-06-17 至 2026-06-19')).toBeInTheDocument();
     expect(within(todoPanel).getAllByText('高').length).toBeGreaterThanOrEqual(1);
 
     fireEvent.click(within(todoPanel).getByText('写日报和复盘'));
@@ -460,7 +518,7 @@ describe('App', () => {
   it('starts focus from a daily todo timer icon', async () => {
     await renderAtPath('/');
 
-    const todoPanel = screen.getByRole('complementary', { name: '任务清单' });
+    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
     fireEvent.click(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
 
     expect(screen.getByText('把注意力留给整理今天最重要的三件事')).toBeInTheDocument();
@@ -473,7 +531,7 @@ describe('App', () => {
   it('clears the focus copy when the bound todo is completed from the task list', async () => {
     await renderAtPath('/');
 
-    const todoPanel = screen.getByRole('complementary', { name: '任务清单' });
+    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
     fireEvent.click(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
     fireEvent.click(within(todoPanel).getByLabelText('完成任务 整理今天最重要的三件事'));
 
@@ -600,7 +658,7 @@ describe('App', () => {
   it('unbinds the timer when the bound todo is deleted', async () => {
     await renderAtPath('/');
 
-    const todoPanel = screen.getByRole('complementary', { name: '任务清单' });
+    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
     fireEvent.click(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
     expect(screen.getByText('把注意力留给整理今天最重要的三件事')).toBeInTheDocument();
 
@@ -615,7 +673,7 @@ describe('App', () => {
     vi.useFakeTimers();
     await renderAtPath('/');
 
-    const todoPanel = screen.getByRole('complementary', { name: '任务清单' });
+    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
     fireEvent.click(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
 
     act(() => {
@@ -647,7 +705,7 @@ describe('App', () => {
     });
     fireEvent.click(within(createPanel).getByRole('button', { name: '保存' }));
 
-    const todoPanel = screen.getByRole('complementary', { name: '任务清单' });
+    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
     const habitItem = await within(todoPanel).findByText('运动30分钟');
     const habitRow = habitItem.closest('.daily-todo-item');
 
@@ -1063,6 +1121,21 @@ describe('App', () => {
     expect(screen.getByText('运动30分钟')).toBeInTheDocument();
     expect(screen.getByText('阅读 Go 后端')).toBeInTheDocument();
     expect(screen.getByText('专注 25m')).toBeInTheDocument();
+  });
+
+  it('switches personal review to a weekly timeline view', async () => {
+    vi.setSystemTime(new Date('2026-06-15T08:00:00+08:00'));
+    await renderAtPath('/pomodoro');
+
+    fireEvent.click(screen.getByRole('button', { name: '打开个人复盘' }));
+    expect(await screen.findByRole('dialog', { name: '个人复盘' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '周视图' }));
+
+    expect(await screen.findByText('番茄专注')).toBeInTheDocument();
+    expect(screen.getByText('09:00-09:25')).toBeInTheDocument();
+    expect(screen.getByText('开会')).toBeInTheDocument();
+    expect(screen.getByText('18:00-18:00')).toBeInTheDocument();
   });
 
   it('opens review day detail and permanently deletes a review task', async () => {

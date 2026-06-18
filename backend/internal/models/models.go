@@ -11,6 +11,11 @@ type Todo struct {
 	Title        string `json:"title"`
 	Completed    bool   `json:"completed"`
 	TodoDate     string `json:"todoDate"`
+	TimeType     string `json:"timeType"`
+	StartDate    string `json:"startDate"`
+	EndDate      string `json:"endDate"`
+	StartTime    string `json:"startTime,omitempty"`
+	EndTime      string `json:"endTime,omitempty"`
 	Priority     string `json:"priority"`
 	SourceType   string `json:"sourceType"`
 	FocusSeconds int64  `json:"focusSeconds"`
@@ -143,6 +148,32 @@ type ReviewCalendar struct {
 	Year  int                 `json:"year"`
 	Month int                 `json:"month"`
 	Days  []ReviewCalendarDay `json:"days"`
+}
+
+type ReviewWeek struct {
+	StartDate string          `json:"startDate"`
+	EndDate   string          `json:"endDate"`
+	Days      []ReviewWeekDay `json:"days"`
+}
+
+type ReviewWeekDay struct {
+	Date    string            `json:"date"`
+	Day     int               `json:"day"`
+	Label   string            `json:"label"`
+	IsToday bool              `json:"isToday"`
+	Events  []ReviewWeekEvent `json:"events"`
+}
+
+type ReviewWeekEvent struct {
+	ID        int64  `json:"id"`
+	TodoID    int64  `json:"todoId,omitempty"`
+	SceneID   int64  `json:"sceneId,omitempty"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	StartTime string `json:"startTime"`
+	EndTime   string `json:"endTime"`
+	Meta      string `json:"meta,omitempty"`
+	Color     string `json:"color,omitempty"`
 }
 
 type ReviewCalendarDay struct {

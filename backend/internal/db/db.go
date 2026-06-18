@@ -55,6 +55,11 @@ func migrate(database *sql.DB) error {
 			title TEXT NOT NULL,
 			completed INTEGER NOT NULL DEFAULT 0,
 			todo_date TEXT NOT NULL,
+			time_type TEXT NOT NULL DEFAULT 'date_range',
+			start_date TEXT,
+			end_date TEXT,
+			start_time TEXT,
+			end_time TEXT,
 			priority TEXT NOT NULL DEFAULT 'medium',
 			source_type TEXT NOT NULL DEFAULT 'todo',
 			habit_id INTEGER,
@@ -132,6 +137,21 @@ func migrate(database *sql.DB) error {
 	if err := ensureColumn(database, "todos", "completed_at", `ALTER TABLE todos ADD COLUMN completed_at TEXT`); err != nil {
 		return err
 	}
+	if err := ensureColumn(database, "todos", "time_type", `ALTER TABLE todos ADD COLUMN time_type TEXT NOT NULL DEFAULT 'date_range'`); err != nil {
+		return err
+	}
+	if err := ensureColumn(database, "todos", "start_date", `ALTER TABLE todos ADD COLUMN start_date TEXT`); err != nil {
+		return err
+	}
+	if err := ensureColumn(database, "todos", "end_date", `ALTER TABLE todos ADD COLUMN end_date TEXT`); err != nil {
+		return err
+	}
+	if err := ensureColumn(database, "todos", "start_time", `ALTER TABLE todos ADD COLUMN start_time TEXT`); err != nil {
+		return err
+	}
+	if err := ensureColumn(database, "todos", "end_time", `ALTER TABLE todos ADD COLUMN end_time TEXT`); err != nil {
+		return err
+	}
 	if err := ensureColumn(database, "habits", "end_date", `ALTER TABLE habits ADD COLUMN end_date TEXT`); err != nil {
 		return err
 	}
@@ -142,6 +162,9 @@ func migrate(database *sql.DB) error {
 		return err
 	}
 	if _, err := database.Exec(`DROP INDEX IF EXISTS idx_todos_user_habit_date`); err != nil {
+		return err
+	}
+	if _, err := database.Exec(`UPDATE todos SET start_date = COALESCE(start_date, todo_date), end_date = COALESCE(end_date, todo_date) WHERE start_date IS NULL OR end_date IS NULL`); err != nil {
 		return err
 	}
 

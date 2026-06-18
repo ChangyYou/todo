@@ -46,6 +46,18 @@ function getDueLabel(todoDate) {
   return todoDate === getTodayDate() ? '今日' : `截止 ${todoDate}`;
 }
 
+function getTodoTimeLabel(todo) {
+  if (todo.timeType === 'moment') {
+    const dateLabel = todo.startDate === getTodayDate() ? '今日' : todo.startDate;
+    const timeLabel = todo.endTime && todo.endTime !== todo.startTime ? `${todo.startTime}-${todo.endTime}` : todo.startTime;
+    return `${dateLabel} ${timeLabel}`;
+  }
+  if (todo.startDate && todo.endDate && todo.startDate !== todo.endDate) {
+    return `${todo.startDate} 至 ${todo.endDate}`;
+  }
+  return getDueLabel(todo.startDate || todo.todoDate);
+}
+
 function EditIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -85,7 +97,11 @@ function TodoTaskModal({
   onSubmit,
 } = {}) {
   const [title, setTitle] = useState(initialValues.title);
-  const [todoDate, setTodoDate] = useState(initialValues.todoDate);
+  const [timeType, setTimeType] = useState(initialValues.timeType);
+  const [startDate, setStartDate] = useState(initialValues.startDate);
+  const [endDate, setEndDate] = useState(initialValues.endDate);
+  const [startTime, setStartTime] = useState(initialValues.startTime);
+  const [endTime, setEndTime] = useState(initialValues.endTime);
   const [priority, setPriority] = useState(initialValues.priority);
   const isEditMode = mode === 'edit';
 
@@ -93,7 +109,12 @@ function TodoTaskModal({
     event.preventDefault();
     onSubmit({
       title: title.trim(),
-      todoDate,
+      todoDate: startDate,
+      timeType,
+      startDate,
+      endDate: timeType === 'moment' ? startDate : endDate,
+      startTime: timeType === 'moment' ? startTime : '',
+      endTime: timeType === 'moment' ? endTime : '',
       priority,
     });
   };
@@ -126,15 +147,52 @@ function TodoTaskModal({
             />
           </label>
 
-          <label className="task-modal-field">
-            <span>完成日期</span>
-            <input
-              type="date"
-              value={todoDate}
-              onChange={(event) => setTodoDate(event.target.value)}
-              required
-            />
-          </label>
+          <fieldset className="task-priority-field">
+            <legend>时间类型</legend>
+            <div className="task-priority-options task-time-options">
+              <label className="task-priority-option">
+                <input type="radio" name="task-time-type" value="date_range" checked={timeType === 'date_range'} onChange={() => setTimeType('date_range')} />
+                <span>周期内</span>
+              </label>
+              <label className="task-priority-option">
+                <input type="radio" name="task-time-type" value="moment" checked={timeType === 'moment'} onChange={() => setTimeType('moment')} />
+                <span>某一时刻</span>
+              </label>
+            </div>
+          </fieldset>
+
+          {timeType === 'moment' ? (
+            <div className="task-modal-grid">
+              <label className="task-modal-field">
+                <span>日期</span>
+                <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required />
+              </label>
+              <label className="task-modal-field">
+                <span>开始时间</span>
+                <input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required />
+              </label>
+              <label className="task-modal-field">
+                <span>结束时间</span>
+                <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} />
+              </label>
+            </div>
+          ) : (
+            <div className="task-modal-grid">
+              <label className="task-modal-field">
+                <span>开始日期</span>
+                <input type="date" value={startDate} onChange={(event) => {
+                  setStartDate(event.target.value);
+                  if (endDate < event.target.value) {
+                    setEndDate(event.target.value);
+                  }
+                }} required />
+              </label>
+              <label className="task-modal-field">
+                <span>结束日期</span>
+                <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} required />
+              </label>
+            </div>
+          )}
 
           <fieldset className="task-priority-field">
             <legend>紧急程度</legend>
@@ -214,6 +272,11 @@ export default function TodoListModule({
       values: {
         title: '',
         todoDate: getTodayDate(),
+        timeType: 'date_range',
+        startDate: getTodayDate(),
+        endDate: getTodayDate(),
+        startTime: '09:00',
+        endTime: '10:00',
         priority: 'medium',
       },
     });
@@ -227,6 +290,11 @@ export default function TodoListModule({
       values: {
         title: todo.title,
         todoDate: todo.todoDate,
+        timeType: todo.timeType ?? 'date_range',
+        startDate: todo.startDate ?? todo.todoDate,
+        endDate: todo.endDate ?? todo.todoDate,
+        startTime: todo.startTime || '09:00',
+        endTime: todo.endTime || '10:00',
         priority: todo.priority ?? 'medium',
       },
     });
@@ -296,11 +364,11 @@ export default function TodoListModule({
   };
 
   return (
-    <section id="daily-todo-panel" className="daily-todo-panel" aria-label="任务清单">
+    <section id="daily-todo-panel" className="daily-todo-panel" aria-label="待办事项">
       <div className="daily-todo-header">
         <div>
-          <p className="daily-todo-kicker">Task List</p>
-          <h2>任务清单</h2>
+          <p className="daily-todo-kicker">Todo List</p>
+          <h2>待办事项</h2>
         </div>
         <span className="daily-todo-count">{taskTodos.length} 项</span>
       </div>
@@ -334,7 +402,7 @@ export default function TodoListModule({
                 </span>
               </div>
               <div className="daily-todo-badge-row">
-                <span className="daily-todo-date-badge">{getDueLabel(todo.todoDate)}</span>
+                <span className="daily-todo-date-badge">{getTodoTimeLabel(todo)}</span>
                 <span className={`daily-todo-priority-badge ${priority}`}>
                   <FlagIcon />{getPriorityLabel(priority)}
                 </span>

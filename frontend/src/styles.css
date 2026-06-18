@@ -1013,6 +1013,12 @@ select {
   gap: 14px;
 }
 
+.task-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .task-modal-field {
   display: grid;
   gap: 8px;
@@ -2462,6 +2468,31 @@ select {
   color: #1f3c33;
 }
 
+.review-view-tabs {
+  margin-top: 12px;
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(43, 70, 61, 0.08);
+}
+
+.review-view-tabs button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(43, 70, 61, 0.58);
+  cursor: pointer;
+}
+
+.review-view-tabs button.active {
+  background: rgba(71, 126, 99, 0.14);
+  color: #21483a;
+}
+
 .review-month-controls {
   display: inline-flex;
   align-items: center;
@@ -2804,6 +2835,106 @@ select {
   margin: 0;
   color: rgba(43, 70, 61, 0.54);
   font-size: 0.86rem;
+}
+
+.review-week-board {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  border-radius: 18px;
+  overflow-x: auto;
+  background: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(43, 70, 61, 0.08);
+}
+
+.review-week-time-column {
+  display: grid;
+  grid-template-rows: 42px repeat(8, 54px);
+  border-right: 1px solid rgba(43, 70, 61, 0.08);
+  color: rgba(43, 70, 61, 0.42);
+  font-size: 0.72rem;
+}
+
+.review-week-time-column small {
+  padding: 6px 8px 0 0;
+  text-align: right;
+  border-top: 1px solid rgba(43, 70, 61, 0.06);
+}
+
+.review-week-days {
+  min-width: 840px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
+}
+
+.review-week-day {
+  min-width: 0;
+  border-right: 1px solid rgba(43, 70, 61, 0.07);
+}
+
+.review-week-day.today {
+  background: rgba(225, 239, 232, 0.42);
+}
+
+.review-week-day-head {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  border-bottom: 1px solid rgba(43, 70, 61, 0.08);
+  color: rgba(43, 70, 61, 0.56);
+  font-size: 0.78rem;
+}
+
+.review-week-day-head strong {
+  color: #1f3c33;
+  font-size: 0.95rem;
+}
+
+.review-week-lane {
+  position: relative;
+  height: 432px;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent 53px, rgba(43, 70, 61, 0.06) 54px);
+}
+
+.review-week-event {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  overflow: hidden;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--review-scene-color, #4b8768) 24%, white), rgba(255, 255, 255, 0.32));
+  border-left: 4px solid var(--review-scene-color, #4b8768);
+  color: #1f3c33;
+  box-shadow: 0 8px 18px rgba(78, 101, 83, 0.08);
+}
+
+.review-week-event.todo {
+  --review-scene-color: #d3a950;
+}
+
+.review-week-event strong,
+.review-week-event span,
+.review-week-event small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-week-event strong {
+  font-size: 0.78rem;
+}
+
+.review-week-event span,
+.review-week-event small {
+  color: rgba(43, 70, 61, 0.58);
+  font-size: 0.68rem;
 }
 
 .focus-stats-panel {

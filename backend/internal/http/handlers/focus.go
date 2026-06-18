@@ -85,6 +85,19 @@ func (h *FocusHandler) ReviewCalendar(ctx context.Context, c *app.RequestContext
 		writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "复盘月份不正确"})
 		return
 	}
+	if string(c.Query("view")) == "week" {
+		week, err := h.focus.ReviewWeek(user.ID, year, month, string(c.Query("date")))
+		if errors.Is(err, focus.ErrInvalidFocusSession) {
+			writeJSON(ctx, c, consts.StatusBadRequest, map[string]string{"error": "复盘日期不正确"})
+			return
+		}
+		if err != nil {
+			writeJSON(ctx, c, consts.StatusInternalServerError, map[string]string{"error": "个人复盘暂时不可用"})
+			return
+		}
+		writeJSON(ctx, c, consts.StatusOK, map[string]any{"week": week})
+		return
+	}
 
 	calendar, err := h.focus.ReviewCalendar(user.ID, year, month)
 	if errors.Is(err, focus.ErrInvalidFocusSession) {
