@@ -8,8 +8,8 @@ import {
 } from '../../lib/api';
 
 const WEEK_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-const WEEK_COMPACT_ROW_HEIGHT = 30;
-const WEEK_HOUR_ROW_HEIGHT = 30;
+const WEEK_COMPACT_ROW_HEIGHT = 36;
+const WEEK_HOUR_ROW_HEIGHT = 36;
 const WEEK_EARLY_END_MINUTES = 7 * 60;
 const WEEK_LATE_START_MINUTES = 21 * 60;
 const WEEK_DAY_MINUTES = 24 * 60;
