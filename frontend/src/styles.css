@@ -1458,7 +1458,7 @@ select {
 
 .settings-panel {
   position: fixed;
-  top: clamp(18px, 3vw, 28px);
+  top: calc(76px + env(safe-area-inset-top, 0px));
   right: clamp(18px, 3vw, 28px);
   z-index: 8;
   width: min(360px, calc(100vw - 36px));
@@ -3744,6 +3744,7 @@ select {
   .settings-panel-immersive,
   .skip-choice-panel-immersive {
     position: fixed;
+    top: auto;
     left: 12px;
     right: 12px;
     bottom: calc(74px + env(safe-area-inset-bottom, 0px));
