@@ -2595,6 +2595,15 @@ select {
   background: rgba(225, 239, 232, 0.66);
 }
 
+.review-day-cell.selected {
+  background: rgba(194, 224, 208, 0.78);
+  box-shadow: inset 0 0 0 2px rgba(75, 135, 104, 0.28);
+}
+
+.review-day-cell.selected:hover {
+  background: rgba(184, 218, 199, 0.86);
+}
+
 .review-day-topline {
   display: flex;
   align-items: center;

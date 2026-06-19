@@ -1233,6 +1233,7 @@ describe('App', () => {
     expect(await screen.findByText('写日报')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '2026-06-10 复盘' }));
+    expect(screen.getByRole('button', { name: '2026-06-10 复盘' })).toHaveClass('selected');
     const detail = await screen.findByRole('dialog', { name: '2026-06-10 当日复盘详情' });
     expect(within(detail).getByText('写日报')).toBeInTheDocument();
     expect(within(detail).getAllByText('已完成 · 场景 默认 · 专注 0s · 0 个番茄')).toHaveLength(2);
@@ -1249,6 +1250,25 @@ describe('App', () => {
       url === '/api/review-todos/101' && options?.method === 'DELETE'
     ));
     expect(deleteCall).toBeTruthy();
+  });
+
+  it('highlights the selected personal review day', async () => {
+    vi.setSystemTime(new Date('2026-06-15T08:00:00+08:00'));
+    await renderAtPath('/pomodoro');
+
+    fireEvent.click(screen.getByRole('button', { name: '打开个人复盘' }));
+    expect(await screen.findByText('写日报')).toBeInTheDocument();
+
+    const dayButton = screen.getByRole('button', { name: '2026-06-10 复盘' });
+    fireEvent.click(dayButton);
+
+    expect(dayButton).toHaveClass('selected');
+    expect(await screen.findByRole('dialog', { name: '2026-06-10 当日复盘详情' })).toBeInTheDocument();
+
+    fireEvent.click(dayButton);
+
+    expect(dayButton).not.toHaveClass('selected');
+    expect(screen.queryByRole('dialog', { name: '2026-06-10 当日复盘详情' })).not.toBeInTheDocument();
   });
 
   it('closes review day detail when clicking the empty review panel area', async () => {

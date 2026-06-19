@@ -514,7 +514,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                 <button
                   type="button"
                   key={day.date}
-                  className={`review-day-cell ${day.inCurrentMonth ? '' : 'muted'} ${day.isToday ? 'today' : ''}`}
+                  className={`review-day-cell ${day.inCurrentMonth ? '' : 'muted'} ${day.isToday ? 'today' : ''} ${selectedDate === day.date ? 'selected' : ''}`}
                   aria-label={`${day.date} 复盘`}
                   onMouseDown={(event) => event.stopPropagation()}
                   onClick={() => {
