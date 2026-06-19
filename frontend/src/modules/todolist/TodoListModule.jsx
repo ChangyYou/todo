@@ -8,12 +8,43 @@ const PRIORITY_OPTIONS = [
   { value: 'high', label: '高', tone: 'high' },
 ];
 
+const TASK_FILTERS = [
+  { value: 'all', label: '全部' },
+  { value: 'today', label: '今日' },
+  { value: 'tomorrow', label: '明天' },
+  { value: 'upcoming', label: '近期' },
+  { value: 'completed', label: '已完成' },
+];
+
 function getTodayDate() {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function addDays(dateValue, offset) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  date.setDate(date.getDate() + offset);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isTodoInDate(todo, dateValue) {
+  const startDate = todo.startDate || todo.todoDate;
+  const endDate = todo.endDate || todo.todoDate || startDate;
+  return startDate <= dateValue && endDate >= dateValue;
+}
+
+function isTodoUpcoming(todo, todayDate) {
+  const tomorrow = addDays(todayDate, 1);
+  const rangeEnd = addDays(todayDate, 7);
+  const startDate = todo.startDate || todo.todoDate;
+  const endDate = todo.endDate || todo.todoDate || startDate;
+  return endDate >= tomorrow && startDate <= rangeEnd;
 }
 
 function formatTodoTimer(seconds) {
@@ -42,6 +73,10 @@ function getPriorityLabel(priority) {
   return PRIORITY_OPTIONS.find((option) => option.value === priority)?.label ?? '中';
 }
 
+function getPriorityText(priority) {
+  return `${getPriorityLabel(priority)}优先级`;
+}
+
 function getDueLabel(todoDate) {
   return todoDate === getTodayDate() ? '今日' : `截止 ${todoDate}`;
 }
@@ -56,6 +91,44 @@ function getTodoTimeLabel(todo) {
     return `${todo.startDate} 至 ${todo.endDate}`;
   }
   return getDueLabel(todo.startDate || todo.todoDate);
+}
+
+function getFilterCount(todos, filter, todayDate) {
+  return todos.filter((todo) => matchesFilter(todo, filter, todayDate)).length;
+}
+
+function matchesFilter(todo, filter, todayDate) {
+  if (filter === 'completed') {
+    return todo.completed;
+  }
+  if (todo.completed) {
+    return false;
+  }
+  if (filter === 'today') {
+    return isTodoInDate(todo, todayDate);
+  }
+  if (filter === 'tomorrow') {
+    return isTodoInDate(todo, addDays(todayDate, 1));
+  }
+  if (filter === 'upcoming') {
+    return isTodoUpcoming(todo, todayDate);
+  }
+  return true;
+}
+
+function getFilterHeading(filter, todayDate) {
+  switch (filter) {
+    case 'today':
+      return `今天 ${todayDate}`;
+    case 'tomorrow':
+      return `明天 ${addDays(todayDate, 1)}`;
+    case 'upcoming':
+      return '近期 7 天';
+    case 'completed':
+      return '已完成';
+    default:
+      return '待办事项';
+  }
 }
 
 function EditIcon() {
@@ -78,6 +151,22 @@ function TrashIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 10.2A2 2 0 0 1 14.31 21H9.69a2 2 0 0 1-1.99-1.8L7 9Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function MoreIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 12a2 2 0 1 1 4 0 2 2 0 0 1-4 0Zm5 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0Zm5 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z" fill="currentColor" />
     </svg>
   );
 }
@@ -238,12 +327,16 @@ export default function TodoListModule({
   const [status, setStatus] = useState('loading');
   const [errorMessage, setErrorMessage] = useState('');
   const [taskModal, setTaskModal] = useState(null);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const todayDate = getTodayDate();
+  const visibleTodos = taskTodos.filter((todo) => matchesFilter(todo, activeFilter, todayDate));
+  const activeTodoCount = taskTodos.filter((todo) => !todo.completed).length;
 
   useEffect(() => {
     let isDisposed = false;
 
     setStatus('loading');
-    listTodos()
+    listTodos({ status: 'all' })
       .then((todos) => {
         if (isDisposed) {
           return;
@@ -314,6 +407,7 @@ export default function TodoListModule({
       if (taskModal.mode === 'create') {
         const todo = await createTodo(values);
         setTaskTodos((currentTodos) => [todo, ...currentTodos]);
+        setActiveFilter('all');
       } else {
         const previousTodo = taskModal.todo;
         const savedTodo = await updateTodo(previousTodo.id, values);
@@ -333,11 +427,16 @@ export default function TodoListModule({
 
   const handleToggleTodo = async (todoToToggle) => {
     const previousTodos = taskTodos;
-    setTaskTodos((currentTodos) => currentTodos.filter((todo) => todo.id !== todoToToggle.id));
-    onTodoCompleted(todoToToggle.id);
+    const nextCompleted = !todoToToggle.completed;
+    setTaskTodos((currentTodos) => currentTodos.map((todo) => (
+      todo.id === todoToToggle.id ? { ...todo, completed: nextCompleted } : todo
+    )));
+    if (nextCompleted) {
+      onTodoCompleted(todoToToggle.id);
+    }
 
     try {
-      await updateTodo(todoToToggle.id, { completed: true });
+      await updateTodo(todoToToggle.id, { completed: nextCompleted });
       setErrorMessage('');
       setStatus('ready');
     } catch (error) {
@@ -367,17 +466,54 @@ export default function TodoListModule({
     <section id="daily-todo-panel" className="daily-todo-panel" aria-label="待办事项">
       <div className="daily-todo-header">
         <div>
-          <p className="daily-todo-kicker">Todo List</p>
           <h2>待办事项</h2>
         </div>
-        <span className="daily-todo-count">{taskTodos.length} 项</span>
+        <div className="daily-todo-header-actions">
+          <button type="button" className="daily-todo-mini-button has-tooltip" aria-label="切换任务显示" data-tooltip="列表视图">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 7h2v2H5V7Zm4 0h10v2H9V7Zm-4 4h2v2H5v-2Zm4 0h10v2H9v-2Zm-4 4h2v2H5v-2Zm4 0h10v2H9v-2Z" fill="currentColor" />
+            </svg>
+          </button>
+          <button type="button" className="daily-todo-mini-button has-tooltip" aria-label="更多任务操作" data-tooltip="更多">
+            <MoreIcon />
+          </button>
+        </div>
       </div>
+
+      <div className="daily-todo-filter-tabs" role="tablist" aria-label="任务筛选">
+        {TASK_FILTERS.map((filter) => {
+          const count = getFilterCount(taskTodos, filter.value, todayDate);
+          return (
+            <button
+              key={filter.value}
+              type="button"
+              role="tab"
+              aria-selected={activeFilter === filter.value}
+              className={activeFilter === filter.value ? 'active' : ''}
+              onClick={() => setActiveFilter(filter.value)}
+            >
+              {filter.label}
+              {count > 0 ? <span>{count}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="daily-todo-section-line">
+        <span>{getFilterHeading(activeFilter, todayDate)}</span>
+        <small>{activeFilter === 'completed' ? `${visibleTodos.length} 个已完成` : `${activeTodoCount} 个待办`}</small>
+      </div>
+
+      <button type="button" className="daily-todo-inline-add" onClick={openCreateModal}>
+        <PlusIcon />
+        <span>添加任务</span>
+      </button>
 
       {status === 'loading' ? <p className="daily-todo-state">任务加载中...</p> : null}
       {errorMessage ? <p className="daily-todo-error" role="alert">{errorMessage}</p> : null}
 
       <div className="daily-todo-list">
-        {taskTodos.map((todo) => {
+        {visibleTodos.map((todo) => {
           const isHabitTodo = todo.sourceType === 'habit';
           const priority = todo.priority ?? 'medium';
           const isFocusTodo = String(focusTimerStatus?.todoId ?? '') === String(todo.id);
@@ -386,27 +522,27 @@ export default function TodoListModule({
             : '';
 
           return (
-            <div key={todo.id} className="daily-todo-item">
+            <div key={todo.id} className={`daily-todo-item ${todo.completed ? 'completed' : ''}`}>
               <div className="daily-todo-check">
                 <input
                   type="checkbox"
-                  aria-label={`完成任务 ${todo.title}`}
-                  checked={false}
+                  aria-label={todo.completed ? `恢复任务 ${todo.title}` : `完成任务 ${todo.title}`}
+                  checked={todo.completed}
                   onChange={() => handleToggleTodo(todo)}
                 />
                 <span className="daily-todo-title">
                   <span>{todo.title}</span>
-                  {todo.focusSeconds > 0 ? (
-                    <span className="daily-todo-focus-badge">已专注 {formatFocusDuration(todo.focusSeconds)}</span>
-                  ) : null}
                 </span>
               </div>
               <div className="daily-todo-badge-row">
                 <span className="daily-todo-date-badge">{getTodoTimeLabel(todo)}</span>
                 <span className={`daily-todo-priority-badge ${priority}`}>
-                  <FlagIcon />{getPriorityLabel(priority)}
+                  <FlagIcon />{getPriorityText(priority)}
                 </span>
                 {isHabitTodo ? <span className="daily-todo-badge">习惯</span> : null}
+                {todo.focusSeconds > 0 ? (
+                  <span className="daily-todo-focus-badge">已专注 {formatFocusDuration(todo.focusSeconds)}</span>
+                ) : null}
               </div>
               <div className="daily-todo-actions" aria-label={`${todo.title} 操作`}>
                 {!isHabitTodo ? (
@@ -425,6 +561,7 @@ export default function TodoListModule({
                   className={`daily-todo-icon-button timer has-tooltip ${focusTimerLabel ? 'active-timer' : ''}`}
                   aria-label={`开始计时 ${todo.title}`}
                   data-tooltip={focusTimerLabel ? '当前专注' : '计时'}
+                  disabled={todo.completed}
                   onClick={() => onFocusTodo(todo)}
                 >
                   {focusTimerLabel ? <span className="daily-todo-timer-label">{focusTimerLabel}</span> : <TimerIcon />}
@@ -444,11 +581,10 @@ export default function TodoListModule({
             </div>
           );
         })}
+        {status === 'ready' && visibleTodos.length === 0 ? (
+          <p className="daily-todo-empty">{activeFilter === 'completed' ? '还没有已完成任务。' : '这个视图下还没有任务。'}</p>
+        ) : null}
       </div>
-
-      <button type="button" className="primary-button daily-todo-add-button" onClick={openCreateModal}>
-        新增任务
-      </button>
 
       {taskModal ? (
         <TodoTaskModal

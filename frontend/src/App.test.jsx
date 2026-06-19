@@ -165,9 +165,21 @@ beforeEach(() => {
     }
 
     if (url.startsWith('/api/todos') && method === 'GET') {
+      const requestUrl = new URL(url, 'https://todo.test');
+      const status = requestUrl.searchParams.get('status') ?? 'active';
       return {
         ok: true,
-        json: async () => ({ todos: todos.filter((todo) => !todo.completed) }),
+        json: async () => ({
+          todos: todos.filter((todo) => {
+            if (status === 'all') {
+              return true;
+            }
+            if (status === 'completed') {
+              return todo.completed;
+            }
+            return !todo.completed;
+          }),
+        }),
       };
     }
 
@@ -510,12 +522,15 @@ describe('App', () => {
     await renderAtPath('/');
 
     const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
-    expect(within(todoPanel).getByText('待办事项')).toBeInTheDocument();
-    expect(await within(todoPanel).findByText('1 项')).toBeInTheDocument();
+    expect(within(todoPanel).getByRole('heading', { name: '待办事项' })).toBeInTheDocument();
+    expect(await within(todoPanel).findByText('1 个待办')).toBeInTheDocument();
+    expect(within(todoPanel).getByRole('tab', { name: '全部 1' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(todoPanel).getByRole('tab', { name: '明天' })).toBeInTheDocument();
+    expect(within(todoPanel).getByRole('tab', { name: '已完成 1' })).toBeInTheDocument();
     expect(within(todoPanel).getByText('截止 2026-06-15')).toBeInTheDocument();
-    expect(within(todoPanel).getByText('高')).toBeInTheDocument();
+    expect(within(todoPanel).getByText('高优先级')).toBeInTheDocument();
 
-    fireEvent.click(within(todoPanel).getByRole('button', { name: '新增任务' }));
+    fireEvent.click(within(todoPanel).getByRole('button', { name: '添加任务' }));
     let taskModal = screen.getByRole('dialog', { name: '新增任务' });
     fireEvent.change(within(taskModal).getByLabelText('任务名称'), {
       target: { value: '写日报' },
@@ -530,9 +545,9 @@ describe('App', () => {
     fireEvent.click(within(taskModal).getByRole('button', { name: '添加' }));
 
     expect(await within(todoPanel).findByText('写日报')).toBeInTheDocument();
-    expect(await within(todoPanel).findByText('2 项')).toBeInTheDocument();
+    expect(await within(todoPanel).findByText('2 个待办')).toBeInTheDocument();
     expect(within(todoPanel).getByText('2026-06-17 至 2026-06-18')).toBeInTheDocument();
-    expect(within(todoPanel).getByText('低')).toBeInTheDocument();
+    expect(within(todoPanel).getByText('低优先级')).toBeInTheDocument();
 
     fireEvent.click(within(todoPanel).getByRole('button', { name: '编辑任务 写日报' }));
     taskModal = screen.getByRole('dialog', { name: '编辑任务' });
@@ -547,18 +562,23 @@ describe('App', () => {
 
     expect(await within(todoPanel).findByText('写日报和复盘')).toBeInTheDocument();
     expect(within(todoPanel).getByText('2026-06-17 至 2026-06-19')).toBeInTheDocument();
-    expect(within(todoPanel).getAllByText('高').length).toBeGreaterThanOrEqual(1);
+    expect(within(todoPanel).getAllByText('高优先级').length).toBeGreaterThanOrEqual(1);
 
     fireEvent.click(within(todoPanel).getByText('写日报和复盘'));
     expect(within(todoPanel).getByText('写日报和复盘')).toBeInTheDocument();
 
     fireEvent.click(within(todoPanel).getByLabelText('完成任务 写日报和复盘'));
     expect(within(todoPanel).queryByText('写日报和复盘')).not.toBeInTheDocument();
-    expect(await within(todoPanel).findByText('1 项')).toBeInTheDocument();
+    expect(await within(todoPanel).findByText('1 个待办')).toBeInTheDocument();
+
+    fireEvent.click(within(todoPanel).getByRole('tab', { name: '已完成 2' }));
+    expect(within(todoPanel).getByText('写日报和复盘')).toBeInTheDocument();
+    expect(within(todoPanel).getByText('完成一轮 25 分钟专注')).toBeInTheDocument();
+    fireEvent.click(within(todoPanel).getByRole('tab', { name: '全部 1' }));
 
     fireEvent.click(within(todoPanel).getByRole('button', { name: '删除任务 整理今天最重要的三件事' }));
     expect(within(todoPanel).queryByText('整理今天最重要的三件事')).not.toBeInTheDocument();
-    expect(within(todoPanel).getByText('0 项')).toBeInTheDocument();
+    expect(within(todoPanel).getByText('0 个待办')).toBeInTheDocument();
   });
 
   it('starts focus from a daily todo timer icon', async () => {
@@ -581,7 +601,7 @@ describe('App', () => {
     fireEvent.click(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
     fireEvent.click(within(todoPanel).getByLabelText('完成任务 整理今天最重要的三件事'));
 
-    expect(await within(todoPanel).findByText('0 项')).toBeInTheDocument();
+    expect(await within(todoPanel).findByText('0 个待办')).toBeInTheDocument();
     expect(within(todoPanel).queryByText('整理今天最重要的三件事')).not.toBeInTheDocument();
     expect(await screen.findByText('把注意力留给眼前这一件事。')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '未绑定任务' })).not.toBeInTheDocument();
@@ -710,7 +730,7 @@ describe('App', () => {
 
     fireEvent.click(within(todoPanel).getByRole('button', { name: '删除任务 整理今天最重要的三件事' }));
 
-    expect(await within(todoPanel).findByText('0 项')).toBeInTheDocument();
+    expect(await within(todoPanel).findByText('0 个待办')).toBeInTheDocument();
     expect(screen.getByText('把注意力留给眼前这一件事。')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '未绑定任务' })).not.toBeInTheDocument();
   });
@@ -729,7 +749,7 @@ describe('App', () => {
     fireEvent.click(within(todoPanel).getByLabelText('完成任务 整理今天最重要的三件事'));
     await act(async () => {});
 
-    expect(within(todoPanel).getByText('0 项')).toBeInTheDocument();
+    expect(within(todoPanel).getByText('0 个待办')).toBeInTheDocument();
     expect(screen.getByText('今日专注 0:06')).toBeInTheDocument();
     expect(screen.getByText('把注意力留给眼前这一件事。')).toBeInTheDocument();
   });

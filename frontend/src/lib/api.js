@@ -47,8 +47,19 @@ export async function logout() {
   await request('/api/auth/logout', { method: 'POST' });
 }
 
-export async function listTodos(todoDate) {
-  const query = todoDate ? `?date=${encodeURIComponent(todoDate)}` : '';
+export async function listTodos(options = {}) {
+  const params = new URLSearchParams();
+  if (typeof options === 'string') {
+    params.set('date', options);
+  } else {
+    if (options.date) {
+      params.set('date', options.date);
+    }
+    if (options.status) {
+      params.set('status', options.status);
+    }
+  }
+  const query = params.toString() ? `?${params.toString()}` : '';
   const payload = await request(`/api/todos${query}`);
   return payload.todos ?? [];
 }

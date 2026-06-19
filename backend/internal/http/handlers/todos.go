@@ -51,7 +51,7 @@ func (h *TodoHandler) List(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	result, err := h.todos.List(user.ID, string(c.Query("date")))
+	result, err := h.todos.List(user.ID, string(c.Query("date")), string(c.Query("status")))
 	if err != nil {
 		writeJSON(ctx, c, consts.StatusInternalServerError, map[string]string{"error": "任务列表暂时不可用"})
 		return

@@ -628,7 +628,7 @@ select {
   max-height: inherit;
   overflow: auto;
   align-self: center;
-  padding: 18px;
+  padding: 16px;
   border-radius: 24px;
   background: rgba(247, 250, 242, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -640,7 +640,7 @@ select {
 
 .daily-todo-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 14px;
 }
@@ -659,26 +659,121 @@ select {
 }
 
 .daily-todo-header h2 {
-  margin-top: 6px;
   font-family: "Cormorant Garamond", "Noto Serif SC", serif;
-  font-size: 1.8rem;
+  font-size: 1.34rem;
   line-height: 1;
   color: #1f3c33;
 }
 
-.daily-todo-count {
-  flex-shrink: 0;
-  min-width: 52px;
-  min-height: 34px;
+.daily-todo-header-actions {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+}
+
+.daily-todo-mini-button {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.36);
+  color: rgba(35, 66, 56, 0.74);
+  cursor: pointer;
+}
+
+.daily-todo-mini-button:hover,
+.daily-todo-mini-button:focus-visible {
+  background: rgba(47, 88, 72, 0.1);
+}
+
+.daily-todo-mini-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.daily-todo-filter-tabs {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.daily-todo-filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.daily-todo-filter-tabs button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.52);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  color: rgba(43, 70, 61, 0.66);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.daily-todo-filter-tabs button.active {
+  background: #3f6e5b;
+  color: #f8fbf3;
+  box-shadow: 0 8px 16px rgba(63, 110, 91, 0.18);
+}
+
+.daily-todo-filter-tabs button span {
   font-family: "Outfit", sans-serif;
-  font-size: 0.82rem;
-  color: rgba(35, 66, 56, 0.78);
+  font-size: 0.7rem;
+  opacity: 0.78;
+}
+
+.daily-todo-section-line {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #1f3c33;
+  font-size: 0.88rem;
+}
+
+.daily-todo-section-line small {
+  color: rgba(43, 70, 61, 0.52);
+  font-size: 0.74rem;
+}
+
+.daily-todo-inline-add {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 12px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(43, 70, 61, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.42);
+  color: rgba(43, 70, 61, 0.58);
+  font: inherit;
+  cursor: pointer;
+}
+
+.daily-todo-inline-add:hover,
+.daily-todo-inline-add:focus-visible {
+  background: rgba(255, 255, 255, 0.64);
+  color: #2f5848;
+}
+
+.daily-todo-inline-add svg {
+  width: 17px;
+  height: 17px;
 }
 
 .daily-todo-field {
@@ -729,25 +824,32 @@ select {
 }
 
 .daily-todo-list {
-  margin-top: 16px;
+  margin-top: 10px;
   display: grid;
-  gap: 8px;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(43, 70, 61, 0.07);
+  background: rgba(255, 255, 255, 0.34);
 }
 
 .daily-todo-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 10px 10px 10px 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.36);
-  border: 1px solid rgba(255, 255, 255, 0.32);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px 10px;
+  min-height: 54px;
+  padding: 10px 10px 10px 12px;
+  border-bottom: 1px solid rgba(43, 70, 61, 0.07);
+  background: transparent;
+}
+
+.daily-todo-item:last-child {
+  border-bottom: 0;
 }
 
 .daily-todo-item.completed {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .daily-todo-check {
@@ -778,12 +880,15 @@ select {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 0.86rem;
 }
 
 .daily-todo-badge-row {
+  grid-column: 1 / -1;
+  padding-left: 28px;
   display: flex;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 6px;
 }
 
@@ -865,6 +970,8 @@ select {
 }
 
 .daily-todo-actions {
+  grid-row: 1 / span 2;
+  grid-column: 2;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -872,8 +979,8 @@ select {
 }
 
 .daily-todo-icon-button {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   display: inline-grid;
   place-items: center;
   border: 0;
@@ -904,7 +1011,7 @@ select {
 }
 
 .daily-todo-icon-button.timer.active-timer {
-  width: 62px;
+  width: 58px;
   padding: 0 8px;
   background: #2f5848;
   color: #f8fbf3;
@@ -918,6 +1025,11 @@ select {
 .daily-todo-icon-button.timer.active-timer:hover,
 .daily-todo-icon-button.timer.active-timer:focus-visible {
   background: #24483a;
+}
+
+.daily-todo-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .daily-todo-timer-label {
@@ -953,6 +1065,14 @@ select {
 .daily-todo-text-button.muted {
   background: rgba(255, 255, 255, 0.44);
   color: rgba(43, 70, 61, 0.72);
+}
+
+.daily-todo-empty {
+  margin: 0;
+  padding: 16px;
+  color: rgba(43, 70, 61, 0.52);
+  font-size: 0.84rem;
+  text-align: center;
 }
 
 .task-modal-backdrop {

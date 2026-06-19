@@ -17,6 +17,9 @@ const (
 	priorityHigh      = "high"
 	timeTypeDateRange = "date_range"
 	timeTypeMoment    = "moment"
+	todoStatusActive  = "active"
+	todoStatusAll     = "all"
+	todoStatusDone    = "completed"
 )
 
 type Service struct {
@@ -50,7 +53,7 @@ func NewService(database *sql.DB) *Service {
 	return &Service{db: database}
 }
 
-func (s *Service) List(userID int64, todoDate string) ([]models.Todo, error) {
+func (s *Service) List(userID int64, todoDate, status string) ([]models.Todo, error) {
 	todoDate = strings.TrimSpace(todoDate)
 	habitDate := todoDate
 	if habitDate == "" {
@@ -63,12 +66,25 @@ func (s *Service) List(userID int64, todoDate string) ([]models.Todo, error) {
 		return nil, err
 	}
 
-	filterClause := "todos.user_id = ? AND todos.completed = 0 AND todos.deleted_at IS NULL"
+	status = normalizeTodoStatus(status)
+	filterClause := "todos.user_id = ? AND todos.deleted_at IS NULL"
 	args := []interface{}{userID}
+	switch status {
+	case todoStatusDone:
+		filterClause += " AND todos.completed = 1"
+	case todoStatusActive:
+		filterClause += " AND todos.completed = 0"
+	}
 	if todoDate != "" {
 		filterClause = `todos.user_id = ? AND todos.deleted_at IS NULL
 			AND COALESCE(todos.start_date, todos.todo_date) <= ?
 			AND COALESCE(todos.end_date, todos.todo_date) >= ?`
+		switch status {
+		case todoStatusDone:
+			filterClause += " AND todos.completed = 1"
+		case todoStatusActive:
+			filterClause += " AND todos.completed = 0"
+		}
 		args = append(args, habitDate, habitDate)
 	}
 
@@ -358,6 +374,14 @@ func normalizePriority(value string) string {
 		return value
 	}
 	return ""
+}
+
+func normalizeTodoStatus(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == todoStatusAll || value == todoStatusDone {
+		return value
+	}
+	return todoStatusActive
 }
 
 func firstNonEmpty(values ...string) string {
