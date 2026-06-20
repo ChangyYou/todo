@@ -487,15 +487,17 @@ describe('App', () => {
     const reviewPanel = screen.getByRole('complementary', { name: '个人复盘' });
     const weekTab = within(reviewPanel).getByRole('tab', { name: '周视图' });
     const monthTab = within(reviewPanel).getByRole('tab', { name: '月视图' });
-    expect(weekTab).toHaveAttribute('aria-selected', 'true');
-
-    fireEvent.click(monthTab);
     expect(monthTab).toHaveAttribute('aria-selected', 'true');
-    expect(within(reviewPanel).getByRole('region', { name: '月日程' })).toBeInTheDocument();
+    expect(await within(reviewPanel).findByRole('region', { name: '月日程' })).toBeInTheDocument();
 
     fireEvent.click(weekTab);
     expect(weekTab).toHaveAttribute('aria-selected', 'true');
-    expect(within(reviewPanel).getByRole('region', { name: '周日程' })).toBeInTheDocument();
+    expect(await within(reviewPanel).findByRole('region', { name: '周日程' })).toBeInTheDocument();
+    expect(window.fetch.mock.calls.some(([url]) => String(url).includes('/api/review-calendar') && String(url).includes('view=week'))).toBe(true);
+
+    fireEvent.click(monthTab);
+    expect(monthTab).toHaveAttribute('aria-selected', 'true');
+    expect(await within(reviewPanel).findByRole('region', { name: '月日程' })).toBeInTheDocument();
   });
 
   it('switches workspace content from the sidebar navigation', async () => {

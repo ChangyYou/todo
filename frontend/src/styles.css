@@ -5406,6 +5406,24 @@ body:has(.workspace-shell) {
   box-shadow: none;
 }
 
+.review-inline-state,
+.review-inline-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+}
+
+.review-inline-state {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.36);
+}
+
+.review-inline-error {
+  color: #8c4d40;
+  background: rgba(201, 111, 111, 0.1);
+}
+
 .week-header {
   display: flex;
   align-items: center;
@@ -5543,6 +5561,9 @@ body:has(.workspace-shell) {
 .month-grid div {
   min-height: 48px;
   padding: 8px;
+  display: grid;
+  align-content: start;
+  gap: 3px;
   border-right: 1px solid rgba(27, 64, 54, 0.07);
   border-bottom: 1px solid rgba(27, 64, 54, 0.07);
   color: var(--ink);
@@ -5573,6 +5594,12 @@ body:has(.workspace-shell) {
 .month-grid .today strong {
   background: #194d3e;
   color: #fff;
+}
+
+.month-day-summary {
+  font-size: 0.68rem;
+  color: var(--muted);
+  white-space: nowrap;
 }
 
 .review-card-title,

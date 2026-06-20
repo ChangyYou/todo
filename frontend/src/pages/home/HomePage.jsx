@@ -532,8 +532,14 @@ function FocusPanel({
   );
 }
 
-function ReviewPanel({ stats, week, todayDate }) {
-  const [viewMode, setViewMode] = useState('week');
+function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
+  const [viewMode, setViewMode] = useState('month');
+  const [viewMonth, setViewMonth] = useState(() => getMonthFromDate(todayDate));
+  const [viewDate, setViewDate] = useState(todayDate);
+  const [calendar, setCalendar] = useState(null);
+  const [week, setWeek] = useState(null);
+  const [reviewStatus, setReviewStatus] = useState('idle');
+  const [reviewError, setReviewError] = useState('');
   const todayStats = stats?.overview ?? {};
   const sceneItems = stats?.scenePeriods?.find((period) => period.startDate === todayDate)?.scenes
     ?? stats?.scenePeriods?.at(-1)?.scenes
@@ -549,6 +555,34 @@ function ReviewPanel({ stats, week, todayDate }) {
       value: `${segments.value}, ${item.color || REVIEW_COLORS[index % REVIEW_COLORS.length]} ${previous}% ${next}%`,
     };
   }, { total: 0, value: '' }).value.replace(/^, /, '');
+  const monthTitle = `${viewMonth.year}年${viewMonth.month}月`;
+
+  useEffect(() => {
+    let disposed = false;
+    setReviewStatus('loading');
+    setReviewError('');
+    getReviewCalendar(viewMode === 'week' ? { view: 'week', date: viewDate } : viewMonth)
+      .then((nextReview) => {
+        if (disposed) return;
+        if (viewMode === 'week') {
+          setWeek(nextReview);
+          setCalendar(null);
+        } else {
+          setCalendar(nextReview);
+          setWeek(null);
+        }
+        setReviewStatus('ready');
+      })
+      .catch((error) => {
+        if (disposed) return;
+        setReviewStatus('error');
+        setReviewError(error instanceof Error ? error.message : '个人复盘暂时不可用');
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [viewMode, viewMonth, viewDate, refreshSignal]);
 
   return (
     <aside className="review-panel panel-frame" aria-label="个人复盘">
@@ -578,7 +612,26 @@ function ReviewPanel({ stats, week, todayDate }) {
         </button>
       </div>
 
-      {viewMode === 'week' ? <ReviewWeekCard week={week} todayDate={todayDate} /> : <ReviewMonthCard week={week} todayDate={todayDate} />}
+      {reviewStatus === 'loading' ? <p className="review-inline-state">复盘加载中...</p> : null}
+      {reviewError ? <p className="review-inline-error" role="alert">{reviewError}</p> : null}
+
+      {viewMode === 'week' ? (
+        <ReviewWeekCard
+          week={week}
+          todayDate={todayDate}
+          onPreviousWeek={() => setViewDate((date) => addDays(date, -7))}
+          onNextWeek={() => setViewDate((date) => addDays(date, 7))}
+        />
+      ) : (
+        <ReviewMonthCard
+          calendar={calendar}
+          monthTitle={monthTitle}
+          viewMonth={viewMonth}
+          todayDate={todayDate}
+          onPreviousMonth={() => setViewMonth((month) => shiftMonthValue(month, -1))}
+          onNextMonth={() => setViewMonth((month) => shiftMonthValue(month, 1))}
+        />
+      )}
 
       <section className="review-card today-focus-card">
         <div className="review-card-title">
@@ -950,14 +1003,14 @@ function WorkspaceHabitWeekCard({ days }) {
   );
 }
 
-function ReviewWeekCard({ week, todayDate }) {
+function ReviewWeekCard({ week, todayDate, onPreviousWeek, onNextWeek }) {
   const days = week?.days ?? createFallbackWeek(todayDate);
   return (
     <section className="week-card" aria-label="周日程">
       <div className="week-header">
-        <button type="button" aria-label="上一周"><CaretLeft /></button>
+        <button type="button" aria-label="上一周" onClick={onPreviousWeek}><CaretLeft /></button>
         <strong>{week?.startDate ? `${formatShortDate(week.startDate)} - ${formatShortDate(week.endDate)}` : '本周'}</strong>
-        <button type="button" aria-label="下一周"><CaretRight /></button>
+        <button type="button" aria-label="下一周" onClick={onNextWeek}><CaretRight /></button>
       </div>
       <div className="week-days">
         {days.map((day) => (
@@ -993,25 +1046,34 @@ function ReviewWeekCard({ week, todayDate }) {
   );
 }
 
-function ReviewMonthCard({ week, todayDate }) {
-  const anchorDate = week?.startDate ?? todayDate;
-  const monthDays = createMonthGrid(anchorDate, todayDate);
+function ReviewMonthCard({ calendar, monthTitle, viewMonth, todayDate, onPreviousMonth, onNextMonth }) {
+  const anchorDate = `${viewMonth.year}-${String(viewMonth.month).padStart(2, '0')}-01`;
+  const monthDays = calendar?.days ?? createMonthGrid(anchorDate, todayDate);
   return (
     <section className="week-card month-card" aria-label="月日程">
       <div className="week-header">
-        <button type="button" aria-label="上一月"><CaretLeft /></button>
-        <strong>{formatMonthTitle(anchorDate)}</strong>
-        <button type="button" aria-label="下一月"><CaretRight /></button>
+        <button type="button" aria-label="上一月" onClick={onPreviousMonth}><CaretLeft /></button>
+        <strong>{monthTitle}</strong>
+        <button type="button" aria-label="下一月" onClick={onNextMonth}><CaretRight /></button>
       </div>
       <div className="month-weekdays">
         {['日', '一', '二', '三', '四', '五', '六'].map((label) => <span key={label}>{label}</span>)}
       </div>
       <div className="month-grid">
-        {monthDays.map((day) => (
-          <div key={day.date} className={`${day.inMonth ? '' : 'muted'} ${day.date === todayDate ? 'today' : ''}`}>
-            <strong>{new Date(`${day.date}T00:00:00`).getDate()}</strong>
-          </div>
-        ))}
+        {monthDays.map((day) => {
+          const inMonth = day.inCurrentMonth ?? day.inMonth;
+          const dayNumber = day.day ?? new Date(`${day.date}T00:00:00`).getDate();
+          const focusMinutes = Math.floor((day.focusSeconds ?? 0) / 60);
+          const entryCount = day.entries?.length ?? 0;
+          return (
+            <div key={day.date} className={`${inMonth ? '' : 'muted'} ${day.date === todayDate || day.isToday ? 'today' : ''}`}>
+              <strong>{dayNumber}</strong>
+              {entryCount > 0 || focusMinutes > 0 ? (
+                <span className="month-day-summary">{focusMinutes > 0 ? `${focusMinutes}m` : `${entryCount}项`}</span>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -1022,9 +1084,20 @@ function formatShortDate(dateValue) {
   return `${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
-function formatMonthTitle(dateValue) {
+function getMonthFromDate(dateValue) {
   const date = new Date(`${dateValue}T00:00:00`);
-  return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+  };
+}
+
+function shiftMonthValue(value, offset) {
+  const date = new Date(value.year, value.month - 1 + offset, 1);
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+  };
 }
 
 function getCalendarEventStyle(event) {
@@ -1103,7 +1176,7 @@ export default function HomePage({ user, onLoggedOut }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [todayFocusSeconds, setTodayFocusSeconds] = useState(0);
   const [stats, setStats] = useState(null);
-  const [week, setWeek] = useState(null);
+  const [reviewRefreshSignal, setReviewRefreshSignal] = useState(0);
 
   const loadTodos = useCallback(() => {
     setTodoStatus('loading');
@@ -1126,9 +1199,7 @@ export default function HomePage({ user, onLoggedOut }) {
     getFocusStats({ period: 'day' })
       .then(setStats)
       .catch(() => setStats(null));
-    getReviewCalendar({ view: 'week', date: todayDate })
-      .then(setWeek)
-      .catch(() => setWeek(null));
+    setReviewRefreshSignal((signal) => signal + 1);
   }, [todayDate]);
 
   useEffect(() => {
@@ -1451,7 +1522,7 @@ export default function HomePage({ user, onLoggedOut }) {
             onSceneChange={setSelectedScene}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
-          <ReviewPanel stats={stats} week={week} todayDate={todayDate} />
+          <ReviewPanel stats={stats} todayDate={todayDate} refreshSignal={reviewRefreshSignal} />
         </>
       )}
       {isSettingsOpen ? (
