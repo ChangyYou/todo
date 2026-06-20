@@ -610,10 +610,18 @@ describe('App', () => {
     fireEvent.change(within(todoPanel).getByLabelText('任务紧急程度'), {
       target: { value: 'high' },
     });
-    fireEvent.change(within(todoPanel).getByLabelText('任务开始日期'), {
+    const startDateInput = within(todoPanel).getByLabelText('任务开始日期');
+    const endDateInput = within(todoPanel).getByLabelText('任务结束日期');
+    startDateInput.showPicker = vi.fn();
+    endDateInput.showPicker = vi.fn();
+    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始日期' }));
+    fireEvent.click(within(todoPanel).getByRole('button', { name: '结束日期' }));
+    expect(startDateInput.showPicker).toHaveBeenCalledTimes(1);
+    expect(endDateInput.showPicker).toHaveBeenCalledTimes(1);
+    fireEvent.change(startDateInput, {
       target: { value: '2026-06-18' },
     });
-    fireEvent.change(within(todoPanel).getByLabelText('任务结束日期'), {
+    fireEvent.change(endDateInput, {
       target: { value: '2026-06-18' },
     });
     fireEvent.click(within(todoPanel).getByRole('button', { name: '添加任务' }));

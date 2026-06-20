@@ -299,6 +299,8 @@ function TaskPanel({
   const [draftPriority, setDraftPriority] = useState('medium');
   const [draftStartDate, setDraftStartDate] = useState(todayDate);
   const [draftEndDate, setDraftEndDate] = useState(todayDate);
+  const startDateInputRef = useRef(null);
+  const endDateInputRef = useRef(null);
   const visibleTodos = useMemo(() => todos.filter((todo) => {
     if (activeFilter === 'completed') {
       return todo.completed;
@@ -349,6 +351,20 @@ function TaskPanel({
     setDraftEndDate(todayDate);
   };
 
+  const openDatePicker = (input) => {
+    if (!input) return;
+    try {
+      if (typeof input.showPicker === 'function') {
+        input.showPicker();
+        return;
+      }
+    } catch {
+      // Fall back below when a browser refuses showPicker for the current input state.
+    }
+    input.focus();
+    input.click();
+  };
+
   return (
     <section className="task-board panel-frame" aria-label="待办事项">
       <header className="panel-header">
@@ -382,9 +398,12 @@ function TaskPanel({
               ))}
             </select>
           </label>
-          <label className="task-date-select">
-            <span>开始日期</span>
+          <div className="task-date-select">
+            <button type="button" onClick={() => openDatePicker(startDateInputRef.current)}>
+              开始日期
+            </button>
             <input
+              ref={startDateInputRef}
               type="date"
               aria-label="任务开始日期"
               value={draftStartDate}
@@ -395,17 +414,20 @@ function TaskPanel({
                 }
               }}
             />
-          </label>
-          <label className="task-date-select">
-            <span>结束日期</span>
+          </div>
+          <div className="task-date-select">
+            <button type="button" onClick={() => openDatePicker(endDateInputRef.current)}>
+              结束日期
+            </button>
             <input
+              ref={endDateInputRef}
               type="date"
               aria-label="任务结束日期"
               value={draftEndDate}
               min={draftStartDate}
               onChange={(event) => setDraftEndDate(event.target.value)}
             />
-          </label>
+          </div>
         </div>
       </form>
 
