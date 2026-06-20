@@ -4783,12 +4783,12 @@ body:has(.workspace-shell) {
 }
 
 .task-row {
-  min-height: 82px;
+  min-height: 78px;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) 34px auto;
   align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -4832,7 +4832,7 @@ body:has(.workspace-shell) {
 .task-content {
   min-width: 0;
   display: grid;
-  gap: 8px;
+  gap: 7px;
   padding: 0;
   text-align: left;
 }
@@ -4841,7 +4841,10 @@ body:has(.workspace-shell) {
 .task-meta-line {
   display: flex;
   align-items: center;
-  gap: 9px;
+}
+
+.task-title-line {
+  gap: 10px;
 }
 
 .task-title-line strong {
@@ -4867,8 +4870,18 @@ body:has(.workspace-shell) {
 }
 
 .task-meta-line {
+  padding-left: 22px;
   justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
   font-size: 0.84rem;
+}
+
+.task-meta-line span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .task-running-time {

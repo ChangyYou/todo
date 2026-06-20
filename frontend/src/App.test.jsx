@@ -549,6 +549,7 @@ describe('App', () => {
     expect(await within(todoPanel).findByText('整理今天最重要的三件事')).toBeInTheDocument();
     const firstTaskRow = within(todoPanel).getByText('整理今天最重要的三件事').closest('article');
     expect(firstTaskRow.querySelectorAll('.task-color-dot')).toHaveLength(1);
+    expect(firstTaskRow.querySelector('.task-title-line .task-color-dot + strong')).toHaveTextContent('整理今天最重要的三件事');
     expect(within(firstTaskRow).queryByText('学习')).not.toBeInTheDocument();
     expect(within(firstTaskRow).getByText('高优先级')).toBeInTheDocument();
     expect(within(todoPanel).getByRole('tab', { name: '全部 1' })).toHaveAttribute('aria-selected', 'true');
