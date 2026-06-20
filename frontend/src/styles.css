@@ -4495,7 +4495,7 @@ body:has(.workspace-shell) {
   position: relative;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 190px minmax(300px, 350px) minmax(0, 1fr) minmax(330px, 370px);
+  grid-template-columns: 190px minmax(300px, 360px) minmax(420px, 1fr) minmax(410px, 480px);
   gap: 18px;
   padding: 16px;
   color: var(--ink);
@@ -5299,7 +5299,7 @@ body:has(.workspace-shell) {
   font-size: 0.86rem;
 }
 
-@media (max-width: 1240px) {
+@media (max-width: 1420px) {
   .workspace-shell {
     width: 100%;
     grid-template-columns: 88px minmax(300px, 390px) minmax(420px, 1fr);
