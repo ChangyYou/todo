@@ -524,13 +524,14 @@ describe('App', () => {
     expect(within(statsPanel).getByText('最近番茄数趋势')).toBeInTheDocument();
     expect(within(statsPanel).getByText('本周打卡进度')).toBeInTheDocument();
 
-    fireEvent.click(within(navigation).getByRole('button', { name: '习惯养成' }));
-    expect(await screen.findByRole('region', { name: '习惯养成' })).toBeInTheDocument();
-    expect(screen.getByLabelText('新习惯名称')).toBeInTheDocument();
-
-    fireEvent.click(within(navigation).getByRole('button', { name: '场景管理' }));
-    expect(screen.getByRole('region', { name: '场景管理' })).toBeInTheDocument();
-    expect(screen.getByText('运动')).toBeInTheDocument();
+    expect(within(navigation).queryByRole('button', { name: '习惯养成' })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole('button', { name: '场景管理' })).not.toBeInTheDocument();
+    fireEvent.click(within(navigation).getByRole('button', { name: '习惯场景' }));
+    const managePanel = await screen.findByRole('region', { name: '习惯场景' });
+    expect(within(managePanel).getByRole('region', { name: '习惯养成' })).toBeInTheDocument();
+    expect(within(managePanel).getByRole('region', { name: '场景管理' })).toBeInTheDocument();
+    expect(within(managePanel).getByLabelText('新习惯名称')).toBeInTheDocument();
+    expect(within(managePanel).getByText('运动')).toBeInTheDocument();
 
     expect(within(navigation).queryByRole('button', { name: '设置' })).not.toBeInTheDocument();
   });

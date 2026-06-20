@@ -21,7 +21,6 @@ import {
   Target,
   Timer,
   Trash,
-  TrendUp,
   X,
 } from '@phosphor-icons/react';
 
@@ -183,8 +182,7 @@ function Sidebar({ user, activeSection, onSectionChange, onLogout }) {
   const navItems = [
     { id: 'plan', label: '今日计划', icon: CalendarBlank },
     { id: 'stats', label: '专注统计', icon: ChartBar },
-    { id: 'habits', label: '习惯养成', icon: Target },
-    { id: 'scenes', label: '场景管理', icon: TrendUp },
+    { id: 'manage', label: '习惯场景', icon: Target },
   ];
 
   return (
@@ -798,53 +796,57 @@ function WorkspaceModulePanel({
     );
   }
 
-  if (activeSection === 'habits') {
+  if (activeSection === 'manage') {
     return (
-      <section className="workspace-module-panel panel-frame" aria-label="习惯养成">
+      <section className="workspace-module-panel panel-frame" aria-label="习惯场景">
         <header className="panel-header">
-          <h2>习惯养成</h2>
-          <span className="module-eyebrow">Habits</span>
+          <h2>习惯场景</h2>
+          <span className="module-eyebrow">Habits & Scenes</span>
         </header>
-        <form className="module-inline-form" onSubmit={onCreateHabit}>
-          <input aria-label="新习惯名称" value={habitDraft} onChange={(event) => onHabitDraftChange(event.target.value)} placeholder="例如 每天阅读 20 分钟" />
-          <button type="submit">添加习惯</button>
-        </form>
-        {habitStatus === 'loading' ? <p className="workspace-state">习惯加载中...</p> : null}
-        <div className="module-list">
-          {habits.map((habit) => (
-            <div key={habit.id} className="module-row">
-              <strong>{habit.title}</strong>
-              <span>{habit.startDate} - {habit.endDate || '永久'}</span>
-              <button type="button" onClick={() => onDeleteHabit(habit.id)}>删除</button>
+        <div className="workspace-manage-grid">
+          <section className="module-card" aria-label="习惯养成">
+            <div className="module-card-header">
+              <h3>习惯养成</h3>
+              <span className="module-eyebrow">Habits</span>
             </div>
-          ))}
-          {habitStatus !== 'loading' && habits.length === 0 ? <p className="workspace-empty">还没有习惯，先添加一个轻量目标。</p> : null}
-        </div>
-      </section>
-    );
-  }
+            <form className="module-inline-form" onSubmit={onCreateHabit}>
+              <input aria-label="新习惯名称" value={habitDraft} onChange={(event) => onHabitDraftChange(event.target.value)} placeholder="例如 每天阅读 20 分钟" />
+              <button type="submit">添加习惯</button>
+            </form>
+            {habitStatus === 'loading' ? <p className="workspace-state">习惯加载中...</p> : null}
+            <div className="module-list">
+              {habits.map((habit) => (
+                <div key={habit.id} className="module-row module-row-compact">
+                  <strong>{habit.title}</strong>
+                  <span>{habit.startDate} - {habit.endDate || '永久'}</span>
+                  <button type="button" onClick={() => onDeleteHabit(habit.id)}>删除</button>
+                </div>
+              ))}
+              {habitStatus !== 'loading' && habits.length === 0 ? <p className="workspace-empty">还没有习惯，先添加一个轻量目标。</p> : null}
+            </div>
+          </section>
 
-  if (activeSection === 'scenes') {
-    return (
-      <section className="workspace-module-panel panel-frame" aria-label="场景管理">
-        <header className="panel-header">
-          <h2>场景管理</h2>
-          <span className="module-eyebrow">Scenes</span>
-        </header>
-        <form className="module-inline-form" onSubmit={onCreateScene}>
-          <input aria-label="新场景名称" value={sceneDraft} onChange={(event) => onSceneDraftChange(event.target.value)} placeholder="例如 写作、运动、学习" />
-          <button type="submit">添加场景</button>
-        </form>
-        <div className="module-list">
-          {scenes.map((scene) => (
-            <div key={scene.id} className="module-row">
-              <span className="legend-dot" style={{ '--legend-color': scene.color || '#7894df' }} />
-              <strong>{scene.title}</strong>
-              <span>{scene.color || '#7894df'}</span>
-              <button type="button" onClick={() => onDeleteScene(scene.id)}>删除</button>
+          <section className="module-card" aria-label="场景管理">
+            <div className="module-card-header">
+              <h3>场景管理</h3>
+              <span className="module-eyebrow">Scenes</span>
             </div>
-          ))}
-          {scenes.length === 0 ? <p className="workspace-empty">还没有场景。</p> : null}
+            <form className="module-inline-form" onSubmit={onCreateScene}>
+              <input aria-label="新场景名称" value={sceneDraft} onChange={(event) => onSceneDraftChange(event.target.value)} placeholder="例如 写作、运动、学习" />
+              <button type="submit">添加场景</button>
+            </form>
+            <div className="module-list">
+              {scenes.map((scene) => (
+                <div key={scene.id} className="module-row">
+                  <span className="legend-dot" style={{ '--legend-color': scene.color || '#7894df' }} />
+                  <strong>{scene.title}</strong>
+                  <span>{scene.color || '#7894df'}</span>
+                  <button type="button" onClick={() => onDeleteScene(scene.id)}>删除</button>
+                </div>
+              ))}
+              {scenes.length === 0 ? <p className="workspace-empty">还没有场景。</p> : null}
+            </div>
+          </section>
         </div>
       </section>
     );
@@ -1313,7 +1315,7 @@ export default function HomePage({ user, onLoggedOut }) {
   }, [loadReview]);
 
   useEffect(() => {
-    if (activeSection !== 'habits') {
+    if (activeSection !== 'manage') {
       return undefined;
     }
 
@@ -1549,7 +1551,7 @@ export default function HomePage({ user, onLoggedOut }) {
     remainingSeconds: timerState.remainingSeconds,
     isRunning: timerState.isRunning,
   } : null;
-  const isModuleSection = ['stats', 'habits', 'scenes'].includes(activeSection);
+  const isModuleSection = ['stats', 'manage'].includes(activeSection);
 
   return (
     <div className={`workspace-shell workspace-section-${activeSection}`}>
