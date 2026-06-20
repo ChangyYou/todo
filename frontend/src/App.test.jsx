@@ -534,6 +534,10 @@ describe('App', () => {
     const todoPanel = screen.getByRole('region', { name: '待办事项' });
     expect(within(todoPanel).getByRole('heading', { name: '待办事项' })).toBeInTheDocument();
     expect(await within(todoPanel).findByText('整理今天最重要的三件事')).toBeInTheDocument();
+    const firstTaskRow = within(todoPanel).getByText('整理今天最重要的三件事').closest('article');
+    expect(firstTaskRow.querySelectorAll('.task-color-dot')).toHaveLength(1);
+    expect(within(firstTaskRow).queryByText('学习')).not.toBeInTheDocument();
+    expect(within(firstTaskRow).getByText('高优先级')).toBeInTheDocument();
     expect(within(todoPanel).getByRole('tab', { name: '全部 1' })).toHaveAttribute('aria-selected', 'true');
     expect(within(todoPanel).getByRole('tab', { name: '已完成 1' })).toBeInTheDocument();
 
@@ -558,6 +562,21 @@ describe('App', () => {
     fireEvent.click(within(todoPanel).getByRole('tab', { name: '已完成 2' }));
     expect(await within(todoPanel).findByText('写日报')).toBeInTheDocument();
     expect(within(todoPanel).getByText('完成一轮 25 分钟专注')).toBeInTheDocument();
+  });
+
+  it('lets users delete workspace tasks', async () => {
+    await renderAtPath('/');
+
+    const todoPanel = screen.getByRole('region', { name: '待办事项' });
+    expect(await within(todoPanel).findByText('整理今天最重要的三件事')).toBeInTheDocument();
+
+    fireEvent.click(within(todoPanel).getByRole('button', { name: '删除任务 整理今天最重要的三件事' }));
+
+    expect(within(todoPanel).queryByText('整理今天最重要的三件事')).not.toBeInTheDocument();
+    const deleteCall = window.fetch.mock.calls.find(([url, options]) => (
+      url === '/api/todos/1' && options?.method === 'DELETE'
+    ));
+    expect(deleteCall).toBeTruthy();
   });
 
   it('starts focus from a workspace task', async () => {

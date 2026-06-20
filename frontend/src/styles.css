@@ -4785,7 +4785,7 @@ body:has(.workspace-shell) {
 .task-row {
   min-height: 82px;
   display: grid;
-  grid-template-columns: 34px 1fr auto;
+  grid-template-columns: 34px minmax(0, 1fr) 34px auto;
   align-items: center;
   gap: 8px;
   padding: 12px 14px;
@@ -4801,20 +4801,36 @@ body:has(.workspace-shell) {
 }
 
 .task-checkbox,
-.task-content {
+.task-content,
+.task-delete-button {
   border: 0;
   background: transparent;
 }
 
-.task-checkbox {
+.task-checkbox,
+.task-delete-button {
   width: 28px;
   height: 28px;
   display: inline-grid;
   place-items: center;
+}
+
+.task-checkbox {
   color: #2d5f4d;
 }
 
+.task-delete-button {
+  border-radius: 10px;
+  color: rgba(31, 60, 52, 0.46);
+}
+
+.task-delete-button:hover {
+  background: rgba(201, 111, 111, 0.12);
+  color: #9b3f36;
+}
+
 .task-content {
+  min-width: 0;
   display: grid;
   gap: 8px;
   padding: 0;
@@ -4829,6 +4845,10 @@ body:has(.workspace-shell) {
 }
 
 .task-title-line strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.98rem;
 }
 

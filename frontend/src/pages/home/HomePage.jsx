@@ -21,6 +21,7 @@ import {
   Square,
   Target,
   Timer,
+  Trash,
   TrendUp,
 } from '@phosphor-icons/react';
 
@@ -30,6 +31,7 @@ import {
   createTodo,
   deleteHabit,
   deleteScene,
+  deleteTodo,
   getFocusStats,
   getFocusSessionSummary,
   getPomodoroSettings,
@@ -222,6 +224,7 @@ function TaskPanel({
   onFilterChange,
   onCreateTodo,
   onToggleTodo,
+  onDeleteTodo,
   onFocusTodo,
 }) {
   const [draftTitle, setDraftTitle] = useState('');
@@ -329,6 +332,7 @@ function TaskPanel({
         focusTimerStatus={focusTimerStatus}
         todayDate={todayDate}
         onToggleTodo={onToggleTodo}
+        onDeleteTodo={onDeleteTodo}
         onFocusTodo={onFocusTodo}
       />
 
@@ -343,6 +347,7 @@ function TaskPanel({
             focusTimerStatus={focusTimerStatus}
             todayDate={todayDate}
             onToggleTodo={onToggleTodo}
+            onDeleteTodo={onDeleteTodo}
             onFocusTodo={onFocusTodo}
           />
         </>
@@ -359,6 +364,7 @@ function TaskPanel({
             focusTimerStatus={focusTimerStatus}
             todayDate={todayDate}
             onToggleTodo={onToggleTodo}
+            onDeleteTodo={onDeleteTodo}
             onFocusTodo={onFocusTodo}
           />
         </>
@@ -371,7 +377,7 @@ function TaskPanel({
   );
 }
 
-function TaskGroup({ todos, focusTimerStatus, todayDate, onToggleTodo, onFocusTodo }) {
+function TaskGroup({ todos, focusTimerStatus, todayDate, onToggleTodo, onDeleteTodo, onFocusTodo }) {
   return (
     <div className="task-list">
       {todos.map((todo) => {
@@ -389,7 +395,6 @@ function TaskGroup({ todos, focusTimerStatus, todayDate, onToggleTodo, onFocusTo
             </button>
             <button type="button" className="task-content" aria-label={`开始专注 ${todo.title}`} onClick={() => onFocusTodo(todo)}>
               <span className="task-title-line">
-                <span className="task-color-dot" style={{ '--task-color': priority.color }} />
                 <strong>{todo.title}</strong>
               </span>
               <span className="task-meta-line">
@@ -397,6 +402,14 @@ function TaskGroup({ todos, focusTimerStatus, todayDate, onToggleTodo, onFocusTo
                 {todo.sourceType === 'habit' ? '习惯' : priority.label}
                 <span>{formatTodoTime(todo, todayDate)}</span>
               </span>
+            </button>
+            <button
+              type="button"
+              className="task-delete-button"
+              aria-label={`删除任务 ${todo.title}`}
+              onClick={() => onDeleteTodo(todo)}
+            >
+              <Trash />
             </button>
             {isFocusTodo ? <span className="task-running-time">{formatTime(focusTimerStatus.remainingSeconds)}</span> : null}
           </article>
@@ -961,6 +974,22 @@ export default function HomePage({ user, onLoggedOut }) {
     }
   };
 
+  const handleDeleteTodo = async (todo) => {
+    const previousTodos = todos;
+    setTodos((items) => items.filter((item) => item.id !== todo.id));
+    if (selectedFocusTodo?.id === todo.id) {
+      setSelectedFocusTodo(null);
+    }
+
+    try {
+      await deleteTodo(todo.id);
+      loadReview();
+    } catch (error) {
+      setTodos(previousTodos);
+      setTodoError(error instanceof Error ? error.message : '删除任务失败');
+    }
+  };
+
   const handleFocusTodo = (todo) => {
     if (todo.completed) {
       return;
@@ -1082,6 +1111,7 @@ export default function HomePage({ user, onLoggedOut }) {
         onFilterChange={setActiveFilter}
         onCreateTodo={handleCreateTodo}
         onToggleTodo={handleToggleTodo}
+        onDeleteTodo={handleDeleteTodo}
         onFocusTodo={handleFocusTodo}
       />
       {isModuleSection ? (
