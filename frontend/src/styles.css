@@ -4493,12 +4493,18 @@ body:has(.workspace-shell) {
   --surface: rgba(255, 255, 255, 0.62);
   --shadow: 0 18px 42px rgba(67, 89, 74, 0.08);
   position: relative;
+  width: min(100%, 1440px);
   min-height: 100vh;
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: 220px minmax(310px, 390px) minmax(430px, 1fr) minmax(330px, 410px);
+  grid-template-columns: 190px minmax(300px, 350px) minmax(0, 1fr) minmax(330px, 370px);
   gap: 18px;
   padding: 16px;
   color: var(--ink);
+}
+
+.workspace-shell > * {
+  min-width: 0;
 }
 
 .workspace-shell button,
@@ -5066,18 +5072,29 @@ body:has(.workspace-shell) {
   background: var(--line);
 }
 
-.review-panel {
+.workspace-shell > .review-panel {
+  position: static;
+  z-index: auto;
+  right: auto;
+  bottom: auto;
+  width: auto;
+  max-height: none;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow: visible;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.34);
+  box-shadow: none;
 }
 
-.review-panel .segmented-tabs {
+.workspace-shell > .review-panel .segmented-tabs {
   margin-top: 2px;
 }
 
 .week-card,
 .review-card {
+  min-width: 0;
   border-radius: 18px;
   padding: 14px;
   box-shadow: none;
@@ -5130,8 +5147,10 @@ body:has(.workspace-shell) {
 .calendar-grid {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: 42px 1fr;
+  grid-template-columns: 40px minmax(0, 1fr);
   gap: 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .calendar-grid > span {
@@ -5142,6 +5161,8 @@ body:has(.workspace-shell) {
 
 .calendar-lines {
   grid-row: span 9;
+  width: 100%;
+  min-width: 0;
   min-height: 250px;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -5191,11 +5212,13 @@ body:has(.workspace-shell) {
 
 .today-focus-metrics {
   margin-top: 18px;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .today-focus-metrics > div {
-  flex: 1;
+  min-width: 0;
   display: grid;
   grid-template-columns: 44px 1fr;
   grid-template-rows: auto auto;
@@ -5229,7 +5252,9 @@ body:has(.workspace-shell) {
 
 .scene-chart-row {
   margin-top: 18px;
-  gap: 22px;
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 18px;
 }
 
 .donut-chart {
@@ -5278,6 +5303,7 @@ body:has(.workspace-shell) {
 
 @media (max-width: 1240px) {
   .workspace-shell {
+    width: 100%;
     grid-template-columns: 88px minmax(300px, 390px) minmax(420px, 1fr);
   }
 
@@ -5297,16 +5323,16 @@ body:has(.workspace-shell) {
     justify-items: center;
   }
 
-  .review-panel {
+  .workspace-shell > .review-panel {
     grid-column: 2 / -1;
     min-height: auto;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .review-panel > .panel-header,
-  .review-panel > .segmented-tabs,
-  .review-panel > .autosave-note {
+  .workspace-shell > .review-panel > .panel-header,
+  .workspace-shell > .review-panel > .segmented-tabs,
+  .workspace-shell > .review-panel > .autosave-note {
     grid-column: 1 / -1;
   }
 }
@@ -5346,7 +5372,7 @@ body:has(.workspace-shell) {
     grid-template-columns: 42px 1fr 28px;
   }
 
-  .review-panel {
+  .workspace-shell > .review-panel {
     display: flex;
   }
 
