@@ -25,15 +25,21 @@ import {
 } from '@phosphor-icons/react';
 
 import {
+  createHabit,
+  createScene,
   createTodo,
+  deleteHabit,
+  deleteScene,
   getFocusStats,
   getFocusSessionSummary,
   getPomodoroSettings,
   getReviewCalendar,
+  listHabits,
   listScenes,
   listTodos,
   logout,
   recordFocusSession,
+  updatePomodoroSettings,
   updateTodo,
 } from '../../lib/api';
 import {
@@ -59,6 +65,13 @@ const PRIORITY_STYLES = {
 };
 
 const REVIEW_COLORS = ['#7894df', '#a88bd8', '#ee945b', '#79ad83', '#9da4a0'];
+
+const SETTINGS_FIELDS = [
+  { key: 'focusMinutes', label: '专注时长（分钟）' },
+  { key: 'shortBreakMinutes', label: '短休息（分钟）' },
+  { key: 'longBreakMinutes', label: '长休息（分钟）' },
+  { key: 'longBreakInterval', label: '长休息间隔（轮）' },
+];
 
 function getLocalDate(date = new Date()) {
   return date.toLocaleDateString('en-CA');
@@ -579,6 +592,140 @@ function ReviewPanel({ stats, week, todayDate }) {
   );
 }
 
+function WorkspaceModulePanel({
+  activeSection,
+  stats,
+  settings,
+  habits,
+  habitStatus,
+  habitDraft,
+  sceneDraft,
+  scenes,
+  onHabitDraftChange,
+  onSceneDraftChange,
+  onCreateHabit,
+  onDeleteHabit,
+  onCreateScene,
+  onDeleteScene,
+  onSettingChange,
+  onAutoStartChange,
+}) {
+  if (activeSection === 'stats') {
+    const overview = stats?.overview ?? {};
+    const sceneItems = stats?.scenePeriods?.at(-1)?.scenes ?? [];
+    return (
+      <section className="workspace-module-panel panel-frame" aria-label="专注统计">
+        <header className="panel-header">
+          <h2>专注统计</h2>
+          <span className="module-eyebrow">Focus Stats</span>
+        </header>
+        <div className="module-stat-grid">
+          <div><span>今日专注</span><strong>{formatDuration(overview.todayFocusSeconds || 0)}</strong></div>
+          <div><span>今日番茄</span><strong>{overview.todayPomodoros || 0}</strong></div>
+          <div><span>总专注</span><strong>{formatDuration(overview.totalFocusSeconds || 0)}</strong></div>
+          <div><span>已完成任务</span><strong>{overview.totalCompletedTasks || 0}</strong></div>
+        </div>
+        <section className="module-card">
+          <h3>场景分布</h3>
+          <div className="module-list">
+            {(sceneItems.length > 0 ? sceneItems : [{ title: '暂无专注记录', durationSeconds: 0, percentage: 0, color: '#9da4a0' }]).map((scene, index) => (
+              <div key={`${scene.sceneId || scene.title}-${index}`} className="module-row">
+                <span className="legend-dot" style={{ '--legend-color': scene.color || REVIEW_COLORS[index % REVIEW_COLORS.length] }} />
+                <strong>{scene.title}</strong>
+                <span>{scene.percentage || 0}%</span>
+                <span>{formatDuration(scene.durationSeconds || 0)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </section>
+    );
+  }
+
+  if (activeSection === 'habits') {
+    return (
+      <section className="workspace-module-panel panel-frame" aria-label="习惯养成">
+        <header className="panel-header">
+          <h2>习惯养成</h2>
+          <span className="module-eyebrow">Habits</span>
+        </header>
+        <form className="module-inline-form" onSubmit={onCreateHabit}>
+          <input aria-label="新习惯名称" value={habitDraft} onChange={(event) => onHabitDraftChange(event.target.value)} placeholder="例如 每天阅读 20 分钟" />
+          <button type="submit">添加习惯</button>
+        </form>
+        {habitStatus === 'loading' ? <p className="workspace-state">习惯加载中...</p> : null}
+        <div className="module-list">
+          {habits.map((habit) => (
+            <div key={habit.id} className="module-row">
+              <strong>{habit.title}</strong>
+              <span>{habit.startDate} - {habit.endDate || '永久'}</span>
+              <button type="button" onClick={() => onDeleteHabit(habit.id)}>删除</button>
+            </div>
+          ))}
+          {habitStatus !== 'loading' && habits.length === 0 ? <p className="workspace-empty">还没有习惯，先添加一个轻量目标。</p> : null}
+        </div>
+      </section>
+    );
+  }
+
+  if (activeSection === 'scenes') {
+    return (
+      <section className="workspace-module-panel panel-frame" aria-label="场景管理">
+        <header className="panel-header">
+          <h2>场景管理</h2>
+          <span className="module-eyebrow">Scenes</span>
+        </header>
+        <form className="module-inline-form" onSubmit={onCreateScene}>
+          <input aria-label="新场景名称" value={sceneDraft} onChange={(event) => onSceneDraftChange(event.target.value)} placeholder="例如 写作、运动、学习" />
+          <button type="submit">添加场景</button>
+        </form>
+        <div className="module-list">
+          {scenes.map((scene) => (
+            <div key={scene.id} className="module-row">
+              <span className="legend-dot" style={{ '--legend-color': scene.color || '#7894df' }} />
+              <strong>{scene.title}</strong>
+              <span>{scene.color || '#7894df'}</span>
+              <button type="button" onClick={() => onDeleteScene(scene.id)}>删除</button>
+            </div>
+          ))}
+          {scenes.length === 0 ? <p className="workspace-empty">还没有场景。</p> : null}
+        </div>
+      </section>
+    );
+  }
+
+  if (activeSection === 'settings') {
+    return (
+      <section className="workspace-module-panel panel-frame" aria-label="设置">
+        <header className="panel-header">
+          <h2>设置</h2>
+          <span className="module-eyebrow">Timer Settings</span>
+        </header>
+        <div className="module-settings-grid">
+          {SETTINGS_FIELDS.map((field) => (
+            <label key={field.key} className="module-field">
+              <span>{field.label}</span>
+              <input
+                type="number"
+                min="1"
+                inputMode="numeric"
+                value={settings[field.key]}
+                onChange={(event) => onSettingChange(field.key, event.target.value)}
+              />
+            </label>
+          ))}
+        </div>
+        <label className="module-toggle-row">
+          <span>自动开始下一阶段</span>
+          <input type="checkbox" checked={settings.autoStartNextSession} onChange={onAutoStartChange} />
+        </label>
+      </section>
+    );
+  }
+
+  return null;
+}
+
 function formatShortDate(dateValue) {
   const date = new Date(`${dateValue}T00:00:00`);
   return `${date.getMonth() + 1}月${date.getDate()}日`;
@@ -612,6 +759,10 @@ export default function HomePage({ user, onLoggedOut }) {
   const [settings, setSettings] = useState(() => createDefaultSettings());
   const [timerState, setTimerState] = useState(() => createInitialTimerState(createDefaultSettings()));
   const [selectedFocusTodo, setSelectedFocusTodo] = useState(null);
+  const [habits, setHabits] = useState([]);
+  const [habitStatus, setHabitStatus] = useState('idle');
+  const [habitDraft, setHabitDraft] = useState('');
+  const [sceneDraft, setSceneDraft] = useState('');
   const [scenes, setScenes] = useState([]);
   const [selectedScene, setSelectedScene] = useState(null);
   const [todayFocusSeconds, setTodayFocusSeconds] = useState(0);
@@ -669,6 +820,29 @@ export default function HomePage({ user, onLoggedOut }) {
   useEffect(() => {
     loadReview();
   }, [loadReview]);
+
+  useEffect(() => {
+    if (activeSection !== 'habits') {
+      return undefined;
+    }
+
+    let disposed = false;
+    setHabitStatus('loading');
+    listHabits()
+      .then((items) => {
+        if (disposed) return;
+        setHabits(items);
+        setHabitStatus('idle');
+      })
+      .catch(() => {
+        if (disposed) return;
+        setHabitStatus('error');
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [activeSection]);
 
   useEffect(() => {
     if (!timerState.isRunning) {
@@ -780,6 +954,72 @@ export default function HomePage({ user, onLoggedOut }) {
     ));
   };
 
+  const handleCreateHabit = async (event) => {
+    event.preventDefault();
+    const title = habitDraft.trim();
+    if (!title) return;
+
+    const habit = await createHabit({
+      title,
+      startDate: todayDate,
+      endDate: '',
+    });
+    setHabits((items) => [habit, ...items.filter((item) => item.id !== habit.id)]);
+    setHabitDraft('');
+    loadTodos();
+    loadReview();
+  };
+
+  const handleDeleteHabit = async (habitId) => {
+    const previousHabits = habits;
+    setHabits((items) => items.filter((habit) => habit.id !== habitId));
+    try {
+      await deleteHabit(habitId);
+      loadTodos();
+      loadReview();
+    } catch {
+      setHabits(previousHabits);
+    }
+  };
+
+  const handleCreateScene = async (event) => {
+    event.preventDefault();
+    const title = sceneDraft.trim();
+    if (!title) return;
+
+    const scene = await createScene({ title, color: REVIEW_COLORS[scenes.length % REVIEW_COLORS.length] });
+    setScenes((items) => [scene, ...items.filter((item) => item.id !== scene.id)]);
+    setSelectedScene((current) => current ?? scene);
+    setSceneDraft('');
+  };
+
+  const handleDeleteScene = async (sceneId) => {
+    const previousScenes = scenes;
+    setScenes((items) => items.filter((scene) => scene.id !== sceneId));
+    setSelectedScene((current) => (current?.id === sceneId ? null : current));
+    try {
+      await deleteScene(sceneId);
+      loadReview();
+    } catch {
+      setScenes(previousScenes);
+    }
+  };
+
+  const persistSettings = (nextSettings) => {
+    setSettings(nextSettings);
+    setTimerState((state) => applySettingsToTimerState(state, nextSettings));
+    updatePomodoroSettings(nextSettings).catch(() => {});
+  };
+
+  const handleSettingChange = (key, value) => {
+    const numericValue = Math.max(1, Number(value) || 1);
+    persistSettings({ ...settings, [key]: numericValue });
+  };
+
+  const handleAutoStartChange = () => {
+    persistSettings({ ...settings, autoStartNextSession: !settings.autoStartNextSession });
+  };
+
   const handleLogout = async () => {
     try {
       await persistFocusDuration();
@@ -802,9 +1042,10 @@ export default function HomePage({ user, onLoggedOut }) {
     remainingSeconds: timerState.remainingSeconds,
     isRunning: timerState.isRunning,
   } : null;
+  const isModuleSection = ['stats', 'habits', 'scenes', 'settings'].includes(activeSection);
 
   return (
-    <div className="workspace-shell">
+    <div className={`workspace-shell workspace-section-${activeSection}`}>
       <Sidebar
         user={user}
         activeSection={activeSection}
@@ -823,17 +1064,40 @@ export default function HomePage({ user, onLoggedOut }) {
         onToggleTodo={handleToggleTodo}
         onFocusTodo={handleFocusTodo}
       />
-      <FocusPanel
-        settings={settings}
-        timerState={timerState}
-        focusCopy={focusCopy}
-        selectedScene={selectedScene}
-        scenes={scenes}
-        todayFocusSeconds={todayFocusSeconds}
-        onTimerAction={handleTimerAction}
-        onSceneChange={setSelectedScene}
-      />
-      <ReviewPanel stats={stats} week={week} todayDate={todayDate} />
+      {isModuleSection ? (
+        <WorkspaceModulePanel
+          activeSection={activeSection}
+          stats={stats}
+          settings={settings}
+          habits={habits}
+          habitStatus={habitStatus}
+          habitDraft={habitDraft}
+          sceneDraft={sceneDraft}
+          scenes={scenes}
+          onHabitDraftChange={setHabitDraft}
+          onSceneDraftChange={setSceneDraft}
+          onCreateHabit={handleCreateHabit}
+          onDeleteHabit={handleDeleteHabit}
+          onCreateScene={handleCreateScene}
+          onDeleteScene={handleDeleteScene}
+          onSettingChange={handleSettingChange}
+          onAutoStartChange={handleAutoStartChange}
+        />
+      ) : (
+        <>
+          <FocusPanel
+            settings={settings}
+            timerState={timerState}
+            focusCopy={focusCopy}
+            selectedScene={selectedScene}
+            scenes={scenes}
+            todayFocusSeconds={todayFocusSeconds}
+            onTimerAction={handleTimerAction}
+            onSceneChange={setSelectedScene}
+          />
+          <ReviewPanel stats={stats} week={week} todayDate={todayDate} />
+        </>
+      )}
     </div>
   );
 }

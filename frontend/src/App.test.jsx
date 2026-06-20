@@ -481,6 +481,28 @@ describe('App', () => {
     expect(screen.getByText('场景分布')).toBeInTheDocument();
   });
 
+  it('switches workspace content from the sidebar navigation', async () => {
+    await renderAtPath('/');
+
+    const navigation = screen.getByRole('navigation', { name: '主导航' });
+
+    fireEvent.click(within(navigation).getByRole('button', { name: '专注统计' }));
+    expect(screen.getByRole('region', { name: '专注统计' })).toBeInTheDocument();
+    expect(screen.getByText('总专注')).toBeInTheDocument();
+
+    fireEvent.click(within(navigation).getByRole('button', { name: '习惯养成' }));
+    expect(await screen.findByRole('region', { name: '习惯养成' })).toBeInTheDocument();
+    expect(screen.getByLabelText('新习惯名称')).toBeInTheDocument();
+
+    fireEvent.click(within(navigation).getByRole('button', { name: '场景管理' }));
+    expect(screen.getByRole('region', { name: '场景管理' })).toBeInTheDocument();
+    expect(screen.getByText('运动')).toBeInTheDocument();
+
+    fireEvent.click(within(navigation).getByRole('button', { name: '设置' }));
+    expect(screen.getByRole('region', { name: '设置' })).toBeInTheDocument();
+    expect(screen.getByLabelText('专注时长（分钟）')).toHaveValue(25);
+  });
+
   it('renders the pomodoro module page on /pomodoro', async () => {
     vi.setSystemTime(new Date('2026-05-18T08:34:00Z'));
     await renderAtPath('/pomodoro');
