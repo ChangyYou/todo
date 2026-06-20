@@ -5058,7 +5058,7 @@ body:has(.workspace-shell) {
   text-align: center;
 }
 
-.cycle-footer div {
+.cycle-footer > div:not(.cycle-divider) {
   min-width: 100px;
 }
 
@@ -5077,9 +5077,10 @@ body:has(.workspace-shell) {
 }
 
 .cycle-divider {
+  flex: 0 0 1px;
   width: 1px;
   height: 58px;
-  min-width: 0;
+  min-width: 1px;
   background: var(--line);
 }
 
