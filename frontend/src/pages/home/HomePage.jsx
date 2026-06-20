@@ -30,6 +30,7 @@ import {
   deleteHabit,
   deleteScene,
   deleteTodo,
+  deleteReviewTodo,
   getFocusStats,
   getFocusSessionSummary,
   getPomodoroSettings,
@@ -139,6 +140,64 @@ function formatDuration(seconds = 0) {
     return `${hours}时 ${minutes}分`;
   }
   return `${minutes}分`;
+}
+
+function formatDetailDuration(seconds = 0) {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  if (minutes <= 0) {
+    return `${remainingSeconds}s`;
+  }
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+function getReviewTaskMeta(task) {
+  const focusMeta = `专注 ${formatDetailDuration(task.focusSeconds || 0)} · ${task.sessionCount || 0} 个番茄`;
+  if (task.sourceType === 'scene') {
+    return `场景 ${task.sceneTitle || task.title || '默认'} · ${focusMeta}`;
+  }
+  return `${task.completed ? '已完成' : '未完成'} · 场景 ${task.sceneTitle || '默认'} · ${focusMeta}`;
+}
+
+function buildReviewDayFromWeekDay(day) {
+  const events = day?.events ?? [];
+  const focusEvents = events.filter((event) => event.type === 'focus');
+  const todoEvents = events.filter((event) => event.type === 'todo');
+  const habitEvents = events.filter((event) => event.type === 'habit');
+  const sceneIds = new Set(focusEvents.map((event) => event.sceneId).filter(Boolean));
+
+  return {
+    date: day.date,
+    day: day.day,
+    inCurrentMonth: true,
+    isToday: day.isToday,
+    completedTasks: todoEvents.length,
+    completedHabits: habitEvents.length,
+    sceneCount: sceneIds.size,
+    focusSeconds: focusEvents.reduce((total, event) => total + (event.durationSeconds || 0), 0),
+    entries: events.map((event) => ({
+      todoId: event.todoId,
+      sceneId: event.sceneId,
+      type: event.type === 'todo' ? 'task' : event.type,
+      title: event.title,
+      meta: event.meta || formatWeekEventTime(event),
+      sceneTitle: event.sceneTitle,
+      sceneColor: event.color,
+    })),
+    tasks: events.map((event) => ({
+      todoId: event.todoId || event.id || 0,
+      sceneId: event.sceneId || 0,
+      title: event.title,
+      sourceType: event.type === 'habit' ? 'habit' : event.type === 'focus' && !event.todoId ? 'scene' : 'todo',
+      completed: event.type !== 'focus',
+      focusSeconds: event.durationSeconds || 0,
+      sessionCount: event.type === 'focus' ? 1 : 0,
+      completedAt: event.type === 'focus' ? '' : `${day.date} ${event.startTime || ''}`.trim(),
+      sceneTitle: event.sceneTitle || (event.sceneId ? event.title : ''),
+      sceneColor: event.color,
+    })),
+  };
 }
 
 function formatCompactDuration(seconds = 0) {
@@ -584,6 +643,9 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
   const [calendar, setCalendar] = useState(null);
   const [week, setWeek] = useState(null);
   const [selectedWeekEvent, setSelectedWeekEvent] = useState(null);
+  const [selectedReviewDay, setSelectedReviewDay] = useState(null);
+  const [reviewDetailError, setReviewDetailError] = useState('');
+  const [reviewDeleteStatus, setReviewDeleteStatus] = useState('idle');
   const [reviewStatus, setReviewStatus] = useState('idle');
   const [reviewError, setReviewError] = useState('');
   const todayStats = stats?.overview ?? {};
@@ -606,6 +668,8 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
   useEffect(() => {
     let disposed = false;
     setSelectedWeekEvent(null);
+    setSelectedReviewDay(null);
+    setReviewDetailError('');
     setReviewStatus('loading');
     setReviewError('');
     getReviewCalendar(viewMode === 'week' ? { view: 'week', date: viewDate } : viewMonth)
@@ -630,6 +694,35 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
       disposed = true;
     };
   }, [viewMode, viewMonth, viewDate, refreshSignal]);
+
+  const handleSelectReviewDay = (day) => {
+    if (!day?.date) return;
+    const monthDay = calendar?.days?.find((item) => item.date === day.date);
+    setSelectedWeekEvent(null);
+    setReviewDetailError('');
+    setSelectedReviewDay(monthDay || (day.tasks ? day : buildReviewDayFromWeekDay(day)));
+  };
+
+  const handleDeleteReviewTask = async (task) => {
+    if (!task?.todoId || task.sourceType === 'scene') return;
+    if (!window.confirm(`永久删除「${task.title}」以及它的全部专注记录？这个操作不能撤销。`)) {
+      return;
+    }
+    setReviewDeleteStatus('deleting');
+    setReviewDetailError('');
+    try {
+      await deleteReviewTodo(task.todoId);
+      setSelectedReviewDay((day) => day ? {
+        ...day,
+        tasks: day.tasks.filter((item) => item.todoId !== task.todoId),
+        entries: day.entries.filter((item) => item.todoId !== task.todoId),
+      } : day);
+    } catch (error) {
+      setReviewDetailError(error instanceof Error ? error.message : '复盘任务删除失败');
+    } finally {
+      setReviewDeleteStatus('idle');
+    }
+  };
 
   return (
     <aside className="review-panel panel-frame" aria-label="个人复盘">
@@ -667,7 +760,12 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
           week={week}
           todayDate={todayDate}
           selectedEvent={selectedWeekEvent}
-          onSelectEvent={setSelectedWeekEvent}
+          selectedDay={selectedReviewDay}
+          onSelectEvent={(event) => {
+            setSelectedReviewDay(null);
+            setSelectedWeekEvent(event);
+          }}
+          onSelectDay={handleSelectReviewDay}
           onPreviousWeek={() => setViewDate((date) => addDays(date, -7))}
           onNextWeek={() => setViewDate((date) => addDays(date, 7))}
         />
@@ -677,6 +775,8 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
           monthTitle={monthTitle}
           viewMonth={viewMonth}
           todayDate={todayDate}
+          selectedDay={selectedReviewDay}
+          onSelectDay={handleSelectReviewDay}
           onPreviousMonth={() => setViewMonth((month) => shiftMonthValue(month, -1))}
           onNextMonth={() => setViewMonth((month) => shiftMonthValue(month, 1))}
         />
@@ -697,6 +797,55 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
               <span>{formatWeekEventTime(selectedWeekEvent)}</span>
               {selectedWeekEvent.meta ? <small>{selectedWeekEvent.meta}</small> : null}
             </div>
+          </div>
+        </section>
+      ) : null}
+
+      {selectedReviewDay ? (
+        <section className="review-detail-panel workspace-review-detail" role="dialog" aria-label={`${selectedReviewDay.date} 当日复盘详情`}>
+          <div className="review-detail-header">
+            <div>
+              <p className="review-kicker">Day Detail</p>
+              <h3>{selectedReviewDay.date} 复盘详情</h3>
+            </div>
+            <button type="button" className="review-today-button" onClick={() => setSelectedReviewDay(null)}>
+              关闭
+            </button>
+          </div>
+          <div className="review-detail-summary">
+            <span>任务 {selectedReviewDay.completedTasks || 0}</span>
+            <span>习惯 {selectedReviewDay.completedHabits || 0}</span>
+            <span>场景 {selectedReviewDay.sceneCount || 0}</span>
+            <span>专注 {formatDuration(selectedReviewDay.focusSeconds || 0)}</span>
+          </div>
+          {reviewDetailError ? <p className="review-inline-error" role="alert">{reviewDetailError}</p> : null}
+          <div className="review-task-list">
+            {(selectedReviewDay.tasks ?? []).length > 0 ? selectedReviewDay.tasks.map((task, index) => (
+              <article
+                key={`${task.sourceType}-${task.todoId || task.sceneId || index}`}
+                className={`review-task-row ${task.sceneColor ? 'with-scene-color' : ''}`}
+                style={task.sceneColor ? { '--review-scene-color': task.sceneColor } : undefined}
+              >
+                <div className="review-task-main">
+                  <span className={`review-task-badge ${task.sourceType}`}>{task.sourceType === 'habit' ? '习惯' : task.sourceType === 'scene' ? '场景' : '任务'}</span>
+                  <strong>{task.title}</strong>
+                  <small>{getReviewTaskMeta(task)}</small>
+                </div>
+                {task.sourceType !== 'scene' && task.todoId ? (
+                  <button
+                    type="button"
+                    className="review-delete-button"
+                    aria-label={`永久删除 ${task.title}`}
+                    disabled={reviewDeleteStatus === 'deleting'}
+                    onClick={() => handleDeleteReviewTask(task)}
+                  >
+                    <Trash />
+                  </button>
+                ) : null}
+              </article>
+            )) : (
+              <p className="review-empty">这一天还没有可复盘的任务。</p>
+            )}
           </div>
         </section>
       ) : null}
@@ -1075,7 +1224,7 @@ function WorkspaceHabitWeekCard({ days }) {
   );
 }
 
-function ReviewWeekCard({ week, todayDate, selectedEvent, onSelectEvent, onPreviousWeek, onNextWeek }) {
+function ReviewWeekCard({ week, todayDate, selectedEvent, selectedDay, onSelectEvent, onSelectDay, onPreviousWeek, onNextWeek }) {
   const days = week?.days ?? createFallbackWeek(todayDate);
   return (
     <section className="week-card" aria-label="周日程">
@@ -1086,10 +1235,16 @@ function ReviewWeekCard({ week, todayDate, selectedEvent, onSelectEvent, onPrevi
       </div>
       <div className="week-days">
         {days.map((day) => (
-          <div key={day.date} className={day.date === todayDate || day.isToday ? 'today' : ''}>
+          <button
+            type="button"
+            key={day.date}
+            className={`${day.date === todayDate || day.isToday ? 'today' : ''} ${selectedDay?.date === day.date ? 'selected' : ''}`}
+            aria-label={`查看 ${day.date} 当日复盘`}
+            onClick={() => onSelectDay(day)}
+          >
             <span>{day.label?.replace('周', '') || getChineseWeekday(day.date).replace('周', '')}</span>
             <strong>{new Date(`${day.date}T00:00:00`).getDate()}</strong>
-          </div>
+          </button>
         ))}
       </div>
       <div className="calendar-grid">
@@ -1100,7 +1255,13 @@ function ReviewWeekCard({ week, todayDate, selectedEvent, onSelectEvent, onPrevi
         </div>
         <div className="calendar-lines">
           {days.map((day) => (
-            <div key={day.date} className={`calendar-day-column ${day.date === todayDate || day.isToday ? 'today' : ''}`}>
+            <div key={day.date} className={`calendar-day-column ${day.date === todayDate || day.isToday ? 'today' : ''} ${selectedDay?.date === day.date ? 'selected' : ''}`}>
+              <button
+                type="button"
+                className="calendar-day-hitbox"
+                aria-label={`查看 ${day.date} 当日复盘`}
+                onClick={() => onSelectDay(day)}
+              />
               {(day.events ?? []).map((event, eventIndex) => (
                 <button
                   type="button"
@@ -1112,7 +1273,10 @@ function ReviewWeekCard({ week, todayDate, selectedEvent, onSelectEvent, onPrevi
                     '--event-color': event.color || REVIEW_COLORS[eventIndex % REVIEW_COLORS.length],
                     ...getCalendarEventStyle(event),
                   }}
-                  onClick={() => onSelectEvent({ ...event, date: day.date, dayLabel: day.label })}
+                  onClick={(eventClick) => {
+                    eventClick.stopPropagation();
+                    onSelectEvent({ ...event, date: day.date, dayLabel: day.label });
+                  }}
                 >
                   <strong>{event.title}</strong>
                   <span>{formatWeekEventTime(event)}</span>
@@ -1127,7 +1291,7 @@ function ReviewWeekCard({ week, todayDate, selectedEvent, onSelectEvent, onPrevi
   );
 }
 
-function ReviewMonthCard({ calendar, monthTitle, viewMonth, todayDate, onPreviousMonth, onNextMonth }) {
+function ReviewMonthCard({ calendar, monthTitle, viewMonth, todayDate, selectedDay, onSelectDay, onPreviousMonth, onNextMonth }) {
   const anchorDate = `${viewMonth.year}-${String(viewMonth.month).padStart(2, '0')}-01`;
   const monthDays = calendar?.days ?? createMonthGrid(anchorDate, todayDate);
   return (
@@ -1147,12 +1311,18 @@ function ReviewMonthCard({ calendar, monthTitle, viewMonth, todayDate, onPreviou
           const focusMinutes = Math.floor((day.focusSeconds ?? 0) / 60);
           const entryCount = day.entries?.length ?? 0;
           return (
-            <div key={day.date} className={`${inMonth ? '' : 'muted'} ${day.date === todayDate || day.isToday ? 'today' : ''}`}>
+            <button
+              type="button"
+              key={day.date}
+              className={`${inMonth ? '' : 'muted'} ${day.date === todayDate || day.isToday ? 'today' : ''} ${selectedDay?.date === day.date ? 'selected' : ''}`}
+              aria-label={`查看 ${day.date} 当日复盘`}
+              onClick={() => onSelectDay(day)}
+            >
               <strong>{dayNumber}</strong>
               {entryCount > 0 || focusMinutes > 0 ? (
                 <span className="month-day-summary">{focusMinutes > 0 ? `${focusMinutes}m` : `${entryCount}项`}</span>
               ) : null}
-            </div>
+            </button>
           );
         })}
       </div>

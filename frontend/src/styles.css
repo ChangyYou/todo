@@ -5405,7 +5405,7 @@ body:has(.workspace-shell) {
 }
 
 .workspace-shell > .review-panel {
-  position: static;
+  position: relative;
   z-index: auto;
   right: auto;
   bottom: auto;
@@ -5472,11 +5472,22 @@ body:has(.workspace-shell) {
   text-align: center;
 }
 
-.week-days div {
+.week-days button {
   display: grid;
   gap: 3px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
   font-size: 0.78rem;
   color: var(--muted);
+  cursor: pointer;
+}
+
+.week-days button:hover,
+.week-days button:focus-visible,
+.week-days button.selected {
+  background: rgba(224, 233, 224, 0.62);
+  outline: none;
 }
 
 .week-days strong {
@@ -5492,6 +5503,10 @@ body:has(.workspace-shell) {
 .week-days .today strong {
   background: #194d3e;
   color: #fff;
+}
+
+.week-days .selected strong {
+  box-shadow: 0 0 0 2px rgba(25, 77, 62, 0.18);
 }
 
 .calendar-grid {
@@ -5551,8 +5566,27 @@ body:has(.workspace-shell) {
   background: rgba(224, 233, 224, 0.5);
 }
 
+.calendar-day-column.selected {
+  background: rgba(224, 233, 224, 0.68);
+}
+
+.calendar-day-hitbox {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.calendar-day-hitbox:focus-visible {
+  outline: 2px solid rgba(25, 77, 62, 0.36);
+  outline-offset: -2px;
+}
+
 .calendar-event {
   position: absolute;
+  z-index: 1;
   left: 7px;
   right: 7px;
   top: min(var(--event-top), calc(100% - 48px));
@@ -5666,22 +5700,33 @@ body:has(.workspace-shell) {
   background: rgba(255, 255, 255, 0.36);
 }
 
-.month-grid div {
+.month-grid button {
   min-height: 62px;
   padding: 8px;
   display: grid;
   align-content: start;
   gap: 3px;
+  border: 0;
   border-right: 1px solid rgba(27, 64, 54, 0.07);
   border-bottom: 1px solid rgba(27, 64, 54, 0.07);
+  background: transparent;
   color: var(--ink);
+  text-align: left;
+  cursor: pointer;
 }
 
-.month-grid div:nth-child(7n) {
+.month-grid button:hover,
+.month-grid button:focus-visible,
+.month-grid button.selected {
+  background: rgba(224, 233, 224, 0.42);
+  outline: none;
+}
+
+.month-grid button:nth-child(7n) {
   border-right: 0;
 }
 
-.month-grid div:nth-last-child(-n + 7) {
+.month-grid button:nth-last-child(-n + 7) {
   border-bottom: 0;
 }
 
@@ -5704,10 +5749,21 @@ body:has(.workspace-shell) {
   color: #fff;
 }
 
+.month-grid .selected strong {
+  box-shadow: 0 0 0 2px rgba(25, 77, 62, 0.18);
+}
+
 .month-day-summary {
   font-size: 0.68rem;
   color: var(--muted);
   white-space: nowrap;
+}
+
+.workspace-review-detail {
+  top: 116px;
+  right: 16px;
+  width: min(440px, calc(100% - 32px));
+  z-index: 8;
 }
 
 .review-card-title,
