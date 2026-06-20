@@ -517,6 +517,7 @@ function FocusPanel({
 }
 
 function ReviewPanel({ stats, week, todayDate }) {
+  const [viewMode, setViewMode] = useState('week');
   const todayStats = stats?.overview ?? {};
   const sceneItems = stats?.scenePeriods?.find((period) => period.startDate === todayDate)?.scenes
     ?? stats?.scenePeriods?.at(-1)?.scenes
@@ -541,45 +542,27 @@ function ReviewPanel({ stats, week, todayDate }) {
       </header>
 
       <div className="segmented-tabs review-tabs" role="tablist" aria-label="复盘视图">
-        <button type="button" role="tab" aria-selected="true" className="active">周视图</button>
-        <button type="button" role="tab" aria-selected="false">月视图</button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'week'}
+          className={viewMode === 'week' ? 'active' : ''}
+          onClick={() => setViewMode('week')}
+        >
+          周视图
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'month'}
+          className={viewMode === 'month' ? 'active' : ''}
+          onClick={() => setViewMode('month')}
+        >
+          月视图
+        </button>
       </div>
 
-      <section className="week-card" aria-label="周日程">
-        <div className="week-header">
-          <button type="button" aria-label="上一周"><CaretLeft /></button>
-          <strong>{week?.startDate ? `${formatShortDate(week.startDate)} - ${formatShortDate(week.endDate)}` : '本周'}</strong>
-          <button type="button" aria-label="下一周"><CaretRight /></button>
-        </div>
-        <div className="week-days">
-          {(week?.days ?? createFallbackWeek(todayDate)).map((day) => (
-            <div key={day.date} className={day.date === todayDate || day.isToday ? 'today' : ''}>
-              <span>{day.label?.replace('周', '') || getChineseWeekday(day.date).replace('周', '')}</span>
-              <strong>{new Date(`${day.date}T00:00:00`).getDate()}</strong>
-            </div>
-          ))}
-        </div>
-        <div className="calendar-grid">
-          {[0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => <span key={hour}>{String(hour).padStart(2, '0')}:00</span>)}
-          <div className="calendar-lines">
-            {(week?.days ?? createFallbackWeek(todayDate)).map((day, dayIndex) => (
-              <div key={day.date} className="calendar-day-column">
-                {(day.events ?? []).slice(0, 4).map((event, eventIndex) => (
-                  <span
-                    key={`${event.id || event.title}-${eventIndex}`}
-                    className="calendar-event"
-                    style={{
-                      '--event-color': event.color || REVIEW_COLORS[eventIndex % REVIEW_COLORS.length],
-                      '--event-top': `${20 + eventIndex * 17 + dayIndex * 1.5}%`,
-                      '--event-height': `${event.durationSeconds > 1200 ? 14 : 7}%`,
-                    }}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {viewMode === 'week' ? <ReviewWeekCard week={week} todayDate={todayDate} /> : <ReviewMonthCard week={week} todayDate={todayDate} />}
 
       <section className="review-card today-focus-card">
         <div className="review-card-title">
@@ -759,9 +742,120 @@ function WorkspaceModulePanel({
   return null;
 }
 
+function ReviewWeekCard({ week, todayDate }) {
+  const days = week?.days ?? createFallbackWeek(todayDate);
+  return (
+    <section className="week-card" aria-label="周日程">
+      <div className="week-header">
+        <button type="button" aria-label="上一周"><CaretLeft /></button>
+        <strong>{week?.startDate ? `${formatShortDate(week.startDate)} - ${formatShortDate(week.endDate)}` : '本周'}</strong>
+        <button type="button" aria-label="下一周"><CaretRight /></button>
+      </div>
+      <div className="week-days">
+        {days.map((day) => (
+          <div key={day.date} className={day.date === todayDate || day.isToday ? 'today' : ''}>
+            <span>{day.label?.replace('周', '') || getChineseWeekday(day.date).replace('周', '')}</span>
+            <strong>{new Date(`${day.date}T00:00:00`).getDate()}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="calendar-grid">
+        <div className="calendar-time-column">
+          {[0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => <span key={hour}>{String(hour).padStart(2, '0')}:00</span>)}
+        </div>
+        <div className="calendar-lines">
+          {days.map((day) => (
+            <div key={day.date} className={`calendar-day-column ${day.date === todayDate || day.isToday ? 'today' : ''}`}>
+              {(day.events ?? []).map((event, eventIndex) => (
+                <span
+                  key={`${event.id || event.title}-${eventIndex}`}
+                  className="calendar-event"
+                  title={`${event.title} ${event.startTime || ''}-${event.endTime || ''}`}
+                  style={{
+                    '--event-color': event.color || REVIEW_COLORS[eventIndex % REVIEW_COLORS.length],
+                    ...getCalendarEventStyle(event),
+                  }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ReviewMonthCard({ week, todayDate }) {
+  const anchorDate = week?.startDate ?? todayDate;
+  const monthDays = createMonthGrid(anchorDate, todayDate);
+  return (
+    <section className="week-card month-card" aria-label="月日程">
+      <div className="week-header">
+        <button type="button" aria-label="上一月"><CaretLeft /></button>
+        <strong>{formatMonthTitle(anchorDate)}</strong>
+        <button type="button" aria-label="下一月"><CaretRight /></button>
+      </div>
+      <div className="month-weekdays">
+        {['日', '一', '二', '三', '四', '五', '六'].map((label) => <span key={label}>{label}</span>)}
+      </div>
+      <div className="month-grid">
+        {monthDays.map((day) => (
+          <div key={day.date} className={`${day.inMonth ? '' : 'muted'} ${day.date === todayDate ? 'today' : ''}`}>
+            <strong>{new Date(`${day.date}T00:00:00`).getDate()}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function formatShortDate(dateValue) {
   const date = new Date(`${dateValue}T00:00:00`);
   return `${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+function formatMonthTitle(dateValue) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+}
+
+function getCalendarEventStyle(event) {
+  const [rawStartHour = 12, rawStartMinute = 0] = String(event.startTime || '12:00').split(':').map(Number);
+  const startHour = Number.isFinite(rawStartHour) ? rawStartHour : 12;
+  const startMinute = Number.isFinite(rawStartMinute) ? rawStartMinute : 0;
+  const startMinutes = Math.max(0, Math.min(24 * 60, startHour * 60 + startMinute));
+  const durationMinutes = Math.max(20, Math.round((event.durationSeconds || 30 * 60) / 60));
+  const [rawEndHour, rawEndMinute = 0] = String(event.endTime || '').split(':').map(Number);
+  const parsedEndMinutes = Number.isFinite(rawEndHour)
+    ? Math.max(0, Math.min(24 * 60, rawEndHour * 60 + (Number.isFinite(rawEndMinute) ? rawEndMinute : 0)))
+    : null;
+  const endMinutes = parsedEndMinutes && parsedEndMinutes > startMinutes
+    ? parsedEndMinutes
+    : startMinutes + durationMinutes;
+  const heightMinutes = Math.max(20, endMinutes - startMinutes, durationMinutes);
+  return {
+    '--event-top': `${(startMinutes / (24 * 60)) * 100}%`,
+    '--event-height': `${(Math.min(heightMinutes, 24 * 60 - startMinutes) / (24 * 60)) * 100}%`,
+  };
+}
+
+function createMonthGrid(anchorDate, todayDate) {
+  const today = new Date(`${todayDate}T00:00:00`);
+  const anchor = new Date(`${anchorDate}T00:00:00`);
+  const month = anchor.getMonth();
+  const first = new Date(anchor.getFullYear(), month, 1);
+  const gridStart = new Date(first);
+  gridStart.setDate(first.getDate() - first.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    return {
+      date: getLocalDate(date),
+      inMonth: date.getMonth() === month,
+      isToday: date.toDateString() === today.toDateString(),
+    };
+  });
 }
 
 function createFallbackWeek(todayDate) {

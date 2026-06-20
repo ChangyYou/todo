@@ -5341,46 +5341,126 @@ body:has(.workspace-shell) {
 .calendar-grid {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
   min-width: 0;
-  overflow: hidden;
+  align-items: stretch;
+  overflow: visible;
 }
 
-.calendar-grid > span {
-  height: 27px;
+.calendar-time-column {
+  min-height: 300px;
+  display: grid;
+  grid-template-rows: repeat(9, 1fr);
+  align-items: start;
+}
+
+.calendar-time-column span {
   color: var(--muted);
   font-size: 0.7rem;
+  line-height: 1;
+  transform: translateY(-0.15rem);
 }
 
 .calendar-lines {
-  grid-row: span 9;
   width: 100%;
   min-width: 0;
-  min-height: 250px;
+  min-height: 300px;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   border: 1px solid var(--line);
+  border-radius: 2px;
+  overflow: hidden;
   background:
-    repeating-linear-gradient(to bottom, transparent 0 30px, rgba(27, 64, 54, 0.08) 31px),
+    repeating-linear-gradient(to bottom, transparent 0 37px, rgba(27, 64, 54, 0.08) 38px),
     repeating-linear-gradient(to right, transparent 0 calc(100% / 7 - 1px), rgba(27, 64, 54, 0.08) calc(100% / 7));
 }
 
 .calendar-day-column {
   position: relative;
   min-width: 0;
+  border-right: 1px solid rgba(27, 64, 54, 0.06);
+}
+
+.calendar-day-column:last-child {
+  border-right: 0;
+}
+
+.calendar-day-column.today {
+  background: rgba(224, 233, 224, 0.5);
 }
 
 .calendar-event {
   position: absolute;
-  left: 14%;
-  right: 14%;
+  left: 18%;
+  right: 18%;
   top: var(--event-top);
   height: var(--event-height);
   min-height: 8px;
-  border-radius: 4px;
+  border-radius: 5px;
   background: var(--event-color);
   opacity: 0.82;
+  box-shadow: 0 6px 14px rgba(27, 64, 54, 0.1);
+}
+
+.month-card {
+  min-height: 390px;
+}
+
+.month-weekdays {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.month-grid {
+  margin-top: 10px;
+  min-height: 290px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.36);
+}
+
+.month-grid div {
+  min-height: 48px;
+  padding: 8px;
+  border-right: 1px solid rgba(27, 64, 54, 0.07);
+  border-bottom: 1px solid rgba(27, 64, 54, 0.07);
+  color: var(--ink);
+}
+
+.month-grid div:nth-child(7n) {
+  border-right: 0;
+}
+
+.month-grid div:nth-last-child(-n + 7) {
+  border-bottom: 0;
+}
+
+.month-grid strong {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+
+.month-grid .muted {
+  color: color-mix(in srgb, var(--muted) 55%, transparent);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.month-grid .today strong {
+  background: #194d3e;
+  color: #fff;
 }
 
 .review-card-title,
