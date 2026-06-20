@@ -5250,13 +5250,6 @@ body:has(.workspace-shell) {
   box-shadow: none;
 }
 
-.workspace-section-todos .task-board {
-  border-color: rgba(47, 93, 75, 0.24);
-  box-shadow:
-    0 18px 42px rgba(67, 89, 74, 0.1),
-    0 0 0 3px rgba(150, 184, 160, 0.16);
-}
-
 .module-eyebrow {
   color: var(--muted);
   font-family: "Outfit", sans-serif;

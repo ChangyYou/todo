@@ -184,7 +184,6 @@ function Sidebar({ user, activeSection, onSectionChange, onLogout }) {
   const navItems = [
     { id: 'plan', label: '今日计划', icon: CalendarBlank },
     { id: 'stats', label: '专注统计', icon: ChartBar },
-    { id: 'todos', label: '待办事项', icon: CheckSquare },
     { id: 'habits', label: '习惯养成', icon: Target },
     { id: 'scenes', label: '场景管理', icon: TrendUp },
   ];

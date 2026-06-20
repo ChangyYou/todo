@@ -504,6 +504,7 @@ describe('App', () => {
     await renderAtPath('/');
 
     const navigation = screen.getByRole('navigation', { name: '主导航' });
+    expect(within(navigation).queryByRole('button', { name: '待办事项' })).not.toBeInTheDocument();
 
     fireEvent.click(within(navigation).getByRole('button', { name: '专注统计' }));
     const statsPanel = screen.getByRole('region', { name: '专注统计' });
