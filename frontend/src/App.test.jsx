@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
@@ -504,6 +504,15 @@ describe('App', () => {
     const weekEventDayDetail = await within(reviewPanel).findByRole('dialog', { name: '2026-06-15 当日复盘详情' });
     expect(within(weekEventDayDetail).getByText('开会')).toBeInTheDocument();
     expect(within(reviewPanel).queryByRole('dialog', { name: '开会 复盘详情' })).not.toBeInTheDocument();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fireEvent.click(within(weekEventDayDetail).getAllByRole('button', { name: '永久删除 番茄专注' })[0]);
+    expect(window.confirm).toHaveBeenCalledWith('永久删除「番茄专注」这条专注记录？这个操作不能撤销。');
+    await waitFor(() => {
+      expect(within(weekEventDayDetail).getAllByText('番茄专注')).toHaveLength(1);
+    });
+    expect(window.fetch.mock.calls.some(([url, options]) => (
+      url === '/api/focus-sessions/1' && options?.method === 'DELETE'
+    ))).toBe(true);
     expect(window.fetch.mock.calls.some(([url]) => String(url).includes('/api/review-calendar') && String(url).includes('view=week'))).toBe(true);
 
     fireEvent.click(monthTab);

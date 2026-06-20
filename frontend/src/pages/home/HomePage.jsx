@@ -28,6 +28,7 @@ import {
   createScene,
   createTodo,
   deleteHabit,
+  deleteFocusSession,
   deleteScene,
   deleteTodo,
   deleteReviewTodo,
@@ -154,6 +155,9 @@ function formatDetailDuration(seconds = 0) {
 
 function getReviewTaskMeta(task) {
   const focusMeta = `专注 ${formatDetailDuration(task.focusSeconds || 0)} · ${task.sessionCount || 0} 个番茄`;
+  if (task.sourceType === 'focus') {
+    return `${task.sceneTitle ? `场景 ${task.sceneTitle} · ` : ''}${focusMeta}`;
+  }
   if (task.sourceType === 'scene') {
     return `场景 ${task.sceneTitle || task.title || '默认'} · ${focusMeta}`;
   }
@@ -177,6 +181,7 @@ function buildReviewDayFromWeekDay(day) {
     sceneCount: sceneIds.size,
     focusSeconds: focusEvents.reduce((total, event) => total + (event.durationSeconds || 0), 0),
     entries: events.map((event) => ({
+      id: event.id,
       todoId: event.todoId,
       sceneId: event.sceneId,
       type: event.type === 'todo' ? 'task' : event.type,
@@ -186,15 +191,16 @@ function buildReviewDayFromWeekDay(day) {
       sceneColor: event.color,
     })),
     tasks: events.map((event) => ({
-      todoId: event.todoId || event.id || 0,
+      sessionId: event.type === 'focus' ? event.id : 0,
+      todoId: event.todoId || 0,
       sceneId: event.sceneId || 0,
       title: event.title,
-      sourceType: event.type === 'habit' ? 'habit' : event.type === 'focus' && !event.todoId ? 'scene' : 'todo',
+      sourceType: event.type === 'focus' ? 'focus' : event.type === 'habit' ? 'habit' : 'todo',
       completed: event.type !== 'focus',
       focusSeconds: event.durationSeconds || 0,
       sessionCount: event.type === 'focus' ? 1 : 0,
       completedAt: event.type === 'focus' ? '' : `${day.date} ${event.startTime || ''}`.trim(),
-      sceneTitle: event.sceneTitle || (event.sceneId ? event.title : ''),
+      sceneTitle: event.sceneTitle || '',
       sceneColor: event.color,
     })),
   };
@@ -728,21 +734,35 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
   };
 
   const handleDeleteReviewTask = async (task) => {
-    if (!task?.todoId || task.sourceType === 'scene') return;
-    if (!window.confirm(`永久删除「${task.title}」以及它的全部专注记录？这个操作不能撤销。`)) {
+    if (!task) return;
+    const isFocusRecord = task.sourceType === 'focus';
+    if (isFocusRecord && !task.sessionId) return;
+    if (!isFocusRecord && (!task.todoId || task.sourceType === 'scene')) return;
+    const message = isFocusRecord
+      ? `永久删除「${task.title}」这条专注记录？这个操作不能撤销。`
+      : `永久删除「${task.title}」以及它的全部专注记录？这个操作不能撤销。`;
+    if (!window.confirm(message)) {
       return;
     }
     setReviewDeleteStatus('deleting');
     setReviewDetailError('');
     try {
-      await deleteReviewTodo(task.todoId);
+      if (isFocusRecord) {
+        await deleteFocusSession(task.sessionId);
+      } else {
+        await deleteReviewTodo(task.todoId);
+      }
       setSelectedReviewDay((day) => day ? {
         ...day,
-        tasks: day.tasks.filter((item) => item.todoId !== task.todoId),
-        entries: day.entries.filter((item) => item.todoId !== task.todoId),
+        tasks: day.tasks.filter((item) => (
+          isFocusRecord ? item.sessionId !== task.sessionId : item.todoId !== task.todoId
+        )),
+        entries: day.entries.filter((item) => (
+          isFocusRecord ? item.id !== task.sessionId : item.todoId !== task.todoId
+        )),
       } : day);
     } catch (error) {
-      setReviewDetailError(error instanceof Error ? error.message : '复盘任务删除失败');
+      setReviewDetailError(error instanceof Error ? error.message : isFocusRecord ? '专注记录删除失败' : '复盘任务删除失败');
     } finally {
       setReviewDeleteStatus('idle');
     }
@@ -827,11 +847,13 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
                 style={task.sceneColor ? { '--review-scene-color': task.sceneColor } : undefined}
               >
                 <div className="review-task-main">
-                  <span className={`review-task-badge ${task.sourceType}`}>{task.sourceType === 'habit' ? '习惯' : task.sourceType === 'scene' ? '场景' : '任务'}</span>
+                  <span className={`review-task-badge ${task.sourceType}`}>
+                    {task.sourceType === 'habit' ? '习惯' : task.sourceType === 'scene' ? '场景' : task.sourceType === 'focus' ? '专注' : '任务'}
+                  </span>
                   <strong>{task.title}</strong>
                   <small>{getReviewTaskMeta(task)}</small>
                 </div>
-                {task.sourceType !== 'scene' && task.todoId ? (
+                {((task.sourceType === 'focus' && task.sessionId) || (task.sourceType !== 'scene' && task.todoId)) ? (
                   <button
                     type="button"
                     className="review-delete-button"
