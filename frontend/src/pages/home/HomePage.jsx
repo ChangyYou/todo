@@ -413,11 +413,11 @@ function TaskGroup({ todos, focusTimerStatus, todayDate, onToggleTodo, onDeleteT
                 <span className="task-color-dot" style={{ '--task-color': priority.color }} />
                 <strong>{todo.title}</strong>
               </span>
-              <span className="task-meta-line">
-                <span>{todo.sourceType === 'habit' ? '习惯' : priority.label}</span>
-                <span>{formatTodoTime(todo, todayDate)}</span>
-              </span>
             </button>
+            <div className="task-meta-line" aria-label="任务信息">
+              <span>{todo.sourceType === 'habit' ? '习惯' : priority.label}</span>
+              <span>{formatTodoTime(todo, todayDate)}</span>
+            </div>
             <button
               type="button"
               className="task-delete-button"
