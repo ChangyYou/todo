@@ -23,6 +23,14 @@ cp .env.example .env
 TODO_INVITE_CODE=dev-code go run ./cmd/server
 ```
 
+## Deployment
+
+生产环境部署流程见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。当前项目使用脚本化产物部署：
+
+```bash
+./scripts/deploy.sh
+```
+
 ## Features
 
 - Daily todo management

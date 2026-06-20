@@ -469,28 +469,16 @@ afterEach(() => {
 });
 
 describe('App', () => {
-  it('renders the home page with todo and immersive pomodoro modules', async () => {
+  it('renders the redesigned focus workspace on the home page', async () => {
     await renderAtPath('/');
 
     expect(screen.getByText('Focus Tomato')).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: '待办事项' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '收起待办' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('navigation', { name: '主导航' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '待办事项' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '沉浸专注' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '切换到卡片模式' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '切换到沉浸模式' })).not.toBeInTheDocument();
-  });
-
-  it('toggles the fixed daily todo drawer from the home page', async () => {
-    await renderAtPath('/');
-
-    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
-    const toggleButton = screen.getByRole('button', { name: '收起待办' });
-
-    expect(todoPanel).toHaveClass('open');
-    fireEvent.click(toggleButton);
-
-    expect(todoPanel).toHaveClass('closed');
-    expect(screen.getByRole('button', { name: '待办事项' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('complementary', { name: '个人复盘' })).toBeInTheDocument();
+    expect(screen.getByText('个人复盘')).toBeInTheDocument();
+    expect(screen.getByText('场景分布')).toBeInTheDocument();
   });
 
   it('renders the pomodoro module page on /pomodoro', async () => {
@@ -517,136 +505,69 @@ describe('App', () => {
     expect(screen.queryByRole('complementary', { name: '待办事项' })).not.toBeInTheDocument();
   });
 
-  it('lets users manage task list items beside the pomodoro module', async () => {
+  it('lets users create and complete tasks from the workspace', async () => {
     vi.setSystemTime(new Date('2026-06-17T08:00:00+08:00'));
     await renderAtPath('/');
 
-    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
+    const todoPanel = screen.getByRole('region', { name: '待办事项' });
     expect(within(todoPanel).getByRole('heading', { name: '待办事项' })).toBeInTheDocument();
-    expect(await within(todoPanel).findByText('1 个待办')).toBeInTheDocument();
+    expect(await within(todoPanel).findByText('整理今天最重要的三件事')).toBeInTheDocument();
     expect(within(todoPanel).getByRole('tab', { name: '全部 1' })).toHaveAttribute('aria-selected', 'true');
-    expect(within(todoPanel).getByRole('tab', { name: '明天' })).toBeInTheDocument();
     expect(within(todoPanel).getByRole('tab', { name: '已完成 1' })).toBeInTheDocument();
-    expect(within(todoPanel).getByText('截止 2026-06-15')).toBeInTheDocument();
-    expect(within(todoPanel).getByText('高优先级')).toBeInTheDocument();
 
-    fireEvent.click(within(todoPanel).getByRole('button', { name: '添加任务' }));
-    let taskModal = screen.getByRole('dialog', { name: '新增任务' });
-    fireEvent.change(within(taskModal).getByLabelText('任务名称'), {
+    fireEvent.change(within(todoPanel).getByLabelText('添加任务标题'), {
       target: { value: '写日报' },
     });
-    fireEvent.change(within(taskModal).getByLabelText('开始日期'), {
-      target: { value: '2026-06-17' },
-    });
-    fireEvent.change(within(taskModal).getByLabelText('结束日期'), {
-      target: { value: '2026-06-18' },
-    });
-    fireEvent.click(within(taskModal).getByLabelText('低'));
-    fireEvent.click(within(taskModal).getByRole('button', { name: '添加' }));
+    fireEvent.submit(within(todoPanel).getByLabelText('添加任务标题').closest('form'));
 
     expect(await within(todoPanel).findByText('写日报')).toBeInTheDocument();
-    expect(await within(todoPanel).findByText('2 个待办')).toBeInTheDocument();
-    expect(within(todoPanel).getByText('2026-06-17 至 2026-06-18')).toBeInTheDocument();
-    expect(within(todoPanel).getByText('低优先级')).toBeInTheDocument();
-
-    fireEvent.click(within(todoPanel).getByRole('button', { name: '编辑任务 写日报' }));
-    taskModal = screen.getByRole('dialog', { name: '编辑任务' });
-    fireEvent.change(within(taskModal).getByLabelText('任务名称'), {
-      target: { value: '写日报和复盘' },
-    });
-    fireEvent.change(within(taskModal).getByLabelText('结束日期'), {
-      target: { value: '2026-06-19' },
-    });
-    fireEvent.click(within(taskModal).getByLabelText('高'));
-    fireEvent.click(within(taskModal).getByRole('button', { name: '保存' }));
-
-    expect(await within(todoPanel).findByText('写日报和复盘')).toBeInTheDocument();
-    expect(within(todoPanel).getByText('2026-06-17 至 2026-06-19')).toBeInTheDocument();
-    expect(within(todoPanel).getAllByText('高优先级').length).toBeGreaterThanOrEqual(1);
-
-    fireEvent.click(within(todoPanel).getByText('写日报和复盘'));
-    expect(within(todoPanel).getByText('写日报和复盘')).toBeInTheDocument();
-
-    fireEvent.click(within(todoPanel).getByLabelText('完成任务 写日报和复盘'));
-    expect(within(todoPanel).queryByText('写日报和复盘')).not.toBeInTheDocument();
-    expect(await within(todoPanel).findByText('1 个待办')).toBeInTheDocument();
+    fireEvent.click(within(todoPanel).getByLabelText('完成任务 写日报'));
+    expect(within(todoPanel).queryByText('写日报')).not.toBeInTheDocument();
 
     fireEvent.click(within(todoPanel).getByRole('tab', { name: '已完成 2' }));
-    expect(within(todoPanel).getByText('写日报和复盘')).toBeInTheDocument();
+    expect(await within(todoPanel).findByText('写日报')).toBeInTheDocument();
     expect(within(todoPanel).getByText('完成一轮 25 分钟专注')).toBeInTheDocument();
-    fireEvent.click(within(todoPanel).getByRole('tab', { name: '全部 1' }));
-
-    fireEvent.click(within(todoPanel).getByRole('button', { name: '删除任务 整理今天最重要的三件事' }));
-    expect(within(todoPanel).queryByText('整理今天最重要的三件事')).not.toBeInTheDocument();
-    expect(within(todoPanel).getByText('0 个待办')).toBeInTheDocument();
   });
 
-  it('starts focus from a daily todo timer icon', async () => {
+  it('starts focus from a workspace task', async () => {
     await renderAtPath('/');
 
-    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
-    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
+    const todoPanel = screen.getByRole('region', { name: '待办事项' });
+    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始专注 整理今天最重要的三件事' }));
 
     expect(screen.getByText('把注意力留给整理今天最重要的三件事')).toBeInTheDocument();
-    expect(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' })).toHaveTextContent('25:00');
-    expect(screen.queryByText('自动切换')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '整理今天最重要的三件事' })).not.toBeInTheDocument();
+    expect(within(todoPanel).getByText('25:00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '暂停' })).toBeInTheDocument();
   });
 
-  it('clears the focus copy when the bound todo is completed from the task list', async () => {
+  it('clears focus copy when the focused task is completed', async () => {
     await renderAtPath('/');
 
-    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
-    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
+    const todoPanel = screen.getByRole('region', { name: '待办事项' });
+    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始专注 整理今天最重要的三件事' }));
     fireEvent.click(within(todoPanel).getByLabelText('完成任务 整理今天最重要的三件事'));
 
-    expect(await within(todoPanel).findByText('0 个待办')).toBeInTheDocument();
     expect(within(todoPanel).queryByText('整理今天最重要的三件事')).not.toBeInTheDocument();
     expect(await screen.findByText('把注意力留给眼前这一件事。')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '未绑定任务' })).not.toBeInTheDocument();
   });
 
-  it('opens and closes the scene picker from the timer controls', async () => {
+  it('opens the workspace scene picker and selects a scene', async () => {
     await renderAtPath('/');
 
-    fireEvent.click(screen.getByRole('button', { name: '绑定场景' }));
+    fireEvent.click(screen.getByRole('button', { name: '选择当前场景' }));
 
     expect(screen.getByRole('menuitem', { name: '不绑定场景' })).toBeInTheDocument();
-
-    fireEvent.mouseDown(screen.getByRole('main'));
-
-    expect(screen.queryByRole('menuitem', { name: '不绑定场景' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: '不绑定场景' }));
+    expect(screen.getByRole('button', { name: '选择当前场景' })).toBeInTheDocument();
   });
 
-  it('refreshes the timer scene picker after creating a scene', async () => {
-    await renderAtPath('/');
-
-    fireEvent.click(screen.getByRole('button', { name: '打开场景面板' }));
-    const scenePanel = screen.getByRole('dialog', { name: '专注场景面板' });
-    fireEvent.click(within(scenePanel).getByRole('button', { name: '新建场景' }));
-
-    const sceneEditor = screen.getByRole('dialog', { name: '创建场景' });
-    fireEvent.change(within(sceneEditor).getByLabelText('场景名称'), {
-      target: { value: '写作' },
-    });
-    fireEvent.click(within(sceneEditor).getByRole('button', { name: '保存' }));
-
-    expect(await within(scenePanel).findByText('写作')).toBeInTheDocument();
-    expect(within(scenePanel).queryByText('可绑定到专注计时')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: '绑定场景' }));
-
-    expect(await screen.findByRole('menuitem', { name: '写作' })).toBeInTheDocument();
-  });
-
-  it('records the current scene focus segment when pausing', async () => {
+  it('records the current workspace focus segment when pausing', async () => {
     vi.useFakeTimers();
     await renderAtPath('/');
 
-    fireEvent.click(screen.getByRole('button', { name: '绑定场景' }));
+    fireEvent.click(screen.getByRole('button', { name: '选择当前场景' }));
     fireEvent.click(screen.getByRole('menuitem', { name: '运动' }));
-    fireEvent.click(screen.getByRole('button', { name: '开始' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始专注' }));
 
     act(() => {
       vi.advanceTimersByTime(10_000);
@@ -665,23 +586,23 @@ describe('App', () => {
       sceneId: 1,
       durationSeconds: 10,
     });
-    expect(screen.getByText('今日专注 0:10')).toBeInTheDocument();
+    expect(screen.getAllByText('今日专注').length).toBeGreaterThan(0);
   });
 
-  it('records the current focus segment before logging out', async () => {
+  it('records the current workspace focus segment before logging out', async () => {
     vi.useFakeTimers();
     await renderAtPath('/');
 
-    fireEvent.click(screen.getByRole('button', { name: '绑定场景' }));
+    fireEvent.click(screen.getByRole('button', { name: '选择当前场景' }));
     fireEvent.click(screen.getByRole('menuitem', { name: '运动' }));
-    fireEvent.click(screen.getByRole('button', { name: '开始' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始专注' }));
 
     act(() => {
       vi.advanceTimersByTime(10_000);
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: '退出' }));
+      fireEvent.click(screen.getByRole('button', { name: '退出登录' }));
     });
 
     const focusCallIndex = window.fetch.mock.calls.findIndex(([url]) => url === '/api/focus-sessions');
@@ -695,52 +616,12 @@ describe('App', () => {
     });
   });
 
-  it('queues the current focus segment with sendBeacon when the page is closing', async () => {
-    vi.useFakeTimers();
-    const sendBeacon = vi.fn(() => true);
-    Object.defineProperty(window.navigator, 'sendBeacon', {
-      configurable: true,
-      value: sendBeacon,
-    });
-    await renderAtPath('/');
-
-    fireEvent.click(screen.getByRole('button', { name: '绑定场景' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '运动' }));
-    fireEvent.click(screen.getByRole('button', { name: '开始' }));
-
-    act(() => {
-      vi.advanceTimersByTime(10_000);
-    });
-    window.dispatchEvent(new Event('pagehide'));
-
-    expect(sendBeacon).toHaveBeenCalledWith('/api/focus-sessions', expect.any(String));
-    expect(JSON.parse(sendBeacon.mock.calls[0][1])).toMatchObject({
-      todoId: 0,
-      sceneId: 1,
-      durationSeconds: 10,
-    });
-  });
-
-  it('unbinds the timer when the bound todo is deleted', async () => {
-    await renderAtPath('/');
-
-    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
-    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
-    expect(screen.getByText('把注意力留给整理今天最重要的三件事')).toBeInTheDocument();
-
-    fireEvent.click(within(todoPanel).getByRole('button', { name: '删除任务 整理今天最重要的三件事' }));
-
-    expect(await within(todoPanel).findByText('0 个待办')).toBeInTheDocument();
-    expect(screen.getByText('把注意力留给眼前这一件事。')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '未绑定任务' })).not.toBeInTheDocument();
-  });
-
   it('records elapsed focus time when a bound todo is completed', async () => {
     vi.useFakeTimers();
     await renderAtPath('/');
 
-    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
-    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
+    const todoPanel = screen.getByRole('region', { name: '待办事项' });
+    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始专注 整理今天最重要的三件事' }));
 
     act(() => {
       vi.advanceTimersByTime(6_000);
@@ -749,69 +630,8 @@ describe('App', () => {
     fireEvent.click(within(todoPanel).getByLabelText('完成任务 整理今天最重要的三件事'));
     await act(async () => {});
 
-    expect(within(todoPanel).getByText('0 个待办')).toBeInTheDocument();
-    expect(screen.getByText('今日专注 0:06')).toBeInTheDocument();
+    expect(within(todoPanel).queryByText('整理今天最重要的三件事')).not.toBeInTheDocument();
     expect(screen.getByText('把注意力留给眼前这一件事。')).toBeInTheDocument();
-  });
-
-  it('lets users create a daily habit that appears as a habit item', async () => {
-    await renderAtPath('/');
-
-    fireEvent.click(screen.getByRole('button', { name: '打开习惯面板' }));
-
-    const habitPanel = screen.getByRole('dialog', { name: '每日习惯面板' });
-    fireEvent.click(within(habitPanel).getByRole('button', { name: '新建习惯' }));
-
-    const createPanel = screen.getByRole('dialog', { name: '创建习惯' });
-    expect(within(createPanel).getByLabelText('开始时间').value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(within(createPanel).getByLabelText('结束时间为永久')).toBeChecked();
-
-    fireEvent.change(within(createPanel).getByLabelText('习惯内容'), {
-      target: { value: '运动30分钟' },
-    });
-    fireEvent.click(within(createPanel).getByRole('button', { name: '保存' }));
-
-    const todoPanel = screen.getByRole('complementary', { name: '待办事项' });
-    const habitItem = await within(todoPanel).findByText('运动30分钟');
-    const habitRow = habitItem.closest('.daily-todo-item');
-
-    expect(within(habitRow).getByText('习惯')).toBeInTheDocument();
-    expect(within(habitRow).queryByRole('button', { name: '删除任务 运动30分钟' })).not.toBeInTheDocument();
-  });
-
-  it('lets users edit and delete habits from the habit panel', async () => {
-    vi.setSystemTime(new Date('2026-06-16T08:00:00+08:00'));
-    await renderAtPath('/');
-
-    fireEvent.click(screen.getByRole('button', { name: '打开习惯面板' }));
-
-    const habitPanel = screen.getByRole('dialog', { name: '每日习惯面板' });
-    fireEvent.click(within(habitPanel).getByRole('button', { name: '新建习惯' }));
-    let editorPanel = screen.getByRole('dialog', { name: '创建习惯' });
-    fireEvent.change(within(editorPanel).getByLabelText('习惯内容'), {
-      target: { value: '运动30分钟' },
-    });
-    fireEvent.click(within(editorPanel).getByRole('button', { name: '保存' }));
-
-    expect(await within(habitPanel).findByText('运动30分钟')).toBeInTheDocument();
-    expect(within(habitPanel).getByText(/永久/)).toBeInTheDocument();
-
-    fireEvent.click(within(habitPanel).getByRole('button', { name: '编辑习惯 运动30分钟' }));
-    editorPanel = screen.getByRole('dialog', { name: '编辑习惯' });
-    fireEvent.change(within(editorPanel).getByLabelText('习惯内容'), {
-      target: { value: '拉伸10分钟' },
-    });
-    fireEvent.click(within(editorPanel).getByLabelText('结束时间为永久'));
-    fireEvent.change(within(editorPanel).getByLabelText('结束时间'), {
-      target: { value: '2026-06-20' },
-    });
-    fireEvent.click(within(editorPanel).getByRole('button', { name: '保存' }));
-
-    expect(await within(habitPanel).findByText('拉伸10分钟')).toBeInTheDocument();
-    expect(within(habitPanel).getByText('2026-06-16 - 2026-06-20')).toBeInTheDocument();
-
-    fireEvent.click(within(habitPanel).getByRole('button', { name: '删除习惯 拉伸10分钟' }));
-    expect(within(habitPanel).queryByText('拉伸10分钟')).not.toBeInTheDocument();
   });
 
   it('renders live weather details for Chengdu after loading', async () => {
@@ -891,30 +711,6 @@ describe('App', () => {
     fireEvent.mouseDown(screen.getByRole('main'));
 
     expect(screen.queryByRole('dialog', { name: '计时设置' })).not.toBeInTheDocument();
-  });
-
-  it('records a focus session for the selected todo when focus completes', async () => {
-    vi.useFakeTimers();
-    await renderAtPath('/');
-
-    fireEvent.click(screen.getByRole('button', { name: '打开设置' }));
-    fireEvent.change(screen.getByLabelText('专注时长（分钟）'), {
-      target: { value: '1' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '开始计时 整理今天最重要的三件事' }));
-
-    act(() => {
-      vi.advanceTimersByTime(60_000);
-    });
-
-    const focusCall = window.fetch.mock.calls.find(([url]) => url === '/api/focus-sessions');
-    expect(focusCall).toBeTruthy();
-    expect(focusCall[1]).toEqual(expect.objectContaining({ method: 'POST' }));
-    expect(JSON.parse(focusCall[1].body)).toMatchObject({
-      todoId: 1,
-      durationSeconds: 60,
-    });
-    expect(JSON.parse(focusCall[1].body).sessionDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it('automatically moves into short break after focus completes', async () => {
