@@ -4495,7 +4495,7 @@ body:has(.workspace-shell) {
   position: relative;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 220px minmax(300px, 360px) minmax(420px, 1fr) minmax(410px, 480px);
+  grid-template-columns: 220px minmax(340px, 430px) minmax(380px, 1fr) minmax(410px, 480px);
   gap: 18px;
   padding: 16px;
   color: var(--ink);
@@ -4935,7 +4935,7 @@ body:has(.workspace-shell) {
 .focus-stage {
   min-height: calc(100vh - 32px);
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
   align-items: center;
   padding: 18px 24px;
 }
@@ -5071,7 +5071,7 @@ body:has(.workspace-shell) {
   align-self: center;
   display: grid;
   justify-items: center;
-  gap: 18px;
+  gap: 16px;
 }
 
 .timer-hero p {
@@ -5111,11 +5111,10 @@ body:has(.workspace-shell) {
 }
 
 .workspace-timer-controls {
-  margin-top: 30px;
+  margin-top: 10px;
 }
 
-.workspace-timer-controls .timer-action-button,
-.workspace-timer-controls .scene-control-button {
+.workspace-timer-controls .timer-action-button {
   width: 52px;
   min-width: 52px;
   min-height: 52px;
@@ -5145,8 +5144,7 @@ body:has(.workspace-shell) {
   color: rgba(27, 70, 57, 0.86);
 }
 
-.workspace-timer-controls .timer-action-button svg,
-.workspace-timer-controls .scene-control-button svg {
+.workspace-timer-controls .timer-action-button svg {
   width: 19px;
   height: 19px;
 }
@@ -5154,7 +5152,7 @@ body:has(.workspace-shell) {
 .cycle-footer {
   justify-self: center;
   gap: 42px;
-  margin-top: 22px;
+  margin-top: 4px;
   color: var(--muted);
   text-align: center;
 }
@@ -5811,7 +5809,7 @@ body:has(.workspace-shell) {
 @media (max-width: 1420px) {
   .workspace-shell {
     width: 100%;
-    grid-template-columns: 88px minmax(300px, 390px) minmax(420px, 1fr);
+    grid-template-columns: 88px minmax(340px, 430px) minmax(380px, 1fr);
   }
 
   .workspace-sidebar {
@@ -5899,8 +5897,7 @@ body:has(.workspace-shell) {
     gap: 8px;
   }
 
-  .workspace-timer-controls .timer-action-button,
-  .workspace-timer-controls .scene-control-button {
+  .workspace-timer-controls .timer-action-button {
     width: 48px;
     min-width: 48px;
     min-height: 48px;

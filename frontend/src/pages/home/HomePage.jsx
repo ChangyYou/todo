@@ -16,7 +16,6 @@ import {
   Plus,
   SignOut,
   SkipForward,
-  SlidersHorizontal,
   Square,
   Target,
   Timer,
@@ -485,71 +484,60 @@ function FocusPanel({
           <span>今日专注</span>
           <span>{formatDuration(todayFocusSeconds)}</span>
         </div>
-      </section>
-
-      <div className="workspace-timer-controls controls" role="group" aria-label="计时控制">
-        <button
-          type="button"
-          className="ghost-button scene-control-button has-tooltip"
-          aria-label="切换专注场景"
-          data-tooltip="场景"
-          onClick={() => setIsSceneMenuOpen((value) => !value)}
-        >
-          <SlidersHorizontal />
-          {selectedScene ? <span className="scene-control-dot" style={{ '--scene-color': selectedScene.color || '#7894df' }} /> : null}
-        </button>
-        <button
-          type="button"
-          className="primary-button timer-action-button has-tooltip"
-          aria-label={timerState.isRunning ? '暂停' : '开始专注'}
-          data-tooltip={timerState.isRunning ? '暂停' : '开始'}
-          onClick={() => onTimerAction(timerState.isRunning ? 'pause' : 'start')}
-        >
-          {timerState.isRunning ? <Pause weight="fill" /> : <Play weight="fill" />}
-        </button>
-        <button
-          type="button"
-          className="ghost-button timer-action-button has-tooltip"
-          aria-label="重置"
-          data-tooltip="重置"
-          onClick={() => onTimerAction('reset')}
-        >
-          <ArrowClockwise />
-        </button>
-        {timerState.phase === TIMER_PHASES.FOCUS ? (
+        <div className="workspace-timer-controls controls" role="group" aria-label="计时控制">
+          <button
+            type="button"
+            className="primary-button timer-action-button has-tooltip"
+            aria-label={timerState.isRunning ? '暂停' : '开始专注'}
+            data-tooltip={timerState.isRunning ? '暂停' : '开始'}
+            onClick={() => onTimerAction(timerState.isRunning ? 'pause' : 'start')}
+          >
+            {timerState.isRunning ? <Pause weight="fill" /> : <Play weight="fill" />}
+          </button>
           <button
             type="button"
             className="ghost-button timer-action-button has-tooltip"
-            aria-label="结束专注"
-            data-tooltip="结束专注"
-            onClick={() => onTimerAction('endFocus')}
+            aria-label="重置"
+            data-tooltip="重置"
+            onClick={() => onTimerAction('reset')}
           >
-            <Square weight="fill" />
+            <ArrowClockwise />
           </button>
-        ) : null}
-        <button
-          type="button"
-          className="ghost-button timer-action-button has-tooltip"
-          aria-label={timerState.phase === TIMER_PHASES.FOCUS ? '跳过' : '跳过休息'}
-          data-tooltip={timerState.phase === TIMER_PHASES.FOCUS ? '跳过' : '跳过休息'}
-          onClick={() => onTimerAction(timerState.phase === TIMER_PHASES.FOCUS ? 'skipFocusCompleted' : 'skipBreak')}
-        >
-          <SkipForward weight="fill" />
-        </button>
-      </div>
+          {timerState.phase === TIMER_PHASES.FOCUS ? (
+            <button
+              type="button"
+              className="ghost-button timer-action-button has-tooltip"
+              aria-label="结束专注"
+              data-tooltip="结束专注"
+              onClick={() => onTimerAction('endFocus')}
+            >
+              <Square weight="fill" />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="ghost-button timer-action-button has-tooltip"
+            aria-label={timerState.phase === TIMER_PHASES.FOCUS ? '跳过' : '跳过休息'}
+            data-tooltip={timerState.phase === TIMER_PHASES.FOCUS ? '跳过' : '跳过休息'}
+            onClick={() => onTimerAction(timerState.phase === TIMER_PHASES.FOCUS ? 'skipFocusCompleted' : 'skipBreak')}
+          >
+            <SkipForward weight="fill" />
+          </button>
+        </div>
 
-      <footer className="cycle-footer">
-        <div>
-          <span>CYCLE</span>
-          <strong>{currentRound} / {settings.longBreakInterval}</strong>
-        </div>
-        <div className="cycle-divider" />
-        <div>
-          <span>NEXT</span>
-          <strong>{nextPhaseLabel}</strong>
-          <small>{settings.shortBreakMinutes} 分钟</small>
-        </div>
-      </footer>
+        <footer className="cycle-footer">
+          <div>
+            <span>CYCLE</span>
+            <strong>{currentRound} / {settings.longBreakInterval}</strong>
+          </div>
+          <div className="cycle-divider" />
+          <div>
+            <span>NEXT</span>
+            <strong>{nextPhaseLabel}</strong>
+            <small>{settings.shortBreakMinutes} 分钟</small>
+          </div>
+        </footer>
+      </section>
     </main>
   );
 }
