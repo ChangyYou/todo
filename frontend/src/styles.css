@@ -4735,13 +4735,13 @@ body:has(.workspace-shell) {
 }
 
 .task-inline-add {
-  height: 52px;
+  min-height: 104px;
   margin-top: 18px;
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
+  gap: 10px 12px;
+  padding: 10px 12px;
   border-radius: 16px;
   box-shadow: none;
 }
@@ -4769,7 +4769,7 @@ body:has(.workspace-shell) {
   height: 18px;
 }
 
-.task-inline-add input {
+.task-inline-add > input {
   min-width: 0;
   border: 0;
   outline: none;
@@ -4777,7 +4777,15 @@ body:has(.workspace-shell) {
   color: var(--ink);
 }
 
-.task-priority-select {
+.task-inline-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.task-priority-select,
+.task-date-select {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -4790,16 +4798,24 @@ body:has(.workspace-shell) {
   white-space: nowrap;
 }
 
-.task-priority-select span {
+.task-priority-select span,
+.task-date-select span {
   font-size: 0.78rem;
 }
 
-.task-priority-select select {
+.task-priority-select select,
+.task-date-select input {
   min-width: 44px;
   border: 0;
   outline: none;
   background: transparent;
   color: var(--ink);
+}
+
+.task-date-select input {
+  width: 100%;
+  min-width: 0;
+  font-size: 0.82rem;
 }
 
 .task-list {

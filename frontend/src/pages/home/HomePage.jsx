@@ -238,6 +238,8 @@ function TaskPanel({
 }) {
   const [draftTitle, setDraftTitle] = useState('');
   const [draftPriority, setDraftPriority] = useState('medium');
+  const [draftStartDate, setDraftStartDate] = useState(todayDate);
+  const [draftEndDate, setDraftEndDate] = useState(todayDate);
   const visibleTodos = useMemo(() => todos.filter((todo) => {
     if (activeFilter === 'completed') {
       return todo.completed;
@@ -276,9 +278,16 @@ function TaskPanel({
     if (!title) {
       return;
     }
-    onCreateTodo(title, draftPriority);
+    onCreateTodo({
+      title,
+      priority: draftPriority,
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+    });
     setDraftTitle('');
     setDraftPriority('medium');
+    setDraftStartDate(todayDate);
+    setDraftEndDate(todayDate);
   };
 
   return (
@@ -290,6 +299,56 @@ function TaskPanel({
           <button type="button" aria-label="更多任务操作"><DotsThree weight="bold" /></button>
         </div>
       </header>
+
+      <form className="task-inline-add" onSubmit={handleSubmit}>
+        <button type="submit" className="task-add-submit" aria-label="添加任务">
+          <Plus />
+        </button>
+        <input
+          value={draftTitle}
+          onChange={(event) => setDraftTitle(event.target.value)}
+          placeholder="添加任务"
+          aria-label="添加任务标题"
+        />
+        <div className="task-inline-fields">
+          <label className="task-priority-select">
+            <span>紧急程度</span>
+            <select
+              aria-label="任务紧急程度"
+              value={draftPriority}
+              onChange={(event) => setDraftPriority(event.target.value)}
+            >
+              {PRIORITY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="task-date-select">
+            <span>开始日期</span>
+            <input
+              type="date"
+              aria-label="任务开始日期"
+              value={draftStartDate}
+              onChange={(event) => {
+                setDraftStartDate(event.target.value);
+                if (draftEndDate < event.target.value) {
+                  setDraftEndDate(event.target.value);
+                }
+              }}
+            />
+          </label>
+          <label className="task-date-select">
+            <span>结束日期</span>
+            <input
+              type="date"
+              aria-label="任务结束日期"
+              value={draftEndDate}
+              min={draftStartDate}
+              onChange={(event) => setDraftEndDate(event.target.value)}
+            />
+          </label>
+        </div>
+      </form>
 
       <div className="segmented-tabs" role="tablist" aria-label="任务筛选">
         {FILTERS.map((filter) => (
@@ -310,30 +369,6 @@ function TaskPanel({
         <strong>今天</strong>
         <span>{formatDateHeader(todayDate)}</span>
       </div>
-
-      <form className="task-inline-add" onSubmit={handleSubmit}>
-        <button type="submit" className="task-add-submit" aria-label="添加任务">
-          <Plus />
-        </button>
-        <input
-          value={draftTitle}
-          onChange={(event) => setDraftTitle(event.target.value)}
-          placeholder="添加任务"
-          aria-label="添加任务标题"
-        />
-        <label className="task-priority-select">
-          <span>紧急程度</span>
-          <select
-            aria-label="任务紧急程度"
-            value={draftPriority}
-            onChange={(event) => setDraftPriority(event.target.value)}
-          >
-            {PRIORITY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-      </form>
 
       {status === 'loading' ? <p className="workspace-state">任务加载中...</p> : null}
       {errorMessage ? <p className="workspace-error" role="alert">{errorMessage}</p> : null}
@@ -1384,14 +1419,22 @@ export default function HomePage({ user, onLoggedOut }) {
     setTimerState((state) => getNextTimerState(state, action, settings));
   };
 
-  const handleCreateTodo = async (title, priority = 'medium') => {
+  const handleCreateTodo = async (input) => {
+    const {
+      title,
+      priority = 'medium',
+      startDate = todayDate,
+      endDate = startDate,
+    } = input;
+    const normalizedStartDate = startDate || todayDate;
+    const normalizedEndDate = endDate && endDate >= normalizedStartDate ? endDate : normalizedStartDate;
     try {
       const todo = await createTodo({
         title,
-        todoDate: todayDate,
+        todoDate: normalizedStartDate,
         timeType: 'date_range',
-        startDate: todayDate,
-        endDate: todayDate,
+        startDate: normalizedStartDate,
+        endDate: normalizedEndDate,
         priority,
       });
       setTodos((items) => [todo, ...items]);

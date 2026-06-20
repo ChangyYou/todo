@@ -605,6 +605,12 @@ describe('App', () => {
     fireEvent.change(within(todoPanel).getByLabelText('任务紧急程度'), {
       target: { value: 'high' },
     });
+    fireEvent.change(within(todoPanel).getByLabelText('任务开始日期'), {
+      target: { value: '2026-06-18' },
+    });
+    fireEvent.change(within(todoPanel).getByLabelText('任务结束日期'), {
+      target: { value: '2026-06-18' },
+    });
     fireEvent.click(within(todoPanel).getByRole('button', { name: '添加任务' }));
 
     expect(await within(todoPanel).findByText('写日报')).toBeInTheDocument();
@@ -613,7 +619,13 @@ describe('App', () => {
       options?.method === 'POST' &&
       JSON.parse(options.body).title === '写日报'
     ));
-    expect(JSON.parse(createTodoCall[1].body).priority).toBe('high');
+    expect(JSON.parse(createTodoCall[1].body)).toMatchObject({
+      priority: 'high',
+      todoDate: '2026-06-18',
+      startDate: '2026-06-18',
+      endDate: '2026-06-18',
+      timeType: 'date_range',
+    });
     fireEvent.click(within(todoPanel).getByLabelText('完成任务 写日报'));
     expect(within(todoPanel).queryByText('写日报')).not.toBeInTheDocument();
 
