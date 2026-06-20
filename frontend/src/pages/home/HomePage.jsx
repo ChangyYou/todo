@@ -9,7 +9,6 @@ import {
   CheckSquare,
   CircleNotch,
   DotsThree,
-  Flag,
   Leaf,
   ListBullets,
   Pause,
@@ -489,30 +488,55 @@ function FocusPanel({
         </div>
       </section>
 
-      <div className="primary-action-row">
-        <button type="button" className="side-action">
+      <div className="workspace-timer-controls controls" role="group" aria-label="计时控制">
+        <button
+          type="button"
+          className="ghost-button scene-control-button has-tooltip"
+          aria-label="切换专注场景"
+          data-tooltip="场景"
+          onClick={() => setIsSceneMenuOpen((value) => !value)}
+        >
           <SlidersHorizontal />
-          <span>场景</span>
+          {selectedScene ? <span className="scene-control-dot" style={{ '--scene-color': selectedScene.color || '#7894df' }} /> : null}
         </button>
         <button
           type="button"
-          className="start-focus-button"
+          className="primary-button timer-action-button has-tooltip"
+          aria-label={timerState.isRunning ? '暂停' : '开始专注'}
+          data-tooltip={timerState.isRunning ? '暂停' : '开始'}
           onClick={() => onTimerAction(timerState.isRunning ? 'pause' : 'start')}
         >
           {timerState.isRunning ? <Pause weight="fill" /> : <Play weight="fill" />}
-          {timerState.isRunning ? '暂停专注' : '开始专注'}
         </button>
-        <button type="button" className="side-action">
-          <Flag />
-          <span>标记</span>
+        <button
+          type="button"
+          className="ghost-button timer-action-button has-tooltip"
+          aria-label="重置"
+          data-tooltip="重置"
+          onClick={() => onTimerAction('reset')}
+        >
+          <ArrowClockwise />
         </button>
-      </div>
-
-      <div className="timer-control-row" aria-label="计时控制">
-        <button type="button" aria-label="暂停" onClick={() => onTimerAction('pause')}><Pause weight="fill" /></button>
-        <button type="button" aria-label="结束" onClick={() => onTimerAction('endFocus')}><Square weight="fill" /></button>
-        <button type="button" aria-label="跳过" onClick={() => onTimerAction(timerState.phase === TIMER_PHASES.FOCUS ? 'skipFocusCompleted' : 'skipBreak')}><SkipForward weight="fill" /></button>
-        <button type="button" aria-label="重置" onClick={() => onTimerAction('reset')}><ArrowClockwise /></button>
+        {timerState.phase === TIMER_PHASES.FOCUS ? (
+          <button
+            type="button"
+            className="ghost-button timer-action-button has-tooltip"
+            aria-label="结束专注"
+            data-tooltip="结束专注"
+            onClick={() => onTimerAction('endFocus')}
+          >
+            <Square weight="fill" />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="ghost-button timer-action-button has-tooltip"
+          aria-label={timerState.phase === TIMER_PHASES.FOCUS ? '跳过' : '跳过休息'}
+          data-tooltip={timerState.phase === TIMER_PHASES.FOCUS ? '跳过' : '跳过休息'}
+          onClick={() => onTimerAction(timerState.phase === TIMER_PHASES.FOCUS ? 'skipFocusCompleted' : 'skipBreak')}
+        >
+          <SkipForward weight="fill" />
+        </button>
       </div>
 
       <footer className="cycle-footer">
