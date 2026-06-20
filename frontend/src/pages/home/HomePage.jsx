@@ -217,7 +217,6 @@ function Sidebar({ user, activeSection, onSectionChange, onLogout }) {
         </div>
         <div className="workspace-user-copy">
           <strong>{user.username}</strong>
-          <span>专注，让改变发生</span>
         </div>
         <button type="button" aria-label="退出登录" onClick={onLogout}>
           <SignOut />

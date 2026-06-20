@@ -475,6 +475,7 @@ describe('App', () => {
     expect(screen.getByText('Focus Tomato')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: '主导航' })).toBeInTheDocument();
     expect(screen.getByText('demo').closest('.workspace-user-copy')).toBeInTheDocument();
+    expect(screen.getByText('demo').closest('.workspace-user-copy')).not.toHaveTextContent('专注，让改变发生');
     expect(screen.getByRole('button', { name: '退出登录' })).toBeInTheDocument();
     expect(screen.getByText('未选择场景')).toBeInTheDocument();
     expect(screen.queryByText('工作')).not.toBeInTheDocument();

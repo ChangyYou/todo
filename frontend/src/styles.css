@@ -4611,10 +4611,10 @@ body:has(.workspace-shell) {
 
 .workspace-user-copy {
   min-width: 0;
+  align-self: center;
 }
 
-.workspace-user-card strong,
-.workspace-user-card span {
+.workspace-user-card strong {
   display: block;
   min-width: 0;
   overflow: hidden;
@@ -4623,13 +4623,7 @@ body:has(.workspace-shell) {
 }
 
 .workspace-user-card strong {
-  font-size: 0.95rem;
-}
-
-.workspace-user-card span {
-  margin-top: 2px;
-  font-size: 0.72rem;
-  color: var(--muted);
+  font-size: 1rem;
 }
 
 .workspace-user-card button {
