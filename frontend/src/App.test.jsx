@@ -474,6 +474,8 @@ describe('App', () => {
 
     expect(screen.getByText('Focus Tomato')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: '主导航' })).toBeInTheDocument();
+    expect(screen.getByText('demo').closest('.workspace-user-copy')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '退出登录' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '待办事项' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '沉浸专注' })).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '个人复盘' })).toBeInTheDocument();

@@ -4495,7 +4495,7 @@ body:has(.workspace-shell) {
   position: relative;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 190px minmax(300px, 360px) minmax(420px, 1fr) minmax(410px, 480px);
+  grid-template-columns: 220px minmax(300px, 360px) minmax(420px, 1fr) minmax(410px, 480px);
   gap: 18px;
   padding: 16px;
   color: var(--ink);
@@ -4603,16 +4603,25 @@ body:has(.workspace-shell) {
 .workspace-user-card {
   margin-top: auto;
   display: grid;
-  grid-template-columns: 42px 1fr 28px;
+  grid-template-columns: 38px minmax(0, 1fr) 34px;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
+  gap: 9px;
+  min-height: 64px;
+  padding: 10px;
   border-radius: 18px;
+}
+
+.workspace-user-copy {
+  min-width: 0;
 }
 
 .workspace-user-card strong,
 .workspace-user-card span {
   display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-user-card strong {
@@ -4623,6 +4632,11 @@ body:has(.workspace-shell) {
   margin-top: 2px;
   font-size: 0.72rem;
   color: var(--muted);
+}
+
+.workspace-user-card button {
+  justify-self: end;
+  flex: 0 0 auto;
 }
 
 .workspace-user-card button,
@@ -4638,8 +4652,8 @@ body:has(.workspace-shell) {
 }
 
 .user-avatar {
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   background: linear-gradient(135deg, #dcead5, #7dac75);
   color: #1d5c38;
 }
@@ -5600,7 +5614,7 @@ body:has(.workspace-shell) {
 
   .brand-lockup span:last-child,
   .workspace-nav span,
-  .workspace-user-card div,
+  .workspace-user-copy,
   .workspace-user-card button {
     display: none;
   }
@@ -5647,7 +5661,7 @@ body:has(.workspace-shell) {
 
   .brand-lockup span:last-child,
   .workspace-nav span,
-  .workspace-user-card div,
+  .workspace-user-copy,
   .workspace-user-card button {
     display: block;
   }
@@ -5660,7 +5674,7 @@ body:has(.workspace-shell) {
 
   .workspace-user-card {
     margin-top: 18px;
-    grid-template-columns: 42px 1fr 28px;
+    grid-template-columns: 38px minmax(0, 1fr) 34px;
   }
 
   .workspace-shell > .review-panel {

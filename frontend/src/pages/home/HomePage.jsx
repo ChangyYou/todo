@@ -202,7 +202,7 @@ function Sidebar({ user, activeSection, onSectionChange, onLogout }) {
         <div className="user-avatar" aria-hidden="true">
           <Leaf weight="fill" />
         </div>
-        <div>
+        <div className="workspace-user-copy">
           <strong>{user.username}</strong>
           <span>专注，让改变发生</span>
         </div>
