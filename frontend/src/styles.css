@@ -4954,6 +4954,43 @@ body:has(.workspace-shell) {
   border-radius: 999px;
 }
 
+.workspace-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(20, 44, 37, 0.12);
+  backdrop-filter: blur(6px);
+}
+
+.workspace-settings-dialog {
+  position: relative;
+  inset: auto;
+  width: min(420px, calc(100vw - 40px));
+  max-height: min(78vh, 720px);
+  background: rgba(247, 250, 242, 0.94);
+}
+
+.workspace-settings-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(27, 64, 54, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--ink);
+}
+
+.workspace-settings-close:hover {
+  background: rgba(255, 255, 255, 0.86);
+}
+
 .scene-selector {
   position: relative;
   justify-self: center;

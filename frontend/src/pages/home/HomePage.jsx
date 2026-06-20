@@ -23,6 +23,7 @@ import {
   Timer,
   Trash,
   TrendUp,
+  X,
 } from '@phosphor-icons/react';
 
 import {
@@ -171,7 +172,6 @@ function Sidebar({ user, activeSection, onSectionChange, onLogout }) {
     { id: 'todos', label: '待办事项', icon: CheckSquare },
     { id: 'habits', label: '习惯养成', icon: Target },
     { id: 'scenes', label: '场景管理', icon: TrendUp },
-    { id: 'settings', label: '设置', icon: SlidersHorizontal },
   ];
 
   return (
@@ -428,6 +428,7 @@ function FocusPanel({
   todayFocusSeconds,
   onTimerAction,
   onSceneChange,
+  onOpenSettings,
 }) {
   const [isSceneMenuOpen, setIsSceneMenuOpen] = useState(false);
   const currentRound = (timerState.completedFocusSessions % settings.longBreakInterval) + 1;
@@ -437,7 +438,7 @@ function FocusPanel({
     <main className="focus-stage" aria-label="专注工作台">
       <header className="focus-topline">
         <span><CircleNotch /> 专注，让改变发生。</span>
-        <button type="button" className="soft-pill" aria-label="计时设置">
+        <button type="button" className="soft-pill" aria-label="计时设置" onClick={onOpenSettings}>
           <Timer /> 计时设置
         </button>
       </header>
@@ -611,7 +612,6 @@ function ReviewPanel({ stats, week, todayDate }) {
 function WorkspaceModulePanel({
   activeSection,
   stats,
-  settings,
   habits,
   habitStatus,
   habitDraft,
@@ -623,8 +623,6 @@ function WorkspaceModulePanel({
   onDeleteHabit,
   onCreateScene,
   onDeleteScene,
-  onSettingChange,
-  onAutoStartChange,
 }) {
   if (activeSection === 'stats') {
     const overview = stats?.overview ?? {};
@@ -710,16 +708,40 @@ function WorkspaceModulePanel({
     );
   }
 
-  if (activeSection === 'settings') {
-    return (
-      <section className="workspace-module-panel panel-frame" aria-label="设置">
-        <header className="panel-header">
-          <h2>设置</h2>
-          <span className="module-eyebrow">Timer Settings</span>
-        </header>
-        <div className="module-settings-grid">
+  return null;
+}
+
+function TimerSettingsDialog({ settings, onSettingChange, onAutoStartChange, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="workspace-settings-backdrop" onMouseDown={onClose}>
+      <div
+        className="settings-panel workspace-settings-dialog"
+        role="dialog"
+        aria-label="计时设置"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button type="button" className="workspace-settings-close" aria-label="关闭计时设置" onClick={onClose}>
+          <X />
+        </button>
+        <div className="settings-panel-header">
+          <p>计时设置</p>
+          <span>轻轻调整你的专注节奏</span>
+        </div>
+
+        <div className="settings-grid">
           {SETTINGS_FIELDS.map((field) => (
-            <label key={field.key} className="module-field">
+            <label key={field.key} className="settings-field">
               <span>{field.label}</span>
               <input
                 type="number"
@@ -731,15 +753,14 @@ function WorkspaceModulePanel({
             </label>
           ))}
         </div>
-        <label className="module-toggle-row">
+
+        <label className="toggle-row">
           <span>自动开始下一阶段</span>
           <input type="checkbox" checked={settings.autoStartNextSession} onChange={onAutoStartChange} />
         </label>
-      </section>
-    );
-  }
-
-  return null;
+      </div>
+    </div>
+  );
 }
 
 function ReviewWeekCard({ week, todayDate }) {
@@ -892,6 +913,7 @@ export default function HomePage({ user, onLoggedOut }) {
   const [sceneDraft, setSceneDraft] = useState('');
   const [scenes, setScenes] = useState([]);
   const [selectedScene, setSelectedScene] = useState(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [todayFocusSeconds, setTodayFocusSeconds] = useState(0);
   const [stats, setStats] = useState(null);
   const [week, setWeek] = useState(null);
@@ -1190,7 +1212,7 @@ export default function HomePage({ user, onLoggedOut }) {
     remainingSeconds: timerState.remainingSeconds,
     isRunning: timerState.isRunning,
   } : null;
-  const isModuleSection = ['stats', 'habits', 'scenes', 'settings'].includes(activeSection);
+  const isModuleSection = ['stats', 'habits', 'scenes'].includes(activeSection);
 
   return (
     <div className={`workspace-shell workspace-section-${activeSection}`}>
@@ -1217,7 +1239,6 @@ export default function HomePage({ user, onLoggedOut }) {
         <WorkspaceModulePanel
           activeSection={activeSection}
           stats={stats}
-          settings={settings}
           habits={habits}
           habitStatus={habitStatus}
           habitDraft={habitDraft}
@@ -1229,8 +1250,6 @@ export default function HomePage({ user, onLoggedOut }) {
           onDeleteHabit={handleDeleteHabit}
           onCreateScene={handleCreateScene}
           onDeleteScene={handleDeleteScene}
-          onSettingChange={handleSettingChange}
-          onAutoStartChange={handleAutoStartChange}
         />
       ) : (
         <>
@@ -1243,10 +1262,19 @@ export default function HomePage({ user, onLoggedOut }) {
             todayFocusSeconds={todayFocusSeconds}
             onTimerAction={handleTimerAction}
             onSceneChange={setSelectedScene}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
           <ReviewPanel stats={stats} week={week} todayDate={todayDate} />
         </>
       )}
+      {isSettingsOpen ? (
+        <TimerSettingsDialog
+          settings={settings}
+          onSettingChange={handleSettingChange}
+          onAutoStartChange={handleAutoStartChange}
+          onClose={() => setIsSettingsOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

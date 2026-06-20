@@ -515,9 +515,31 @@ describe('App', () => {
     expect(screen.getByRole('region', { name: '场景管理' })).toBeInTheDocument();
     expect(screen.getByText('运动')).toBeInTheDocument();
 
-    fireEvent.click(within(navigation).getByRole('button', { name: '设置' }));
-    expect(screen.getByRole('region', { name: '设置' })).toBeInTheDocument();
-    expect(screen.getByLabelText('专注时长（分钟）')).toHaveValue(25);
+    expect(within(navigation).queryByRole('button', { name: '设置' })).not.toBeInTheDocument();
+  });
+
+  it('opens timer settings from the workspace focus toolbar', async () => {
+    await renderAtPath('/');
+
+    fireEvent.click(screen.getByRole('button', { name: '计时设置' }));
+    const dialog = screen.getByRole('dialog', { name: '计时设置' });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('专注时长（分钟）')).toHaveValue(25);
+
+    fireEvent.change(within(dialog).getByLabelText('专注时长（分钟）'), {
+      target: { value: '35' },
+    });
+
+    expect(screen.getByText('35:00')).toBeInTheDocument();
+    const settingsCall = window.fetch.mock.calls.find(([url, options]) => (
+      url === '/api/settings/pomodoro' &&
+      options?.method === 'PATCH' &&
+      JSON.parse(options.body).focusMinutes === 35
+    ));
+    expect(settingsCall).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '关闭计时设置' }));
+    expect(screen.queryByRole('dialog', { name: '计时设置' })).not.toBeInTheDocument();
   });
 
   it('renders the pomodoro module page on /pomodoro', async () => {
