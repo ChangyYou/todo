@@ -4985,6 +4985,10 @@ body:has(.workspace-shell) {
   box-shadow: inset 0 0 0 5px rgba(255, 255, 255, 0.22);
 }
 
+.scene-empty-label {
+  color: var(--muted);
+}
+
 .scene-menu {
   position: absolute;
   z-index: 4;

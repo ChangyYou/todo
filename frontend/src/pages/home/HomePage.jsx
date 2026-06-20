@@ -445,8 +445,8 @@ function FocusPanel({
       <div className="scene-selector">
         <span>当前场景</span>
         <button type="button" aria-label="选择当前场景" onClick={() => setIsSceneMenuOpen((value) => !value)}>
-          <span className="scene-swatch" style={{ '--scene-color': selectedScene?.color || '#7894df' }} />
-          {selectedScene?.title || '工作'}
+          {selectedScene ? <span className="scene-swatch" style={{ '--scene-color': selectedScene.color || '#7894df' }} /> : null}
+          <span className={selectedScene ? '' : 'scene-empty-label'}>{selectedScene?.title || '未选择场景'}</span>
           <CaretDown />
         </button>
         {isSceneMenuOpen ? (
@@ -939,9 +939,14 @@ export default function HomePage({ user, onLoggedOut }) {
     listScenes()
       .then((items) => {
         setScenes(items);
-        setSelectedScene(items[0] ?? null);
+        setSelectedScene((current) => (
+          current && items.some((scene) => scene.id === current.id) ? current : null
+        ));
       })
-      .catch(() => setScenes([]));
+      .catch(() => {
+        setScenes([]);
+        setSelectedScene(null);
+      });
   }, []);
 
   useEffect(() => {
