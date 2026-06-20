@@ -5479,7 +5479,7 @@ body:has(.workspace-shell) {
 }
 
 .calendar-time-column {
-  min-height: 300px;
+  min-height: 390px;
   display: grid;
   grid-template-rows: repeat(9, 1fr);
   align-items: start;
@@ -5495,7 +5495,7 @@ body:has(.workspace-shell) {
 .calendar-lines {
   width: 100%;
   min-width: 0;
-  min-height: 300px;
+  min-height: 390px;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   border: 1px solid var(--line);
@@ -5534,7 +5534,7 @@ body:has(.workspace-shell) {
 }
 
 .month-card {
-  min-height: 390px;
+  min-height: 480px;
 }
 
 .month-weekdays {
@@ -5549,7 +5549,7 @@ body:has(.workspace-shell) {
 
 .month-grid {
   margin-top: 10px;
-  min-height: 290px;
+  min-height: 380px;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   border: 1px solid var(--line);
@@ -5559,7 +5559,7 @@ body:has(.workspace-shell) {
 }
 
 .month-grid div {
-  min-height: 48px;
+  min-height: 62px;
   padding: 8px;
   display: grid;
   align-content: start;
@@ -5664,15 +5664,15 @@ body:has(.workspace-shell) {
 }
 
 .scene-chart-row {
-  margin-top: 18px;
+  margin-top: 14px;
   display: grid;
-  grid-template-columns: 108px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 16px;
 }
 
 .donut-chart {
-  width: 108px;
-  height: 108px;
+  width: 92px;
+  height: 92px;
   flex: 0 0 auto;
   border-radius: 999px;
   background: conic-gradient(var(--donut));
@@ -5682,7 +5682,7 @@ body:has(.workspace-shell) {
 .donut-chart::after {
   content: "";
   position: absolute;
-  inset: 26px;
+  inset: 23px;
   border-radius: 999px;
   background: #fbfaf6;
 }
