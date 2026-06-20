@@ -73,6 +73,17 @@ const PRIORITY_OPTIONS = [
 ];
 
 const REVIEW_COLORS = ['#7894df', '#a88bd8', '#ee945b', '#79ad83', '#9da4a0'];
+const WEEK_COMPRESSED_END_MINUTES = 9 * 60;
+const WEEK_TIMELINE_SEGMENTS = 6;
+const WEEK_TIMELINE_LABELS = [
+  { label: '00-09', top: 100 / (WEEK_TIMELINE_SEGMENTS * 2), compressed: true },
+  { label: '09:00', minutes: 9 * 60 },
+  { label: '12:00', minutes: 12 * 60 },
+  { label: '15:00', minutes: 15 * 60 },
+  { label: '18:00', minutes: 18 * 60 },
+  { label: '21:00', minutes: 21 * 60 },
+  { label: '24:00', minutes: 24 * 60 },
+];
 
 const SETTINGS_FIELDS = [
   { key: 'focusMinutes', label: '专注时长（分钟）' },
@@ -1271,8 +1282,14 @@ function ReviewWeekCard({ week, todayDate, selectedDay, onSelectDay, onPreviousW
       </div>
       <div className="calendar-grid">
         <div className="calendar-time-column">
-          {[0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour, index) => (
-            <span key={hour} style={{ '--time-top': `${(index / 8) * 100}%` }}>{String(hour).padStart(2, '0')}:00</span>
+          {WEEK_TIMELINE_LABELS.map((mark) => (
+            <span
+              key={mark.label}
+              className={mark.compressed ? 'is-compressed' : ''}
+              style={{ '--time-top': `${mark.top ?? getWeekTimelinePercent(mark.minutes)}%` }}
+            >
+              {mark.label}
+            </span>
           ))}
         </div>
         <div className="calendar-lines">
@@ -1373,6 +1390,15 @@ function shiftMonthValue(value, offset) {
   };
 }
 
+function getWeekTimelinePercent(minutes) {
+  const clamped = Math.max(0, Math.min(24 * 60, minutes));
+  if (clamped <= WEEK_COMPRESSED_END_MINUTES) {
+    return (clamped / WEEK_COMPRESSED_END_MINUTES) * (100 / WEEK_TIMELINE_SEGMENTS);
+  }
+  const expandedSegment = (clamped - WEEK_COMPRESSED_END_MINUTES) / (3 * 60);
+  return ((1 + expandedSegment) / WEEK_TIMELINE_SEGMENTS) * 100;
+}
+
 function getCalendarEventStyle(event) {
   const [rawStartHour = 12, rawStartMinute = 0] = String(event.startTime || '12:00').split(':').map(Number);
   const startHour = Number.isFinite(rawStartHour) ? rawStartHour : 12;
@@ -1387,9 +1413,12 @@ function getCalendarEventStyle(event) {
     ? parsedEndMinutes
     : startMinutes + durationMinutes;
   const heightMinutes = Math.max(20, endMinutes - startMinutes, durationMinutes);
+  const clampedEndMinutes = Math.min(24 * 60, startMinutes + heightMinutes);
+  const eventTop = getWeekTimelinePercent(startMinutes);
+  const eventHeight = Math.max(3.5, getWeekTimelinePercent(clampedEndMinutes) - eventTop);
   return {
-    '--event-top': `${(startMinutes / (24 * 60)) * 100}%`,
-    '--event-height': `${(Math.min(heightMinutes, 24 * 60 - startMinutes) / (24 * 60)) * 100}%`,
+    '--event-top': `${eventTop}%`,
+    '--event-height': `${eventHeight}%`,
   };
 }
 

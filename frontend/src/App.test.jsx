@@ -494,6 +494,9 @@ describe('App', () => {
     fireEvent.click(weekTab);
     expect(weekTab).toHaveAttribute('aria-selected', 'true');
     expect(await within(reviewPanel).findByRole('region', { name: '周日程' })).toBeInTheDocument();
+    expect(within(reviewPanel).getByText('00-09')).toBeInTheDocument();
+    expect(within(reviewPanel).queryByText('03:00')).not.toBeInTheDocument();
+    expect(within(reviewPanel).queryByText('06:00')).not.toBeInTheDocument();
     fireEvent.click(within(reviewPanel).getAllByRole('button', { name: '查看 2026-06-15 当日复盘' })[0]);
     const weekDayDetail = await within(reviewPanel).findByRole('dialog', { name: '2026-06-15 当日复盘详情' });
     expect(within(weekDayDetail).getAllByText('番茄专注')).toHaveLength(2);
