@@ -17,6 +17,16 @@ const (
 	minRecordableFocusSeconds = 5
 )
 
+var appTimeLocation = mustLoadTimeLocation("Asia/Shanghai")
+
+func mustLoadTimeLocation(name string) *time.Location {
+	location, err := time.LoadLocation(name)
+	if err != nil {
+		return time.FixedZone(name, 8*60*60)
+	}
+	return location
+}
+
 type Service struct {
 	db *sql.DB
 }
@@ -36,7 +46,7 @@ func NewService(database *sql.DB) *Service {
 func (s *Service) Create(userID, todoID, sceneID int64, durationSeconds int, sessionDate string) error {
 	sessionDate = strings.TrimSpace(sessionDate)
 	if sessionDate == "" {
-		sessionDate = time.Now().Format("2006-01-02")
+		sessionDate = time.Now().In(appTimeLocation).Format("2006-01-02")
 	}
 	if _, err := time.Parse("2006-01-02", sessionDate); err != nil {
 		return ErrInvalidFocusSession
@@ -99,11 +109,11 @@ func (s *Service) UpdateSession(userID, sessionID int64, patch FocusSessionPatch
 		return ErrInvalidFocusSession
 	}
 
-	startAt, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" "+startTime, time.Local)
+	startAt, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" "+startTime, appTimeLocation)
 	if err != nil {
 		return ErrInvalidFocusSession
 	}
-	endAt, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" "+endTime, time.Local)
+	endAt, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" "+endTime, appTimeLocation)
 	if err != nil {
 		return ErrInvalidFocusSession
 	}
@@ -283,7 +293,7 @@ func (s *Service) ReviewCalendar(userID int64, year, month int) (models.ReviewCa
 	if userID <= 0 {
 		return models.ReviewCalendar{}, ErrInvalidFocusSession
 	}
-	now := time.Now()
+	now := time.Now().In(appTimeLocation)
 	if year == 0 {
 		year = now.Year()
 	}
@@ -294,7 +304,7 @@ func (s *Service) ReviewCalendar(userID int64, year, month int) (models.ReviewCa
 		return models.ReviewCalendar{}, ErrInvalidFocusSession
 	}
 
-	firstOfMonth := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+	firstOfMonth := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, appTimeLocation)
 	gridStart := firstOfMonth.AddDate(0, 0, -int(firstOfMonth.Weekday()))
 	gridEnd := gridStart.AddDate(0, 0, 41)
 	calendar := models.ReviewCalendar{
@@ -330,11 +340,11 @@ func (s *Service) ReviewWeek(userID int64, year, month int, dateValue string) (m
 	if userID <= 0 {
 		return models.ReviewWeek{}, ErrInvalidFocusSession
 	}
-	now := time.Now()
+	now := time.Now().In(appTimeLocation)
 	target := now
 	dateValue = strings.TrimSpace(dateValue)
 	if dateValue != "" {
-		parsed, err := time.Parse("2006-01-02", dateValue)
+		parsed, err := time.ParseInLocation("2006-01-02", dateValue, appTimeLocation)
 		if err != nil {
 			return models.ReviewWeek{}, ErrInvalidFocusSession
 		}
@@ -343,7 +353,7 @@ func (s *Service) ReviewWeek(userID int64, year, month int, dateValue string) (m
 		if month < 1 || month > 12 {
 			return models.ReviewWeek{}, ErrInvalidFocusSession
 		}
-		target = time.Date(year, time.Month(month), now.Day(), 0, 0, 0, 0, time.Local)
+		target = time.Date(year, time.Month(month), now.Day(), 0, 0, 0, 0, appTimeLocation)
 	}
 
 	start := startOfWeek(target)
@@ -1259,14 +1269,14 @@ func reviewFocusTimeRange(sessionDate, createdAt string, durationSeconds int64) 
 
 func parseReviewCreatedAt(sessionDate, createdAt string) time.Time {
 	if parsed, err := time.Parse(time.RFC3339, createdAt); err == nil {
-		return parsed.In(time.Local)
+		return parsed.In(appTimeLocation)
 	}
 	if parsed, err := time.ParseInLocation("2006-01-02 15:04:05", createdAt, time.UTC); err == nil {
-		return parsed.In(time.Local)
+		return parsed.In(appTimeLocation)
 	}
-	parsed, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" 12:00", time.Local)
+	parsed, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" 12:00", appTimeLocation)
 	if err != nil {
-		return time.Now()
+		return time.Now().In(appTimeLocation)
 	}
 	return parsed
 }
