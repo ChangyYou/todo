@@ -1071,7 +1071,9 @@ function ReviewWeekCard({ week, todayDate, selectedEvent, onSelectEvent, onPrevi
       </div>
       <div className="calendar-grid">
         <div className="calendar-time-column">
-          {[0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => <span key={hour}>{String(hour).padStart(2, '0')}:00</span>)}
+          {[0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour, index) => (
+            <span key={hour} style={{ '--time-top': `${(index / 8) * 100}%` }}>{String(hour).padStart(2, '0')}:00</span>
+          ))}
         </div>
         <div className="calendar-lines">
           {days.map((day) => (
