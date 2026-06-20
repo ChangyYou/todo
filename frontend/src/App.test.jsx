@@ -493,6 +493,11 @@ describe('App', () => {
     fireEvent.click(weekTab);
     expect(weekTab).toHaveAttribute('aria-selected', 'true');
     expect(await within(reviewPanel).findByRole('region', { name: '周日程' })).toBeInTheDocument();
+    expect(await within(reviewPanel).findByRole('button', { name: '查看复盘事件 开会' })).toBeInTheDocument();
+    fireEvent.click(within(reviewPanel).getByRole('button', { name: '查看复盘事件 开会' }));
+    const weekEventDetail = await within(reviewPanel).findByRole('dialog', { name: '开会 复盘详情' });
+    expect(within(weekEventDetail).getByText('完成任务')).toBeInTheDocument();
+    expect(within(weekEventDetail).getByText('某一时刻')).toBeInTheDocument();
     expect(window.fetch.mock.calls.some(([url]) => String(url).includes('/api/review-calendar') && String(url).includes('view=week'))).toBe(true);
 
     fireEvent.click(monthTab);

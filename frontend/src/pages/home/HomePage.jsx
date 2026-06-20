@@ -563,6 +563,7 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
   const [viewDate, setViewDate] = useState(todayDate);
   const [calendar, setCalendar] = useState(null);
   const [week, setWeek] = useState(null);
+  const [selectedWeekEvent, setSelectedWeekEvent] = useState(null);
   const [reviewStatus, setReviewStatus] = useState('idle');
   const [reviewError, setReviewError] = useState('');
   const todayStats = stats?.overview ?? {};
@@ -584,6 +585,7 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
 
   useEffect(() => {
     let disposed = false;
+    setSelectedWeekEvent(null);
     setReviewStatus('loading');
     setReviewError('');
     getReviewCalendar(viewMode === 'week' ? { view: 'week', date: viewDate } : viewMonth)
@@ -644,6 +646,8 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
         <ReviewWeekCard
           week={week}
           todayDate={todayDate}
+          selectedEvent={selectedWeekEvent}
+          onSelectEvent={setSelectedWeekEvent}
           onPreviousWeek={() => setViewDate((date) => addDays(date, -7))}
           onNextWeek={() => setViewDate((date) => addDays(date, 7))}
         />
@@ -657,6 +661,25 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
           onNextMonth={() => setViewMonth((month) => shiftMonthValue(month, 1))}
         />
       )}
+
+      {selectedWeekEvent ? (
+        <section className="review-card week-event-detail" role="dialog" aria-label={`${selectedWeekEvent.title} 复盘详情`}>
+          <div className="review-card-title">
+            <strong>{getWeekEventTypeLabel(selectedWeekEvent.type)}</strong>
+            <button type="button" aria-label="关闭周事件详情" onClick={() => setSelectedWeekEvent(null)}>
+              <X />
+            </button>
+          </div>
+          <div className="week-event-detail-body" style={{ '--event-color': selectedWeekEvent.color || '#4b8768' }}>
+            <span className="week-event-dot" aria-hidden="true" />
+            <div>
+              <strong>{selectedWeekEvent.title}</strong>
+              <span>{formatWeekEventTime(selectedWeekEvent)}</span>
+              {selectedWeekEvent.meta ? <small>{selectedWeekEvent.meta}</small> : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="review-card today-focus-card">
         <div className="review-card-title">
@@ -1028,7 +1051,7 @@ function WorkspaceHabitWeekCard({ days }) {
   );
 }
 
-function ReviewWeekCard({ week, todayDate, onPreviousWeek, onNextWeek }) {
+function ReviewWeekCard({ week, todayDate, selectedEvent, onSelectEvent, onPreviousWeek, onNextWeek }) {
   const days = week?.days ?? createFallbackWeek(todayDate);
   return (
     <section className="week-card" aria-label="周日程">
@@ -1053,15 +1076,22 @@ function ReviewWeekCard({ week, todayDate, onPreviousWeek, onNextWeek }) {
           {days.map((day) => (
             <div key={day.date} className={`calendar-day-column ${day.date === todayDate || day.isToday ? 'today' : ''}`}>
               {(day.events ?? []).map((event, eventIndex) => (
-                <span
+                <button
+                  type="button"
                   key={`${event.id || event.title}-${eventIndex}`}
-                  className="calendar-event"
+                  className={`calendar-event ${event.type || 'event'} ${isSameWeekEvent(selectedEvent, event) ? 'selected' : ''}`}
+                  aria-label={`查看复盘事件 ${event.title}`}
                   title={`${event.title} ${event.startTime || ''}-${event.endTime || ''}`}
                   style={{
                     '--event-color': event.color || REVIEW_COLORS[eventIndex % REVIEW_COLORS.length],
                     ...getCalendarEventStyle(event),
                   }}
-                />
+                  onClick={() => onSelectEvent({ ...event, date: day.date, dayLabel: day.label })}
+                >
+                  <strong>{event.title}</strong>
+                  <span>{formatWeekEventTime(event)}</span>
+                  {event.meta ? <small>{event.meta}</small> : null}
+                </button>
               ))}
             </div>
           ))}
@@ -1143,6 +1173,31 @@ function getCalendarEventStyle(event) {
     '--event-top': `${(startMinutes / (24 * 60)) * 100}%`,
     '--event-height': `${(Math.min(heightMinutes, 24 * 60 - startMinutes) / (24 * 60)) * 100}%`,
   };
+}
+
+function isSameWeekEvent(first, second) {
+  if (!first || !second) return false;
+  if (first.id && second.id) {
+    return String(first.id) === String(second.id) && String(first.type || '') === String(second.type || '');
+  }
+  return first.title === second.title && first.startTime === second.startTime && first.endTime === second.endTime;
+}
+
+function formatWeekEventTime(event = {}) {
+  if (!event.startTime && !event.endTime) {
+    return '全天';
+  }
+  if (!event.endTime || event.endTime === event.startTime) {
+    return event.startTime || event.endTime;
+  }
+  return `${event.startTime}-${event.endTime}`;
+}
+
+function getWeekEventTypeLabel(type) {
+  if (type === 'focus') return '专注记录';
+  if (type === 'habit') return '习惯完成';
+  if (type === 'todo') return '完成任务';
+  return '复盘事件';
 }
 
 function createMonthGrid(anchorDate, todayDate) {
