@@ -540,9 +540,18 @@ describe('App', () => {
     fireEvent.change(within(todoPanel).getByLabelText('添加任务标题'), {
       target: { value: '写日报' },
     });
+    fireEvent.change(within(todoPanel).getByLabelText('任务紧急程度'), {
+      target: { value: 'high' },
+    });
     fireEvent.submit(within(todoPanel).getByLabelText('添加任务标题').closest('form'));
 
     expect(await within(todoPanel).findByText('写日报')).toBeInTheDocument();
+    const createTodoCall = window.fetch.mock.calls.find(([url, options]) => (
+      url === '/api/todos' &&
+      options?.method === 'POST' &&
+      JSON.parse(options.body).title === '写日报'
+    ));
+    expect(JSON.parse(createTodoCall[1].body).priority).toBe('high');
     fireEvent.click(within(todoPanel).getByLabelText('完成任务 写日报'));
     expect(within(todoPanel).queryByText('写日报')).not.toBeInTheDocument();
 

@@ -59,10 +59,16 @@ const FILTERS = [
 ];
 
 const PRIORITY_STYLES = {
-  high: { label: '工作', color: '#ee8f56' },
-  medium: { label: '学习', color: '#8b72c7' },
-  low: { label: '生活', color: '#6ea87c' },
+  high: { label: '高优先级', color: '#ee8f56' },
+  medium: { label: '中优先级', color: '#8b72c7' },
+  low: { label: '低优先级', color: '#6ea87c' },
 };
+
+const PRIORITY_OPTIONS = [
+  { value: 'low', label: '低' },
+  { value: 'medium', label: '中' },
+  { value: 'high', label: '高' },
+];
 
 const REVIEW_COLORS = ['#7894df', '#a88bd8', '#ee945b', '#79ad83', '#9da4a0'];
 
@@ -219,6 +225,7 @@ function TaskPanel({
   onFocusTodo,
 }) {
   const [draftTitle, setDraftTitle] = useState('');
+  const [draftPriority, setDraftPriority] = useState('medium');
   const visibleTodos = useMemo(() => todos.filter((todo) => {
     if (activeFilter === 'completed') {
       return todo.completed;
@@ -257,8 +264,9 @@ function TaskPanel({
     if (!title) {
       return;
     }
-    onCreateTodo(title);
+    onCreateTodo(title, draftPriority);
     setDraftTitle('');
+    setDraftPriority('medium');
   };
 
   return (
@@ -299,6 +307,18 @@ function TaskPanel({
           placeholder="添加任务"
           aria-label="添加任务标题"
         />
+        <label className="task-priority-select">
+          <span>紧急程度</span>
+          <select
+            aria-label="任务紧急程度"
+            value={draftPriority}
+            onChange={(event) => setDraftPriority(event.target.value)}
+          >
+            {PRIORITY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
       </form>
 
       {status === 'loading' ? <p className="workspace-state">任务加载中...</p> : null}
@@ -901,7 +921,7 @@ export default function HomePage({ user, onLoggedOut }) {
     setTimerState((state) => getNextTimerState(state, action, settings));
   };
 
-  const handleCreateTodo = async (title) => {
+  const handleCreateTodo = async (title, priority = 'medium') => {
     try {
       const todo = await createTodo({
         title,
@@ -909,7 +929,7 @@ export default function HomePage({ user, onLoggedOut }) {
         timeType: 'date_range',
         startDate: todayDate,
         endDate: todayDate,
-        priority: 'medium',
+        priority,
       });
       setTodos((items) => [todo, ...items]);
       setActiveFilter('all');
