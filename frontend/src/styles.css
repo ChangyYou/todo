@@ -4744,12 +4744,35 @@ body:has(.workspace-shell) {
   height: 52px;
   margin-top: 18px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px 0 18px;
+  gap: 10px;
+  padding: 0 12px;
   border-radius: 16px;
   box-shadow: none;
+}
+
+.task-add-submit {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: rgba(29, 71, 59, 0.78);
+}
+
+.task-add-submit:hover,
+.task-add-submit:focus-visible {
+  background: rgba(226, 236, 225, 0.72);
+  color: #0b4b3b;
+  outline: none;
+}
+
+.task-add-submit svg {
+  width: 18px;
+  height: 18px;
 }
 
 .task-inline-add input {

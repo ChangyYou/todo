@@ -316,7 +316,9 @@ function TaskPanel({
       </div>
 
       <form className="task-inline-add" onSubmit={handleSubmit}>
-        <Plus />
+        <button type="submit" className="task-add-submit" aria-label="添加任务">
+          <Plus />
+        </button>
         <input
           value={draftTitle}
           onChange={(event) => setDraftTitle(event.target.value)}

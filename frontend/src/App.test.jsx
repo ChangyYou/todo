@@ -598,7 +598,7 @@ describe('App', () => {
     fireEvent.change(within(todoPanel).getByLabelText('任务紧急程度'), {
       target: { value: 'high' },
     });
-    fireEvent.submit(within(todoPanel).getByLabelText('添加任务标题').closest('form'));
+    fireEvent.click(within(todoPanel).getByRole('button', { name: '添加任务' }));
 
     expect(await within(todoPanel).findByText('写日报')).toBeInTheDocument();
     const createTodoCall = window.fetch.mock.calls.find(([url, options]) => (
