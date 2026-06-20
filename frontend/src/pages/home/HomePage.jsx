@@ -448,10 +448,10 @@ function FocusPanel({
       </div>
 
       <div className="timer-control-row" aria-label="计时控制">
-        <button type="button" aria-label="暂停" onClick={() => onTimerAction('pause')}><Pause weight="fill" /><span>暂停</span></button>
-        <button type="button" aria-label="结束" onClick={() => onTimerAction('endFocus')}><Square weight="fill" /><span>结束</span></button>
-        <button type="button" aria-label="跳过" onClick={() => onTimerAction(timerState.phase === TIMER_PHASES.FOCUS ? 'skipFocusCompleted' : 'skipBreak')}><SkipForward weight="fill" /><span>跳过</span></button>
-        <button type="button" aria-label="重置" onClick={() => onTimerAction('reset')}><ArrowClockwise /><span>重置</span></button>
+        <button type="button" aria-label="暂停" onClick={() => onTimerAction('pause')}><Pause weight="fill" /></button>
+        <button type="button" aria-label="结束" onClick={() => onTimerAction('endFocus')}><Square weight="fill" /></button>
+        <button type="button" aria-label="跳过" onClick={() => onTimerAction(timerState.phase === TIMER_PHASES.FOCUS ? 'skipFocusCompleted' : 'skipBreak')}><SkipForward weight="fill" /></button>
+        <button type="button" aria-label="重置" onClick={() => onTimerAction('reset')}><ArrowClockwise /></button>
       </div>
 
       <footer className="cycle-footer">
