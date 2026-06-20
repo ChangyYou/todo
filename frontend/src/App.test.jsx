@@ -504,8 +504,16 @@ describe('App', () => {
     const navigation = screen.getByRole('navigation', { name: '主导航' });
 
     fireEvent.click(within(navigation).getByRole('button', { name: '专注统计' }));
-    expect(screen.getByRole('region', { name: '专注统计' })).toBeInTheDocument();
-    expect(screen.getByText('总专注')).toBeInTheDocument();
+    const statsPanel = screen.getByRole('region', { name: '专注统计' });
+    expect(statsPanel).toBeInTheDocument();
+    expect(within(statsPanel).getByText('概览')).toBeInTheDocument();
+    expect(within(statsPanel).getByText('今日已完成')).toBeInTheDocument();
+    expect(within(statsPanel).getByText('总专注时长')).toBeInTheDocument();
+    expect(within(statsPanel).getByText('最近专注时长趋势')).toBeInTheDocument();
+    expect(within(statsPanel).getByText('最近场景分布')).toBeInTheDocument();
+    expect(within(statsPanel).getByText('最近完成率趋势')).toBeInTheDocument();
+    expect(within(statsPanel).getByText('最近番茄数趋势')).toBeInTheDocument();
+    expect(within(statsPanel).getByText('本周打卡进度')).toBeInTheDocument();
 
     fireEvent.click(within(navigation).getByRole('button', { name: '习惯养成' }));
     expect(await screen.findByRole('region', { name: '习惯养成' })).toBeInTheDocument();

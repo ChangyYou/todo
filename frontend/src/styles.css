@@ -5206,6 +5206,50 @@ body:has(.workspace-shell) {
   overflow: hidden;
 }
 
+.workspace-stats-content {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 16px;
+  padding-right: 2px;
+}
+
+.workspace-stats-content .focus-stats-overview-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 12px;
+}
+
+.workspace-stats-card,
+.workspace-focus-stats-overview {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.workspace-stats-content .focus-stats-chart,
+.workspace-stats-content .focus-stats-scene-chart {
+  min-height: 170px;
+}
+
+.workspace-stats-content .focus-stats-chart-track,
+.workspace-stats-content .focus-stats-scene-track {
+  cursor: default;
+}
+
+.workspace-stats-track:hover,
+.workspace-stats-track:focus-visible {
+  transform: none;
+}
+
+.workspace-stats-content .focus-stats-habit-day {
+  cursor: default;
+}
+
+.workspace-stats-habit-day:hover .focus-stats-habit-ring,
+.workspace-stats-habit-day:focus-visible .focus-stats-habit-ring {
+  transform: none;
+  box-shadow: none;
+}
+
 .workspace-section-todos .task-board {
   border-color: rgba(47, 93, 75, 0.24);
   box-shadow:

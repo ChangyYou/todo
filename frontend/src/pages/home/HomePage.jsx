@@ -144,6 +144,21 @@ function formatDuration(seconds = 0) {
   return `${minutes}分`;
 }
 
+function formatCompactDuration(seconds = 0) {
+  const safeSeconds = Math.max(0, seconds);
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  return `${hours}h${minutes}m`;
+}
+
+function formatPercent(value = 0) {
+  return `${Math.round(value)}%`;
+}
+
+function getSceneColor(scene, index = 0) {
+  return scene?.color || REVIEW_COLORS[index % REVIEW_COLORS.length] || '#8ca39a';
+}
+
 function getPhaseLabel(phase) {
   if (phase === TIMER_PHASES.SHORT_BREAK) {
     return '短休息';
@@ -626,32 +641,59 @@ function WorkspaceModulePanel({
 }) {
   if (activeSection === 'stats') {
     const overview = stats?.overview ?? {};
-    const sceneItems = stats?.scenePeriods?.at(-1)?.scenes ?? [];
+    const periods = stats?.periods ?? [];
+    const scenePeriods = stats?.scenePeriods ?? [];
+    const habitWeek = stats?.habitWeek ?? [];
+    const maxFocusSeconds = Math.max(300, ...periods.map((item) => item.durationSeconds ?? 0));
+    const maxPomodoros = Math.max(5, ...periods.map((item) => item.sessionCount ?? 0));
     return (
       <section className="workspace-module-panel panel-frame" aria-label="专注统计">
         <header className="panel-header">
           <h2>专注统计</h2>
           <span className="module-eyebrow">Focus Stats</span>
         </header>
-        <div className="module-stat-grid">
-          <div><span>今日专注</span><strong>{formatDuration(overview.todayFocusSeconds || 0)}</strong></div>
-          <div><span>今日番茄</span><strong>{overview.todayPomodoros || 0}</strong></div>
-          <div><span>总专注</span><strong>{formatDuration(overview.totalFocusSeconds || 0)}</strong></div>
-          <div><span>已完成任务</span><strong>{overview.totalCompletedTasks || 0}</strong></div>
+        <div className="workspace-stats-content">
+          <section className="focus-stats-overview workspace-focus-stats-overview" aria-label="概览">
+            <h3>概览</h3>
+            <div className="focus-stats-overview-grid">
+              <StatsOverviewCard label="今日已完成" value={overview.todayCompletedTasks ?? 0} />
+              <StatsOverviewCard label="今日番茄" value={overview.todayPomodoros ?? 0} />
+              <StatsOverviewCard label="今日专注时长" value={formatCompactDuration(overview.todayFocusSeconds ?? 0)} />
+              <StatsOverviewCard label="总已完成" value={overview.totalCompletedTasks ?? 0} />
+              <StatsOverviewCard label="总番茄" value={overview.totalPomodoros ?? 0} />
+              <StatsOverviewCard label="总专注时长" value={formatCompactDuration(overview.totalFocusSeconds ?? 0)} />
+            </div>
+          </section>
+
+          <WorkspaceTrendCard
+            title="最近专注时长趋势"
+            items={periods}
+            valueKey="durationSeconds"
+            maxValue={maxFocusSeconds}
+            formatValue={(value) => `${Math.round(value / 60)}m`}
+          />
+
+          <WorkspaceSceneDistributionCard items={scenePeriods} />
+
+          <WorkspaceTrendCard
+            title="最近完成率趋势"
+            items={periods}
+            valueKey="taskCompletionRate"
+            maxValue={100}
+            formatValue={formatPercent}
+            percent
+          />
+
+          <WorkspaceTrendCard
+            title="最近番茄数趋势"
+            items={periods}
+            valueKey="sessionCount"
+            maxValue={maxPomodoros}
+            formatValue={(value) => String(value)}
+          />
+
+          <WorkspaceHabitWeekCard days={habitWeek} />
         </div>
-        <section className="module-card">
-          <h3>场景分布</h3>
-          <div className="module-list">
-            {(sceneItems.length > 0 ? sceneItems : [{ title: '暂无专注记录', durationSeconds: 0, percentage: 0, color: '#9da4a0' }]).map((scene, index) => (
-              <div key={`${scene.sceneId || scene.title}-${index}`} className="module-row">
-                <span className="legend-dot" style={{ '--legend-color': scene.color || REVIEW_COLORS[index % REVIEW_COLORS.length] }} />
-                <strong>{scene.title}</strong>
-                <span>{scene.percentage || 0}%</span>
-                <span>{formatDuration(scene.durationSeconds || 0)}</span>
-              </div>
-            ))}
-          </div>
-        </section>
       </section>
     );
   }
@@ -760,6 +802,151 @@ function TimerSettingsDialog({ settings, onSettingChange, onAutoStartChange, onC
         </label>
       </div>
     </div>
+  );
+}
+
+function StatsOverviewCard({ label, value }) {
+  return (
+    <div className="focus-stats-overview-card">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function WorkspaceTrendCard({ title, items, valueKey, maxValue, formatValue, percent = false }) {
+  const visibleItems = items.length > 0 ? items : Array.from({ length: 7 }, (_, index) => ({
+    label: `${index + 1}`,
+    startDate: `empty-${index}`,
+    [valueKey]: 0,
+  }));
+
+  return (
+    <section className="focus-stats-chart-card workspace-stats-card">
+      <div className="focus-stats-chart-header">
+        <h3>{title}</h3>
+      </div>
+      <div className={`focus-stats-chart ${percent ? 'percent' : ''}`}>
+        <div className="focus-stats-chart-axis" aria-hidden="true">
+          <span>{percent ? '100%' : formatValue(maxValue)}</span>
+          <span>{percent ? '50%' : formatValue(Math.floor(maxValue / 2))}</span>
+          <span>{percent ? '0%' : formatValue(0)}</span>
+        </div>
+        <div className="focus-stats-chart-bars">
+          {visibleItems.slice(-7).map((item, index) => {
+            const value = item[valueKey] ?? 0;
+            const height = maxValue > 0 ? Math.max(4, (value / maxValue) * 100) : 4;
+            return (
+              <div key={`${item.startDate || index}-${title}`} className="focus-stats-chart-bar-item">
+                <span className="focus-stats-chart-track workspace-stats-track" aria-label={`${item.label} ${title}`}>
+                  <span style={{ height: `${height}%` }} />
+                </span>
+                <small>{item.label}</small>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WorkspaceSceneDistributionCard({ items }) {
+  const visibleItems = items.length > 0 ? items : Array.from({ length: 7 }, (_, index) => ({
+    label: `${index + 1}`,
+    startDate: `empty-scene-${index}`,
+    durationSeconds: 0,
+    scenes: [],
+  }));
+  const legend = [];
+  const seenSceneKeys = new Set();
+  visibleItems.forEach((item) => {
+    (item.scenes ?? []).forEach((scene, index) => {
+      const key = `${scene.sceneId ?? index}:${scene.title}`;
+      if (seenSceneKeys.has(key)) return;
+      seenSceneKeys.add(key);
+      legend.push(scene);
+    });
+  });
+
+  return (
+    <section className="focus-stats-chart-card workspace-stats-card">
+      <div className="focus-stats-chart-header">
+        <h3>最近场景分布</h3>
+      </div>
+      <div className="focus-stats-scene-chart">
+        <div className="focus-stats-chart-axis" aria-hidden="true">
+          <span>100%</span>
+          <span>50%</span>
+          <span>0%</span>
+        </div>
+        <div className="focus-stats-scene-bars">
+          {visibleItems.slice(-7).map((item, itemIndex) => {
+            const scenes = item.scenes ?? [];
+            return (
+              <div key={`${item.startDate || itemIndex}-scenes`} className="focus-stats-scene-bar-item">
+                <span className="focus-stats-scene-track workspace-stats-track" aria-label={`${item.label} 场景分布`}>
+                  {item.durationSeconds > 0 && scenes.length > 0 ? (
+                    scenes.map((scene, sceneIndex) => (
+                      <span
+                        key={`${scene.sceneId ?? sceneIndex}-${scene.title}`}
+                        className="focus-stats-scene-segment"
+                        style={{
+                          height: `${Math.max(2, scene.percentage ?? 0)}%`,
+                          '--scene-color': getSceneColor(scene, sceneIndex),
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <span className="focus-stats-scene-empty" />
+                  )}
+                </span>
+                <small>{item.label}</small>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="focus-stats-scene-legend" aria-label="场景图例">
+        {legend.length > 0 ? legend.slice(0, 5).map((scene, index) => (
+          <span key={`${scene.sceneId ?? index}-${scene.title}`}>
+            <i style={{ '--scene-color': getSceneColor(scene, index) }} />
+            {scene.title}
+          </span>
+        )) : (
+          <span>
+            <i style={{ '--scene-color': '#8ca39a' }} />
+            暂无场景数据
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function WorkspaceHabitWeekCard({ days }) {
+  const visibleDays = days.length > 0 ? days : ['一', '二', '三', '四', '五', '六', '日'].map((label, index) => ({
+    date: `empty-habit-${index}`,
+    label,
+    total: 0,
+    checked: 0,
+    completion: 0,
+  }));
+
+  return (
+    <section className="focus-stats-habits workspace-stats-card" aria-label="本周打卡进度">
+      <h3>本周打卡进度</h3>
+      <div className="focus-stats-habit-row">
+        {visibleDays.map((day) => (
+          <div key={day.date} className="focus-stats-habit-day workspace-stats-habit-day">
+            <div className="focus-stats-habit-ring" style={{ '--habit-progress': `${day.completion ?? 0}%` }}>
+              <span>{day.total > 0 ? `${day.checked}/${day.total}` : ''}</span>
+            </div>
+            <small>{day.label}</small>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
