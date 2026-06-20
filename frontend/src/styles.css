@@ -4493,9 +4493,7 @@ body:has(.workspace-shell) {
   --surface: rgba(255, 255, 255, 0.62);
   --shadow: 0 18px 42px rgba(67, 89, 74, 0.08);
   position: relative;
-  width: min(100%, 1440px);
   min-height: 100vh;
-  margin: 0 auto;
   display: grid;
   grid-template-columns: 190px minmax(300px, 350px) minmax(0, 1fr) minmax(330px, 370px);
   gap: 18px;
