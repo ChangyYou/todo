@@ -697,6 +697,11 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
 
   const handleSelectReviewDay = (day) => {
     if (!day?.date) return;
+    if (selectedReviewDay?.date === day.date) {
+      setSelectedReviewDay(null);
+      setReviewDetailError('');
+      return;
+    }
     const monthDay = calendar?.days?.find((item) => item.date === day.date);
     setSelectedWeekEvent(null);
     setReviewDetailError('');

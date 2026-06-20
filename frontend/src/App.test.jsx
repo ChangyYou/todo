@@ -498,7 +498,7 @@ describe('App', () => {
     const weekDayDetail = await within(reviewPanel).findByRole('dialog', { name: '2026-06-15 当日复盘详情' });
     expect(within(weekDayDetail).getAllByText('番茄专注')).toHaveLength(2);
     expect(within(weekDayDetail).getByText('开会')).toBeInTheDocument();
-    fireEvent.click(within(weekDayDetail).getByRole('button', { name: '关闭' }));
+    fireEvent.click(within(reviewPanel).getAllByRole('button', { name: '查看 2026-06-15 当日复盘' })[0]);
     expect(within(reviewPanel).queryByRole('dialog', { name: '2026-06-15 当日复盘详情' })).not.toBeInTheDocument();
     expect(await within(reviewPanel).findByRole('button', { name: '查看复盘事件 开会' })).toBeInTheDocument();
     fireEvent.click(within(reviewPanel).getByRole('button', { name: '查看复盘事件 开会' }));
