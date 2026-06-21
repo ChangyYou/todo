@@ -831,12 +831,13 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
   };
 
   const PanelElement = variant === 'module' ? 'section' : 'aside';
+  const panelTitle = isModuleView ? '个人复盘' : '日程安排';
 
   return (
-    <PanelElement className={`review-panel panel-frame ${variant === 'module' ? 'review-panel-module' : ''}`} aria-label="个人复盘">
+    <PanelElement className={`review-panel panel-frame ${variant === 'module' ? 'review-panel-module' : ''}`} aria-label={panelTitle}>
       <header className="panel-header review-workspace-header">
         <div>
-          <h2>个人复盘</h2>
+          <h2>{panelTitle}</h2>
           {isModuleView ? (
             <div className="review-view-tabs" role="tablist" aria-label="复盘视图">
               <button

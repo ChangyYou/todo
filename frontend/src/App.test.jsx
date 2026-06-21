@@ -491,10 +491,11 @@ describe('App', () => {
     expect(screen.queryByText('工作')).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: '待办事项' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '沉浸专注' })).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: '个人复盘' })).toBeInTheDocument();
-    expect(screen.getAllByText('个人复盘').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole('complementary', { name: '日程安排' })).toBeInTheDocument();
+    expect(screen.getByText('个人复盘')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '日程安排' })).toBeInTheDocument();
 
-    const reviewPanel = screen.getByRole('complementary', { name: '个人复盘' });
+    const reviewPanel = screen.getByRole('complementary', { name: '日程安排' });
     expect(within(reviewPanel).getByText('今日专注')).toBeInTheDocument();
     expect(within(reviewPanel).getByText('场景分布')).toBeInTheDocument();
     expect(within(reviewPanel).queryByRole('tab', { name: '月视图' })).not.toBeInTheDocument();
