@@ -73,16 +73,26 @@ const PRIORITY_OPTIONS = [
 ];
 
 const REVIEW_COLORS = ['#7894df', '#a88bd8', '#ee945b', '#79ad83', '#9da4a0'];
-const WEEK_COMPRESSED_END_MINUTES = 9 * 60;
-const WEEK_TIMELINE_SEGMENTS = 6;
+const WEEK_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const WEEK_EARLY_END_MINUTES = 9 * 60;
+const WEEK_LATE_START_MINUTES = 22 * 60;
+const WEEK_DAY_MINUTES = 24 * 60;
+const WEEK_TIMELINE_SEGMENTS = 15;
 const WEEK_TIMELINE_LABELS = [
   { label: '00-09', top: 100 / (WEEK_TIMELINE_SEGMENTS * 2), compressed: true },
-  { label: '09:00', minutes: 9 * 60 },
-  { label: '12:00', minutes: 12 * 60 },
-  { label: '15:00', minutes: 15 * 60 },
-  { label: '18:00', minutes: 18 * 60 },
-  { label: '21:00', minutes: 21 * 60 },
-  { label: '24:00', minutes: 24 * 60 },
+  ...Array.from({ length: 14 }, (_, index) => {
+    const hour = index + 9;
+    return { label: `${String(hour).padStart(2, '0')}:00`, minutes: hour * 60 };
+  }),
+  { label: '22-24', top: ((WEEK_TIMELINE_SEGMENTS - 0.5) / WEEK_TIMELINE_SEGMENTS) * 100, compressed: true },
+];
+const WEEK_TIMELINE_GRID_MARKS = [
+  { label: '09:00', minutes: WEEK_EARLY_END_MINUTES },
+  ...Array.from({ length: 12 }, (_, index) => {
+    const hour = index + 10;
+    return { label: `${String(hour).padStart(2, '0')}:00`, minutes: hour * 60 };
+  }),
+  { label: '22:00', minutes: WEEK_LATE_START_MINUTES },
 ];
 
 const SETTINGS_FIELDS = [
@@ -100,6 +110,26 @@ function addDays(dateValue, offset) {
   const date = new Date(`${dateValue}T00:00:00`);
   date.setDate(date.getDate() + offset);
   return getLocalDate(date);
+}
+
+function getMonthFromDate(dateValue) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+  };
+}
+
+function shiftMonth(value, offset) {
+  const date = new Date(value.year, value.month - 1 + offset, 1);
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+  };
+}
+
+function formatMonthTitle(value) {
+  return `${value.year}年${value.month}月`;
 }
 
 function getChineseWeekday(dateValue) {
@@ -682,13 +712,18 @@ function FocusPanel({
 }
 
 function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' }) {
+  const isModuleView = variant === 'module';
+  const [viewMode, setViewMode] = useState(() => (isModuleView ? 'month' : 'week'));
+  const [viewMonth, setViewMonth] = useState(() => getMonthFromDate(todayDate));
   const [viewDate, setViewDate] = useState(todayDate);
+  const [calendar, setCalendar] = useState(null);
   const [week, setWeek] = useState(null);
   const [selectedReviewDay, setSelectedReviewDay] = useState(null);
   const [reviewDetailError, setReviewDetailError] = useState('');
   const [reviewDeleteStatus, setReviewDeleteStatus] = useState('idle');
   const [reviewStatus, setReviewStatus] = useState('idle');
   const [reviewError, setReviewError] = useState('');
+  const [reviewReloadSignal, setReviewReloadSignal] = useState(0);
   const todayStats = stats?.overview ?? {};
   const sceneItems = stats?.scenePeriods?.find((period) => period.startDate === todayDate)?.scenes
     ?? stats?.scenePeriods?.at(-1)?.scenes
@@ -711,10 +746,20 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
     setReviewDetailError('');
     setReviewStatus('loading');
     setReviewError('');
-    getReviewCalendar({ view: 'week', date: viewDate })
+    const request = viewMode === 'month'
+      ? getReviewCalendar(viewMonth)
+      : getReviewCalendar({ view: 'week', date: viewDate });
+
+    request
       .then((nextReview) => {
         if (disposed) return;
-        setWeek(nextReview);
+        if (viewMode === 'month') {
+          setCalendar(nextReview);
+          setWeek(null);
+        } else {
+          setWeek(nextReview);
+          setCalendar(null);
+        }
         setReviewStatus('ready');
       })
       .catch((error) => {
@@ -726,7 +771,7 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
     return () => {
       disposed = true;
     };
-  }, [viewDate, refreshSignal]);
+  }, [viewMode, viewDate, viewMonth, refreshSignal, reviewReloadSignal]);
 
   const handleSelectReviewDay = (day) => {
     if (!day?.date) return;
@@ -737,6 +782,15 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
     }
     setReviewDetailError('');
     setSelectedReviewDay(day.tasks ? day : buildReviewDayFromWeekDay(day));
+  };
+
+  const refreshReview = () => setReviewReloadSignal((signal) => signal + 1);
+
+  const handleGoToToday = () => {
+    setViewDate(todayDate);
+    setViewMonth(getMonthFromDate(todayDate));
+    setSelectedReviewDay(null);
+    setReviewDetailError('');
   };
 
   const handleDeleteReviewTask = async (task) => {
@@ -767,6 +821,7 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
           isFocusRecord ? item.id !== task.sessionId : item.todoId !== task.todoId
         )),
       } : day);
+      refreshReview();
     } catch (error) {
       setReviewDetailError(error instanceof Error ? error.message : isFocusRecord ? '专注记录删除失败' : '复盘任务删除失败');
     } finally {
@@ -778,22 +833,87 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
 
   return (
     <PanelElement className={`review-panel panel-frame ${variant === 'module' ? 'review-panel-module' : ''}`} aria-label="个人复盘">
-      <header className="panel-header">
-        <h2>个人复盘</h2>
-        <button type="button" aria-label="打开日历"><CalendarBlank /></button>
+      <header className="panel-header review-workspace-header">
+        <div>
+          <h2>个人复盘</h2>
+          {isModuleView ? (
+            <div className="review-view-tabs" role="tablist" aria-label="复盘视图">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'month'}
+                className={viewMode === 'month' ? 'active' : ''}
+                onClick={() => setViewMode('month')}
+              >
+                月视图
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'week'}
+                className={viewMode === 'week' ? 'active' : ''}
+                onClick={() => setViewMode('week')}
+              >
+                周视图
+              </button>
+            </div>
+          ) : null}
+        </div>
+        {isModuleView ? (
+          <div className="review-month-controls">
+            <button
+              type="button"
+              className="review-icon-button has-tooltip"
+              aria-label={viewMode === 'month' ? '上个月' : '上一周'}
+              data-tooltip={viewMode === 'month' ? '上个月' : '上一周'}
+              onClick={() => (viewMode === 'month'
+                ? setViewMonth((month) => shiftMonth(month, -1))
+                : setViewDate((date) => addDays(date, -7)))}
+            >
+              <CaretLeft />
+            </button>
+            <strong>{viewMode === 'month' ? formatMonthTitle(viewMonth) : week?.startDate ? `${formatShortDate(week.startDate)} - ${formatShortDate(week.endDate)}` : '本周'}</strong>
+            <button
+              type="button"
+              className="review-icon-button has-tooltip"
+              aria-label={viewMode === 'month' ? '下个月' : '下一周'}
+              data-tooltip={viewMode === 'month' ? '下个月' : '下一周'}
+              onClick={() => (viewMode === 'month'
+                ? setViewMonth((month) => shiftMonth(month, 1))
+                : setViewDate((date) => addDays(date, 7)))}
+            >
+              <CaretRight />
+            </button>
+            <button type="button" className="review-today-button" onClick={handleGoToToday}>
+              今天
+            </button>
+          </div>
+        ) : (
+          <button type="button" aria-label="打开日历"><CalendarBlank /></button>
+        )}
       </header>
 
       {reviewStatus === 'loading' ? <p className="review-inline-state">复盘加载中...</p> : null}
       {reviewError ? <p className="review-inline-error" role="alert">{reviewError}</p> : null}
 
-      <ReviewWeekCard
-        week={week}
-        todayDate={todayDate}
-        selectedDay={selectedReviewDay}
-        onSelectDay={handleSelectReviewDay}
-        onPreviousWeek={() => setViewDate((date) => addDays(date, -7))}
-        onNextWeek={() => setViewDate((date) => addDays(date, 7))}
-      />
+      {viewMode === 'month' && isModuleView ? (
+        <ReviewMonthCalendar
+          calendar={calendar}
+          todayDate={todayDate}
+          selectedDay={selectedReviewDay}
+          onSelectDay={handleSelectReviewDay}
+        />
+      ) : (
+        <ReviewWeekCard
+          week={week}
+          todayDate={todayDate}
+          selectedDay={selectedReviewDay}
+          onSelectDay={handleSelectReviewDay}
+          onPreviousWeek={() => setViewDate((date) => addDays(date, -7))}
+          onNextWeek={() => setViewDate((date) => addDays(date, 7))}
+          showHeader={!isModuleView}
+        />
+      )}
 
       {selectedReviewDay ? (
         <section className="review-detail-panel workspace-review-detail" role="dialog" aria-label={`${selectedReviewDay.date} 当日复盘详情`}>
@@ -816,7 +936,7 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
           <div className="review-task-list">
             {(selectedReviewDay.tasks ?? []).length > 0 ? selectedReviewDay.tasks.map((task, index) => (
               <article
-                key={`${task.sourceType}-${task.todoId || task.sceneId || index}`}
+                key={`${task.sourceType}-${task.sessionId || task.todoId || task.sceneId || index}`}
                 className={`review-task-row ${task.sceneColor ? 'with-scene-color' : ''}`}
                 style={task.sceneColor ? { '--review-scene-color': task.sceneColor } : undefined}
               >
@@ -1220,15 +1340,91 @@ function WorkspaceHabitWeekCard({ days }) {
   );
 }
 
-function ReviewWeekCard({ week, todayDate, selectedDay, onSelectDay, onPreviousWeek, onNextWeek }) {
+function ReviewDaySummary({ day }) {
+  const items = [];
+  if ((day?.focusSeconds || 0) >= 60) {
+    items.push(`专注 ${formatDuration(day.focusSeconds)}`);
+  }
+  if ((day?.completedTasks || 0) > 0) {
+    items.push(`任务 ${day.completedTasks}`);
+  }
+  if ((day?.completedHabits || 0) > 0) {
+    items.push(`习惯 ${day.completedHabits}`);
+  }
+  if ((day?.sceneCount || 0) > 0) {
+    items.push(`场景 ${day.sceneCount}`);
+  }
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="review-day-summary">
+      {items.map((item) => <span key={item}>{item}</span>)}
+    </div>
+  );
+}
+
+function ReviewMonthCalendar({ calendar, todayDate, selectedDay, onSelectDay }) {
+  const days = calendar?.days ?? [];
+  return (
+    <section className="review-calendar-shell" aria-label="月复盘">
+      <div className="review-calendar">
+        {WEEK_LABELS.map((label) => <div key={label} className="review-weekday">{label}</div>)}
+        {days.map((day) => {
+          const entries = day.entries ?? [];
+          const visibleEntries = entries.slice(0, 3);
+          const hiddenCount = Math.max(0, entries.length - visibleEntries.length);
+          return (
+            <button
+              type="button"
+              key={day.date}
+              className={`review-day-cell ${day.inCurrentMonth ? '' : 'muted'} ${day.date === todayDate || day.isToday ? 'today' : ''} ${selectedDay?.date === day.date ? 'selected' : ''}`}
+              aria-label={`${day.date} 复盘`}
+              onClick={() => onSelectDay(day)}
+            >
+              <div className="review-day-topline">
+                <span className="review-day-number">{day.day}</span>
+                {day.date === todayDate || day.isToday ? <span className="review-today-chip">今天</span> : null}
+              </div>
+              <ReviewDaySummary day={day} />
+              <div className="review-entry-list">
+                {visibleEntries.map((entry, index) => (
+                  <span
+                    key={`${day.date}-${entry.type}-${entry.title}-${index}`}
+                    className={`review-entry ${entry.type} ${entry.sceneColor ? 'with-scene-color' : ''}`}
+                    style={entry.sceneColor ? { '--review-scene-color': entry.sceneColor } : undefined}
+                  >
+                    <span>{entry.title}</span>
+                    {entry.meta ? <small>{entry.sceneTitle && entry.type !== 'scene' ? `${entry.sceneTitle} · ${entry.meta}` : entry.meta}</small> : null}
+                  </span>
+                ))}
+                {hiddenCount > 0 ? <span className="review-entry-more">+{hiddenCount}</span> : null}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function hasWeekEventTime(event = {}) {
+  return Boolean(event.startTime || event.endTime);
+}
+
+function ReviewWeekCard({ week, todayDate, selectedDay, onSelectDay, onPreviousWeek, onNextWeek, showHeader = true }) {
   const days = week?.days ?? createFallbackWeek(todayDate);
   return (
     <section className="week-card" aria-label="周日程">
-      <div className="week-header">
-        <button type="button" aria-label="上一周" onClick={onPreviousWeek}><CaretLeft /></button>
-        <strong>{week?.startDate ? `${formatShortDate(week.startDate)} - ${formatShortDate(week.endDate)}` : '本周'}</strong>
-        <button type="button" aria-label="下一周" onClick={onNextWeek}><CaretRight /></button>
-      </div>
+      {showHeader ? (
+        <div className="week-header">
+          <button type="button" aria-label="上一周" onClick={onPreviousWeek}><CaretLeft /></button>
+          <strong>{week?.startDate ? `${formatShortDate(week.startDate)} - ${formatShortDate(week.endDate)}` : '本周'}</strong>
+          <button type="button" aria-label="下一周" onClick={onNextWeek}><CaretRight /></button>
+        </div>
+      ) : null}
       <div className="week-days">
         {days.map((day) => (
           <button
@@ -1256,15 +1452,38 @@ function ReviewWeekCard({ week, todayDate, selectedDay, onSelectDay, onPreviousW
           ))}
         </div>
         <div className="calendar-lines">
+          <div className="calendar-hour-lines" aria-hidden="true">
+            {WEEK_TIMELINE_GRID_MARKS.map((mark) => (
+              <span key={mark.label} style={{ '--line-top': `${getWeekTimelinePercent(mark.minutes)}%` }} />
+            ))}
+          </div>
           {days.map((day) => (
             <div key={day.date} className={`calendar-day-column ${day.date === todayDate || day.isToday ? 'today' : ''} ${selectedDay?.date === day.date ? 'selected' : ''}`}>
+              <div className="calendar-all-day-row">
+                {(day.events ?? []).filter((event) => !hasWeekEventTime(event)).slice(0, 2).map((event, eventIndex) => (
+                  <button
+                    type="button"
+                    key={`${event.id || event.title}-all-day-${eventIndex}`}
+                    className={`calendar-all-day-event ${event.type || 'event'}`}
+                    aria-label={`查看 ${day.date} 当日复盘`}
+                    title={event.title}
+                    style={{ '--event-color': event.color || REVIEW_COLORS[eventIndex % REVIEW_COLORS.length] }}
+                    onClick={(eventClick) => {
+                      eventClick.stopPropagation();
+                      onSelectDay(day);
+                    }}
+                  >
+                    {event.title}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
                 className="calendar-day-hitbox"
                 aria-label={`查看 ${day.date} 当日复盘`}
                 onClick={() => onSelectDay(day)}
               />
-              {(day.events ?? []).map((event, eventIndex) => (
+              {(day.events ?? []).filter(hasWeekEventTime).map((event, eventIndex) => (
                 <button
                   type="button"
                   key={`${event.id || event.title}-${eventIndex}`}
@@ -1299,12 +1518,15 @@ function formatShortDate(dateValue) {
 }
 
 function getWeekTimelinePercent(minutes) {
-  const clamped = Math.max(0, Math.min(24 * 60, minutes));
-  if (clamped <= WEEK_COMPRESSED_END_MINUTES) {
-    return (clamped / WEEK_COMPRESSED_END_MINUTES) * (100 / WEEK_TIMELINE_SEGMENTS);
+  const clamped = Math.max(0, Math.min(WEEK_DAY_MINUTES, minutes));
+  if (clamped <= WEEK_EARLY_END_MINUTES) {
+    return (clamped / WEEK_EARLY_END_MINUTES) * (100 / WEEK_TIMELINE_SEGMENTS);
   }
-  const expandedSegment = (clamped - WEEK_COMPRESSED_END_MINUTES) / (3 * 60);
-  return ((1 + expandedSegment) / WEEK_TIMELINE_SEGMENTS) * 100;
+  if (clamped < WEEK_LATE_START_MINUTES) {
+    return ((1 + ((clamped - WEEK_EARLY_END_MINUTES) / 60)) / WEEK_TIMELINE_SEGMENTS) * 100;
+  }
+  const lateProgress = (clamped - WEEK_LATE_START_MINUTES) / (WEEK_DAY_MINUTES - WEEK_LATE_START_MINUTES);
+  return (((WEEK_TIMELINE_SEGMENTS - 1) + lateProgress) / WEEK_TIMELINE_SEGMENTS) * 100;
 }
 
 function getCalendarEventStyle(event) {

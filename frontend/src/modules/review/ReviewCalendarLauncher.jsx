@@ -8,16 +8,16 @@ import {
 } from '../../lib/api';
 
 const WEEK_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-const WEEK_COMPACT_ROW_HEIGHT = 36;
-const WEEK_HOUR_ROW_HEIGHT = 36;
-const WEEK_EARLY_END_MINUTES = 7 * 60;
-const WEEK_LATE_START_MINUTES = 21 * 60;
+const WEEK_COMPACT_ROW_HEIGHT = 42;
+const WEEK_HOUR_ROW_HEIGHT = 44;
+const WEEK_EARLY_END_MINUTES = 9 * 60;
+const WEEK_LATE_START_MINUTES = 22 * 60;
 const WEEK_DAY_MINUTES = 24 * 60;
-const WEEK_TIMELINE_HEIGHT = WEEK_COMPACT_ROW_HEIGHT + (14 * WEEK_HOUR_ROW_HEIGHT) + WEEK_COMPACT_ROW_HEIGHT;
+const WEEK_TIMELINE_HEIGHT = WEEK_COMPACT_ROW_HEIGHT + (13 * WEEK_HOUR_ROW_HEIGHT) + WEEK_COMPACT_ROW_HEIGHT;
 const WEEK_TIMELINE_LABELS = [
-  '00:00 - 07:00',
-  ...Array.from({ length: 14 }, (_, index) => `${String(index + 7).padStart(2, '0')}:00`),
-  '21:00 - 00:00',
+  '00:00 - 09:00',
+  ...Array.from({ length: 14 }, (_, index) => `${String(index + 9).padStart(2, '0')}:00`),
+  '22:00 - 00:00',
 ];
 
 function CalendarIcon() {
@@ -109,7 +109,7 @@ function getWeekTimelineOffset(minutes) {
     return WEEK_COMPACT_ROW_HEIGHT + ((minutes - WEEK_EARLY_END_MINUTES) / 60) * WEEK_HOUR_ROW_HEIGHT;
   }
 
-  return WEEK_COMPACT_ROW_HEIGHT + (14 * WEEK_HOUR_ROW_HEIGHT) + ((minutes - WEEK_LATE_START_MINUTES) / (WEEK_DAY_MINUTES - WEEK_LATE_START_MINUTES)) * WEEK_COMPACT_ROW_HEIGHT;
+  return WEEK_COMPACT_ROW_HEIGHT + (13 * WEEK_HOUR_ROW_HEIGHT) + ((minutes - WEEK_LATE_START_MINUTES) / (WEEK_DAY_MINUTES - WEEK_LATE_START_MINUTES)) * WEEK_COMPACT_ROW_HEIGHT;
 }
 
 function getWeekEventMetrics(event) {

@@ -2979,7 +2979,7 @@ select {
 
 .review-week-time-column {
   display: grid;
-  grid-template-rows: 42px repeat(16, 36px);
+  grid-template-rows: 42px repeat(16, 41px);
   border-right: 1px solid rgba(43, 70, 61, 0.08);
   color: rgba(43, 70, 61, 0.42);
   font-size: 0.72rem;
@@ -3024,8 +3024,8 @@ select {
 
 .review-week-lane {
   position: relative;
-  height: 576px;
-  background: repeating-linear-gradient(to bottom, transparent 0, transparent 35px, rgba(43, 70, 61, 0.06) 36px);
+  height: 656px;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent 43px, rgba(43, 70, 61, 0.06) 44px);
 }
 
 .review-week-event {
@@ -5498,10 +5498,25 @@ body:has(.workspace-shell) {
 
 .workspace-shell > .review-panel.review-panel-module {
   grid-column: span 2;
+  --calendar-timeline-height: 820px;
+  gap: 18px;
 }
 
-.workspace-shell > .review-panel .segmented-tabs {
-  margin-top: 2px;
+.review-workspace-header {
+  align-items: flex-start;
+}
+
+.review-workspace-header > div:first-child {
+  min-width: 0;
+}
+
+.review-workspace-header .review-view-tabs {
+  margin-top: 12px;
+}
+
+.review-workspace-header .review-month-controls {
+  flex: 0 0 auto;
+  align-self: flex-start;
 }
 
 .week-card,
@@ -5510,6 +5525,39 @@ body:has(.workspace-shell) {
   border-radius: 18px;
   padding: 14px;
   box-shadow: none;
+}
+
+.review-calendar-shell {
+  min-width: 0;
+}
+
+.review-panel-module .review-calendar {
+  margin-top: 0;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.review-panel-module .review-weekday {
+  min-height: 38px;
+  font-size: 0.82rem;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.review-panel-module .review-day-cell {
+  min-height: 138px;
+  padding: 10px;
+}
+
+.review-entry-more {
+  width: fit-content;
+  min-height: 22px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(43, 70, 61, 0.08);
+  color: rgba(31, 60, 51, 0.58);
+  font-size: 0.72rem;
 }
 
 .review-inline-state,
@@ -5601,7 +5649,7 @@ body:has(.workspace-shell) {
 
 .calendar-time-column {
   position: relative;
-  min-height: 560px;
+  min-height: var(--calendar-timeline-height, 720px);
 }
 
 .calendar-time-column span {
@@ -5622,25 +5670,39 @@ body:has(.workspace-shell) {
 }
 
 .calendar-lines {
+  position: relative;
   width: 100%;
   min-width: 0;
-  min-height: 560px;
+  min-height: var(--calendar-timeline-height, 720px);
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   border: 1px solid var(--line);
   border-radius: 2px;
   overflow: hidden;
-  background-image:
-    linear-gradient(to bottom, rgba(27, 64, 54, 0.08) 1px, transparent 1px),
-    linear-gradient(to right, rgba(27, 64, 54, 0.08) 1px, transparent 1px);
-  background-size:
-    100% calc(100% / 6),
-    calc(100% / 7) 100%;
+  background-image: linear-gradient(to right, rgba(27, 64, 54, 0.08) 1px, transparent 1px);
+  background-size: calc(100% / 7) 100%;
   background-repeat: repeat;
+}
+
+.calendar-hour-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.calendar-hour-lines span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--line-top);
+  height: 1px;
+  background: rgba(27, 64, 54, 0.08);
 }
 
 .calendar-day-column {
   position: relative;
+  z-index: 2;
   min-width: 0;
   border-right: 1px solid rgba(27, 64, 54, 0.06);
 }
@@ -5671,14 +5733,43 @@ body:has(.workspace-shell) {
   outline-offset: -2px;
 }
 
+.calendar-all-day-row {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  left: 6px;
+  right: 6px;
+  display: grid;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.calendar-all-day-event {
+  min-width: 0;
+  min-height: 24px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--event-color) 26%, rgba(255, 255, 255, 0.8));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--event-color) 16%, rgba(255, 255, 255, 0.86));
+  color: rgba(31, 60, 51, 0.78);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: auto;
+  text-align: left;
+  font: inherit;
+  font-size: 0.66rem;
+}
+
 .calendar-event {
   position: absolute;
-  z-index: 1;
+  z-index: 4;
   left: 7px;
   right: 7px;
   top: min(var(--event-top), calc(100% - 48px));
   height: var(--event-height);
-  min-height: 42px;
+  min-height: 24px;
   display: grid;
   align-content: center;
   gap: 1px;
@@ -5697,7 +5788,7 @@ body:has(.workspace-shell) {
 .calendar-event:hover,
 .calendar-event:focus-visible,
 .calendar-event.selected {
-  z-index: 2;
+  z-index: 5;
   border-color: color-mix(in srgb, var(--event-color) 62%, white);
   box-shadow: 0 10px 20px rgba(27, 64, 54, 0.14);
   outline: none;

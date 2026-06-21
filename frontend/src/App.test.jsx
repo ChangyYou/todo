@@ -105,6 +105,16 @@ function createReviewWeekMock() {
       color: '#e0a458',
     },
     {
+      id: 5,
+      todoId: 5,
+      type: 'todo',
+      title: '需求评审',
+      startTime: '10:30',
+      endTime: '11:00',
+      meta: '30 分钟',
+      color: '#7894df',
+    },
+    {
       id: 3,
       type: 'focus',
       sceneId: 1,
@@ -536,8 +546,15 @@ describe('App', () => {
     fireEvent.click(within(navigation).getByRole('button', { name: '个人复盘' }));
     const reviewModule = await screen.findByRole('region', { name: '个人复盘' });
     expect(within(reviewModule).getByRole('heading', { name: '个人复盘' })).toBeInTheDocument();
+    expect(await within(reviewModule).findByRole('region', { name: '月复盘' })).toBeInTheDocument();
+    expect(within(reviewModule).getByRole('tab', { name: '月视图', selected: true })).toBeInTheDocument();
+    expect(within(reviewModule).getByText('2026年6月')).toBeInTheDocument();
+    expect(within(reviewModule).getByText('写日报')).toBeInTheDocument();
+    fireEvent.click(within(reviewModule).getByRole('tab', { name: '周视图' }));
     expect(await within(reviewModule).findByRole('region', { name: '周日程' })).toBeInTheDocument();
-    expect(within(reviewModule).queryByText('月视图')).not.toBeInTheDocument();
+    expect(within(reviewModule).getByText('10:00')).toBeInTheDocument();
+    expect(within(reviewModule).getByText('10:30-11:00')).toBeInTheDocument();
+    expect(within(reviewModule).getByText('需求评审')).toBeInTheDocument();
 
     expect(within(navigation).queryByRole('button', { name: '习惯养成' })).not.toBeInTheDocument();
     expect(within(navigation).queryByRole('button', { name: '场景管理' })).not.toBeInTheDocument();
@@ -1142,10 +1159,12 @@ describe('App', () => {
 
     expect(await screen.findAllByText('番茄专注')).toHaveLength(2);
     expect(screen.getByText('09:00-09:25')).toBeInTheDocument();
+    expect(screen.getByText('10:30-11:00')).toBeInTheDocument();
+    expect(screen.getByText('需求评审')).toBeInTheDocument();
     expect(screen.getByText('开会')).toBeInTheDocument();
     expect(screen.getByText('18:00-18:00')).toBeInTheDocument();
-    expect(screen.getByText('00:00 - 07:00')).toBeInTheDocument();
-    expect(screen.getByText('21:00 - 00:00')).toBeInTheDocument();
+    expect(screen.getByText('00:00 - 09:00')).toBeInTheDocument();
+    expect(screen.getByText('22:00 - 00:00')).toBeInTheDocument();
     expect(screen.getByText('运动')).toBeInTheDocument();
     expect(screen.getByText('23:08-23:08')).toBeInTheDocument();
     expect(screen.getByText('23:43-23:44')).toBeInTheDocument();
