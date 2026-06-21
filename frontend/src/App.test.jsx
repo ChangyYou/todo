@@ -1230,8 +1230,8 @@ describe('App', () => {
     fireEvent.click(within(detail).getByRole('button', { name: '永久删除 写日报' }));
 
     expect(window.confirm).toHaveBeenCalledWith('永久删除「写日报」以及它的全部专注记录？这个操作不能撤销。');
-    expect(await screen.findByRole('dialog', { name: '2026-06-10 当日复盘详情' })).toBeInTheDocument();
-    expect(screen.queryByText('写日报')).not.toBeInTheDocument();
+    const updatedDetail = await screen.findByRole('dialog', { name: '2026-06-10 当日复盘详情' });
+    expect(within(updatedDetail).queryByText('写日报')).not.toBeInTheDocument();
     const deleteCall = window.fetch.mock.calls.find(([url, options]) => (
       url === '/api/review-todos/101' && options?.method === 'DELETE'
     ));
