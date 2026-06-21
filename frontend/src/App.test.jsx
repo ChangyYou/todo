@@ -624,8 +624,8 @@ describe('App', () => {
     const endDateInput = within(todoPanel).getByLabelText('任务结束日期');
     startDateInput.showPicker = vi.fn();
     endDateInput.showPicker = vi.fn();
-    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始日期' }));
-    fireEvent.click(within(todoPanel).getByRole('button', { name: '结束日期' }));
+    fireEvent.click(within(todoPanel).getByRole('button', { name: /开始日期/ }));
+    fireEvent.click(within(todoPanel).getByRole('button', { name: /结束日期/ }));
     expect(startDateInput.showPicker).toHaveBeenCalledTimes(1);
     expect(endDateInput.showPicker).toHaveBeenCalledTimes(1);
     fireEvent.change(startDateInput, {
@@ -634,6 +634,8 @@ describe('App', () => {
     fireEvent.change(endDateInput, {
       target: { value: '2026-06-18' },
     });
+    expect(within(todoPanel).getByRole('button', { name: /开始日期 6月18日/ })).toBeInTheDocument();
+    expect(within(todoPanel).getByRole('button', { name: /结束日期 6月18日/ })).toBeInTheDocument();
     fireEvent.click(within(todoPanel).getByRole('button', { name: '添加任务' }));
 
     expect(await within(todoPanel).findByText('写日报')).toBeInTheDocument();

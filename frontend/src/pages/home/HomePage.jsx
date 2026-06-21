@@ -383,6 +383,8 @@ function TaskPanel({
     input.click();
   };
 
+  const currentPriority = PRIORITY_STYLES[draftPriority] ?? PRIORITY_STYLES.medium;
+
   return (
     <section className="task-board panel-frame" aria-label="待办事项">
       <header className="panel-header">
@@ -404,8 +406,9 @@ function TaskPanel({
           aria-label="添加任务标题"
         />
         <div className="task-inline-fields">
-          <label className="task-priority-select">
+          <div className={`task-priority-select priority-${draftPriority}`}>
             <span>紧急程度</span>
+            <strong>{currentPriority.label.replace('优先级', '')}</strong>
             <select
               aria-label="任务紧急程度"
               value={draftPriority}
@@ -415,10 +418,11 @@ function TaskPanel({
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
-          </label>
+          </div>
           <div className="task-date-select">
             <button type="button" onClick={() => openDatePicker(startDateInputRef.current)}>
-              开始日期
+              <span>开始日期</span>
+              <strong>{formatShortDate(draftStartDate)}</strong>
             </button>
             <input
               ref={startDateInputRef}
@@ -435,7 +439,8 @@ function TaskPanel({
           </div>
           <div className="task-date-select">
             <button type="button" onClick={() => openDatePicker(endDateInputRef.current)}>
-              结束日期
+              <span>结束日期</span>
+              <strong>{formatShortDate(draftEndDate)}</strong>
             </button>
             <input
               ref={endDateInputRef}
