@@ -729,8 +729,66 @@ describe('App', () => {
     fireEvent.click(within(todoPanel).getByRole('button', { name: '开始专注 整理今天最重要的三件事' }));
 
     expect(screen.getByText('把注意力留给整理今天最重要的三件事')).toBeInTheDocument();
-    expect(within(todoPanel).getByText('25:00')).toBeInTheDocument();
+    expect(within(todoPanel).getByText('00:00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '选择绑定任务' })).toHaveTextContent('整理今天最重要的三件事');
     expect(screen.getByRole('button', { name: '暂停' })).toBeInTheDocument();
+  });
+
+  it('shows accumulated task focus time instead of the remaining countdown', async () => {
+    vi.useFakeTimers();
+    await renderAtPath('/');
+
+    const todoPanel = screen.getByRole('region', { name: '待办事项' });
+    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始专注 整理今天最重要的三件事' }));
+
+    act(() => {
+      vi.advanceTimersByTime(6_000);
+    });
+
+    expect(within(todoPanel).getByText('00:06')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '暂停' }));
+      await Promise.resolve();
+    });
+
+    expect(within(todoPanel).getByText('00:06')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '开始专注' }));
+    act(() => {
+      vi.advanceTimersByTime(4_000);
+    });
+
+    expect(within(todoPanel).getByText('00:10')).toBeInTheDocument();
+  });
+
+  it('adds a completed workspace focus round to the bound task total', async () => {
+    vi.useFakeTimers();
+    await renderAtPath('/');
+
+    fireEvent.click(screen.getByRole('button', { name: '计时设置' }));
+    fireEvent.change(screen.getByLabelText('专注时长（分钟）'), {
+      target: { value: '1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '关闭计时设置' }));
+
+    const todoPanel = screen.getByRole('region', { name: '待办事项' });
+    fireEvent.click(within(todoPanel).getByRole('button', { name: '开始专注 整理今天最重要的三件事' }));
+
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+      await Promise.resolve();
+    });
+
+    expect(within(todoPanel).getByText('01:00')).toBeInTheDocument();
+    const focusCall = window.fetch.mock.calls.find(([url, options]) => (
+      url === '/api/focus-sessions' && JSON.parse(options.body).todoId === 1
+    ));
+    expect(focusCall).toBeTruthy();
+    expect(JSON.parse(focusCall[1].body)).toMatchObject({
+      todoId: 1,
+      durationSeconds: 60,
+    });
   });
 
   it('clears focus copy when the focused task is completed', async () => {
@@ -752,6 +810,28 @@ describe('App', () => {
     expect(screen.getByRole('menuitem', { name: '不绑定场景' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('menuitem', { name: '不绑定场景' }));
     expect(screen.getByRole('button', { name: '选择当前场景' })).toBeInTheDocument();
+  });
+
+  it('lets users bind and clear the active workspace focus task', async () => {
+    await renderAtPath('/');
+
+    fireEvent.click(screen.getByRole('button', { name: '选择绑定任务' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('menuitem', { name: /整理今天最重要的三件事/ }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('button', { name: '选择绑定任务' })).toHaveTextContent('整理今天最重要的三件事');
+    expect(screen.getByText('把注意力留给整理今天最重要的三件事')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '选择绑定任务' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('menuitem', { name: '不绑定任务' }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('button', { name: '选择绑定任务' })).toHaveTextContent('不绑定任务');
+    expect(screen.getByText('把注意力留给眼前这一件事。')).toBeInTheDocument();
   });
 
   it('records the current workspace focus segment when pausing', async () => {

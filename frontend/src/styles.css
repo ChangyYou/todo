@@ -5188,11 +5188,18 @@ body:has(.workspace-shell) {
   background: rgba(255, 255, 255, 0.86);
 }
 
-.scene-selector {
+.focus-binding-stack {
   position: relative;
   justify-self: center;
   align-self: start;
   margin-top: 28px;
+  width: min(360px, 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.scene-selector {
+  position: relative;
   min-width: 300px;
   min-height: 52px;
   justify-content: space-between;
@@ -5201,11 +5208,17 @@ body:has(.workspace-shell) {
   border-radius: 999px;
 }
 
+.focus-binding-stack .scene-selector {
+  width: 100%;
+  min-width: 0;
+}
+
 .scene-selector > span {
   color: var(--muted);
 }
 
 .scene-selector button {
+  min-width: 0;
   gap: 10px;
   border: 0;
   background: transparent;
@@ -5221,6 +5234,23 @@ body:has(.workspace-shell) {
 
 .scene-empty-label {
   color: var(--muted);
+}
+
+.focus-binding-task-title {
+  min-width: 0;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-binding-dot {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--task-color, #8b72c7);
+  box-shadow: 0 0 0 5px rgba(139, 114, 199, 0.12);
 }
 
 .scene-menu {
@@ -5246,6 +5276,32 @@ body:has(.workspace-shell) {
 
 .scene-menu button:hover {
   background: rgba(223, 232, 224, 0.74);
+}
+
+.focus-task-menu {
+  right: auto;
+  left: 0;
+  width: min(320px, calc(100vw - 48px));
+}
+
+.focus-task-menu-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.focus-task-menu-copy strong,
+.focus-task-menu-copy small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-task-menu-copy small {
+  color: var(--muted);
+  font-size: 0.74rem;
 }
 
 .timer-hero {

@@ -195,6 +195,14 @@ function formatDetailDuration(seconds = 0) {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
+function getActiveFocusElapsedSeconds(timerState, startRemainingSeconds) {
+  if (!timerState || timerState.phase !== TIMER_PHASES.FOCUS) {
+    return 0;
+  }
+  const startRemaining = startRemainingSeconds ?? timerState.totalSeconds;
+  return Math.max(0, startRemaining - timerState.remainingSeconds);
+}
+
 function getReviewTaskMeta(task) {
   const focusMeta = `专注 ${formatDetailDuration(task.focusSeconds || 0)} · ${task.sessionCount || 0} 个番茄`;
   if (task.sourceType === 'focus') {
@@ -564,6 +572,8 @@ function TaskGroup({ todos, focusTimerStatus, todayDate, onToggleTodo, onDeleteT
       {todos.map((todo) => {
         const priority = PRIORITY_STYLES[todo.priority] ?? PRIORITY_STYLES.medium;
         const isFocusTodo = String(focusTimerStatus?.todoId ?? '') === String(todo.id);
+        const totalFocusSeconds = Math.max(0, todo.focusSeconds ?? 0)
+          + (isFocusTodo ? Math.max(0, focusTimerStatus?.elapsedSeconds ?? 0) : 0);
         return (
           <article key={todo.id} className={`task-row ${todo.completed ? 'completed' : ''}`}>
             <button
@@ -601,7 +611,9 @@ function TaskGroup({ todos, focusTimerStatus, todayDate, onToggleTodo, onDeleteT
             >
               <Trash />
             </button>
-            {isFocusTodo ? <span className="task-running-time">{formatTime(focusTimerStatus.remainingSeconds)}</span> : null}
+            {totalFocusSeconds > 0 || isFocusTodo ? (
+              <span className="task-running-time">{formatTime(totalFocusSeconds)}</span>
+            ) : null}
           </article>
         );
       })}
@@ -615,14 +627,19 @@ function FocusPanel({
   focusCopy,
   selectedScene,
   scenes,
+  selectedFocusTodo,
+  todos,
   todayFocusSeconds,
   onTimerAction,
   onSceneChange,
+  onFocusTodoChange,
   onOpenSettings,
 }) {
   const [isSceneMenuOpen, setIsSceneMenuOpen] = useState(false);
+  const [isTaskMenuOpen, setIsTaskMenuOpen] = useState(false);
   const currentRound = (timerState.completedFocusSessions % settings.longBreakInterval) + 1;
   const nextPhaseLabel = currentRound === settings.longBreakInterval ? '长休息' : '短休息';
+  const bindableTodos = todos.filter((todo) => !todo.completed && (todo.sourceType || 'todo') === 'todo');
 
   return (
     <main className="focus-stage" aria-label="专注工作台">
@@ -633,26 +650,58 @@ function FocusPanel({
         </button>
       </header>
 
-      <div className="scene-selector">
-        <span>当前场景</span>
-        <button type="button" aria-label="选择当前场景" onClick={() => setIsSceneMenuOpen((value) => !value)}>
-          {selectedScene ? <span className="scene-swatch" style={{ '--scene-color': selectedScene.color || '#7894df' }} /> : null}
-          <span className={selectedScene ? '' : 'scene-empty-label'}>{selectedScene?.title || '未选择场景'}</span>
-          <CaretDown />
-        </button>
-        {isSceneMenuOpen ? (
-          <div className="scene-menu" role="menu">
-            <button type="button" role="menuitem" onClick={() => { onSceneChange(null); setIsSceneMenuOpen(false); }}>
-              不绑定场景
-            </button>
-            {scenes.map((scene) => (
-              <button key={scene.id} type="button" role="menuitem" onClick={() => { onSceneChange(scene); setIsSceneMenuOpen(false); }}>
-                <span className="scene-swatch" style={{ '--scene-color': scene.color || '#7894df' }} />
-                {scene.title}
+      <div className="focus-binding-stack">
+        <div className="scene-selector">
+          <span>当前场景</span>
+          <button type="button" aria-label="选择当前场景" onClick={() => setIsSceneMenuOpen((value) => !value)}>
+            {selectedScene ? <span className="scene-swatch" style={{ '--scene-color': selectedScene.color || '#7894df' }} /> : null}
+            <span className={selectedScene ? '' : 'scene-empty-label'}>{selectedScene?.title || '未选择场景'}</span>
+            <CaretDown />
+          </button>
+          {isSceneMenuOpen ? (
+            <div className="scene-menu" role="menu">
+              <button type="button" role="menuitem" onClick={() => { onSceneChange(null); setIsSceneMenuOpen(false); }}>
+                不绑定场景
               </button>
-            ))}
-          </div>
-        ) : null}
+              {scenes.map((scene) => (
+                <button key={scene.id} type="button" role="menuitem" onClick={() => { onSceneChange(scene); setIsSceneMenuOpen(false); }}>
+                  <span className="scene-swatch" style={{ '--scene-color': scene.color || '#7894df' }} />
+                  {scene.title}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="scene-selector focus-task-selector">
+          <span>绑定任务</span>
+          <button type="button" aria-label="选择绑定任务" onClick={() => setIsTaskMenuOpen((value) => !value)}>
+            {selectedFocusTodo ? <span className="task-binding-dot" /> : null}
+            <span className={selectedFocusTodo ? 'focus-binding-task-title' : 'scene-empty-label'}>
+              {selectedFocusTodo?.title || '不绑定任务'}
+            </span>
+            <CaretDown />
+          </button>
+          {isTaskMenuOpen ? (
+            <div className="scene-menu focus-task-menu" role="menu">
+              <button type="button" role="menuitem" onClick={() => { onFocusTodoChange(null); setIsTaskMenuOpen(false); }}>
+                不绑定任务
+              </button>
+              {bindableTodos.map((todo) => {
+                const priority = PRIORITY_STYLES[todo.priority] ?? PRIORITY_STYLES.medium;
+                return (
+                  <button key={todo.id} type="button" role="menuitem" onClick={() => { onFocusTodoChange(todo); setIsTaskMenuOpen(false); }}>
+                    <span className="task-binding-dot" style={{ '--task-color': priority.color }} />
+                    <span className="focus-task-menu-copy">
+                      <strong>{todo.title}</strong>
+                      <small>{priority.label}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <section className="timer-hero" role="region" aria-label="沉浸专注">
@@ -1895,6 +1944,9 @@ export default function HomePage({ user, onLoggedOut }) {
   const now = useNow();
   const todayDate = getLocalDate(now);
   const focusStartRemainingRef = useRef(null);
+  const timerStateRef = useRef(null);
+  const selectedFocusTodoRef = useRef(null);
+  const selectedSceneRef = useRef(null);
   const [activeSection, setActiveSection] = useState('plan');
   const [todos, setTodos] = useState([]);
   const [todoStatus, setTodoStatus] = useState('loading');
@@ -1993,50 +2045,115 @@ export default function HomePage({ user, onLoggedOut }) {
   }, [activeSection]);
 
   useEffect(() => {
+    timerStateRef.current = timerState;
+  }, [timerState]);
+
+  useEffect(() => {
+    selectedFocusTodoRef.current = selectedFocusTodo;
+  }, [selectedFocusTodo]);
+
+  useEffect(() => {
+    selectedSceneRef.current = selectedScene;
+  }, [selectedScene]);
+
+  const syncFocusedTodoDuration = useCallback((todo, durationSeconds) => {
+    if (!todo?.id || durationSeconds <= 0) {
+      return;
+    }
+
+    setTodos((items) => items.map((item) => (
+      item.id === todo.id
+        ? { ...item, focusSeconds: Math.max(0, item.focusSeconds ?? 0) + durationSeconds }
+        : item
+    )));
+    setSelectedFocusTodo((current) => {
+      if (current?.id !== todo.id) {
+        return current;
+      }
+      const nextTodo = {
+        ...current,
+        focusSeconds: Math.max(0, current.focusSeconds ?? 0) + durationSeconds,
+      };
+      selectedFocusTodoRef.current = nextTodo;
+      return nextTodo;
+    });
+  }, []);
+
+  const persistFocusDuration = useCallback(async (
+    stateSnapshot = timerStateRef.current,
+    nextRemainingSeconds = stateSnapshot?.remainingSeconds ?? 0,
+    options = {},
+  ) => {
+    if (!stateSnapshot || stateSnapshot.phase !== TIMER_PHASES.FOCUS) {
+      return;
+    }
+    const startRemaining = focusStartRemainingRef.current ?? stateSnapshot.totalSeconds;
+    const durationSeconds = Math.max(0, startRemaining - nextRemainingSeconds);
+    if (durationSeconds < 5) {
+      return;
+    }
+    const focusTodo = selectedFocusTodoRef.current;
+    const focusScene = selectedSceneRef.current;
+
+    await recordFocusSession({
+      todoId: focusTodo?.id ? Number(focusTodo.id) : 0,
+      sceneId: focusScene?.id ? Number(focusScene.id) : 0,
+      durationSeconds,
+      sessionDate: todayDate,
+    });
+    if (options.updateStartRef !== false) {
+      focusStartRemainingRef.current = nextRemainingSeconds;
+    }
+    syncFocusedTodoDuration(focusTodo, durationSeconds);
+    setTodayFocusSeconds((seconds) => seconds + durationSeconds);
+    loadReview();
+  }, [loadReview, syncFocusedTodoDuration, todayDate]);
+
+  useEffect(() => {
     if (!timerState.isRunning) {
       return undefined;
     }
 
     const intervalId = window.setInterval(() => {
-      setTimerState((state) => getNextTimerState(state, 'tick', settings));
+      const currentState = timerStateRef.current;
+      if (!currentState?.isRunning) {
+        return;
+      }
+
+      if (currentState.phase === TIMER_PHASES.FOCUS && currentState.remainingSeconds === 1) {
+        const persistPromise = persistFocusDuration(currentState, 0, { updateStartRef: false });
+        focusStartRemainingRef.current = null;
+        persistPromise.catch(() => {});
+      }
+
+      const nextState = getNextTimerState(currentState, 'tick', settings);
+      if (currentState.phase !== TIMER_PHASES.FOCUS && nextState.phase === TIMER_PHASES.FOCUS) {
+        focusStartRemainingRef.current = nextState.remainingSeconds;
+      }
+      timerStateRef.current = nextState;
+      setTimerState(nextState);
     }, 1000);
 
     return () => window.clearInterval(intervalId);
-  }, [settings, timerState.isRunning]);
-
-  const persistFocusDuration = async () => {
-    if (timerState.phase !== TIMER_PHASES.FOCUS) {
-      return;
-    }
-    const startRemaining = focusStartRemainingRef.current ?? timerState.totalSeconds;
-    const durationSeconds = Math.max(0, startRemaining - timerState.remainingSeconds);
-    if (durationSeconds < 5) {
-      return;
-    }
-
-    await recordFocusSession({
-      todoId: selectedFocusTodo?.id ? Number(selectedFocusTodo.id) : 0,
-      sceneId: selectedScene?.id ? Number(selectedScene.id) : 0,
-      durationSeconds,
-      sessionDate: todayDate,
-    });
-    focusStartRemainingRef.current = timerState.remainingSeconds;
-    setTodayFocusSeconds((seconds) => seconds + durationSeconds);
-    loadReview();
-  };
+  }, [persistFocusDuration, settings, timerState.isRunning]);
 
   const handleTimerAction = async (action) => {
+    const currentTimerState = timerStateRef.current ?? timerState;
     if (action === 'start') {
-      focusStartRemainingRef.current = timerState.phase === TIMER_PHASES.FOCUS
-        ? timerState.remainingSeconds
+      focusStartRemainingRef.current = currentTimerState.phase === TIMER_PHASES.FOCUS
+        ? currentTimerState.remainingSeconds
         : null;
-      setTimerState((state) => getNextTimerState(state, action, settings));
+      setTimerState((state) => {
+        const nextState = getNextTimerState(state, action, settings);
+        timerStateRef.current = nextState;
+        return nextState;
+      });
       return;
     }
 
-    if (timerState.isRunning && ['pause', 'endFocus', 'skipFocusCompleted'].includes(action)) {
+    if (currentTimerState.isRunning && ['pause', 'endFocus', 'skipFocusCompleted'].includes(action)) {
       try {
-        await persistFocusDuration();
+        await persistFocusDuration(currentTimerState);
       } catch {
         // Timer controls should still respond if the network write fails.
       }
@@ -2046,7 +2163,11 @@ export default function HomePage({ user, onLoggedOut }) {
       focusStartRemainingRef.current = null;
     }
 
-    setTimerState((state) => getNextTimerState(state, action, settings));
+    setTimerState((state) => {
+      const nextState = getNextTimerState(state, action, settings);
+      timerStateRef.current = nextState;
+      return nextState;
+    });
   };
 
   const handleCreateTodo = async (input) => {
@@ -2086,6 +2207,7 @@ export default function HomePage({ user, onLoggedOut }) {
       } catch {
         // Completing a task should still update the task even if the last segment cannot be saved.
       }
+      selectedFocusTodoRef.current = null;
       setSelectedFocusTodo(null);
     }
     try {
@@ -2101,6 +2223,7 @@ export default function HomePage({ user, onLoggedOut }) {
     const previousTodos = todos;
     setTodos((items) => items.filter((item) => item.id !== todo.id));
     if (selectedFocusTodo?.id === todo.id) {
+      selectedFocusTodoRef.current = null;
       setSelectedFocusTodo(null);
     }
 
@@ -2113,17 +2236,63 @@ export default function HomePage({ user, onLoggedOut }) {
     }
   };
 
-  const handleFocusTodo = (todo) => {
+  const commitFocusBindingBeforeChange = async (currentTimerState) => {
+    try {
+      await persistFocusDuration(currentTimerState);
+    } catch {
+      // Binding changes should stay responsive even if the segment cannot be saved.
+    }
+  };
+
+  const handleFocusTodoBindingChange = async (todo) => {
+    const currentTimerState = timerStateRef.current ?? timerState;
+    if (currentTimerState?.phase === TIMER_PHASES.FOCUS && currentTimerState.isRunning) {
+      await commitFocusBindingBeforeChange(currentTimerState);
+    }
+    selectedFocusTodoRef.current = todo;
+    setSelectedFocusTodo(todo);
+    focusStartRemainingRef.current = currentTimerState?.phase === TIMER_PHASES.FOCUS
+      ? currentTimerState.remainingSeconds
+      : null;
+  };
+
+  const handleFocusSceneChange = async (scene) => {
+    const currentTimerState = timerStateRef.current ?? timerState;
+    if (currentTimerState?.phase === TIMER_PHASES.FOCUS && currentTimerState.isRunning) {
+      await commitFocusBindingBeforeChange(currentTimerState);
+    }
+    selectedSceneRef.current = scene;
+    setSelectedScene(scene);
+    focusStartRemainingRef.current = currentTimerState?.phase === TIMER_PHASES.FOCUS
+      ? currentTimerState.remainingSeconds
+      : null;
+  };
+
+  const handleFocusTodo = async (todo) => {
     if (todo.completed) {
       return;
     }
-    setSelectedFocusTodo(todo);
-    focusStartRemainingRef.current = timerState.phase === TIMER_PHASES.FOCUS ? timerState.remainingSeconds : null;
-    setTimerState((state) => (
-      state.phase === TIMER_PHASES.FOCUS && !state.isRunning
+    const currentTimerState = timerStateRef.current ?? timerState;
+    const isSameFocusTodo = String(selectedFocusTodoRef.current?.id ?? '') === String(todo.id);
+    if (!isSameFocusTodo) {
+      if (currentTimerState?.phase === TIMER_PHASES.FOCUS && currentTimerState.isRunning) {
+        await commitFocusBindingBeforeChange(currentTimerState);
+      }
+      selectedFocusTodoRef.current = todo;
+      setSelectedFocusTodo(todo);
+      focusStartRemainingRef.current = currentTimerState?.phase === TIMER_PHASES.FOCUS
+        ? currentTimerState.remainingSeconds
+        : null;
+    } else if (currentTimerState?.phase === TIMER_PHASES.FOCUS && !currentTimerState.isRunning) {
+      focusStartRemainingRef.current = currentTimerState.remainingSeconds;
+    }
+    setTimerState((state) => {
+      const nextState = state.phase === TIMER_PHASES.FOCUS && !state.isRunning
         ? getNextTimerState(state, 'start', settings)
-        : state
-    ));
+        : state;
+      timerStateRef.current = nextState;
+      return nextState;
+    });
   };
 
   const handleCreateHabit = async (event) => {
@@ -2211,7 +2380,7 @@ export default function HomePage({ user, onLoggedOut }) {
   const focusTimerStatus = selectedFocusTodo ? {
     todoId: selectedFocusTodo.id,
     phase: timerState.phase,
-    remainingSeconds: timerState.remainingSeconds,
+    elapsedSeconds: getActiveFocusElapsedSeconds(timerState, focusStartRemainingRef.current),
     isRunning: timerState.isRunning,
   } : null;
   const isModuleSection = ['stats', 'review', 'manage'].includes(activeSection);
@@ -2270,9 +2439,12 @@ export default function HomePage({ user, onLoggedOut }) {
             focusCopy={focusCopy}
             selectedScene={selectedScene}
             scenes={scenes}
+            selectedFocusTodo={selectedFocusTodo}
+            todos={todos}
             todayFocusSeconds={todayFocusSeconds}
             onTimerAction={handleTimerAction}
-            onSceneChange={setSelectedScene}
+            onSceneChange={handleFocusSceneChange}
+            onFocusTodoChange={handleFocusTodoBindingChange}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
           <ReviewPanel
