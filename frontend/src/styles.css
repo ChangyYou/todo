@@ -4855,9 +4855,18 @@ body:has(.workspace-shell) {
   border: 0;
   outline: none;
   background: transparent;
-  color: transparent;
-  opacity: 0;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  text-indent: -9999px;
   cursor: pointer;
+}
+
+.task-priority-select select option {
+  color: #173d34;
+  background: #fffdfa;
+  font-size: 16px;
+  text-indent: 0;
 }
 
 .task-date-select button {
