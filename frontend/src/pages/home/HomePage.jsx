@@ -41,6 +41,7 @@ import {
   listTodos,
   logout,
   recordFocusSession,
+  updateFocusSession,
   updatePomodoroSettings,
   updateTodo,
 } from '../../lib/api';
@@ -711,7 +712,7 @@ function FocusPanel({
   );
 }
 
-function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' }) {
+function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside', todos = [], scenes = [], onReviewChanged }) {
   const isModuleView = variant === 'module';
   const [viewMode, setViewMode] = useState(() => (isModuleView ? 'month' : 'week'));
   const [viewMonth, setViewMonth] = useState(() => getMonthFromDate(todayDate));
@@ -724,6 +725,10 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
   const [reviewStatus, setReviewStatus] = useState('idle');
   const [reviewError, setReviewError] = useState('');
   const [reviewReloadSignal, setReviewReloadSignal] = useState(0);
+  const [focusBindingRecord, setFocusBindingRecord] = useState(null);
+  const [focusBindingForm, setFocusBindingForm] = useState({ todoId: '0', sceneId: '0' });
+  const [focusBindingStatus, setFocusBindingStatus] = useState('idle');
+  const [focusBindingError, setFocusBindingError] = useState('');
   const showSummaryCards = !isModuleView;
   const todayStats = stats?.overview ?? {};
   const sceneItems = stats?.scenePeriods?.find((period) => period.startDate === todayDate)?.scenes
@@ -779,19 +784,106 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
     if (selectedReviewDay?.date === day.date) {
       setSelectedReviewDay(null);
       setReviewDetailError('');
+      setFocusBindingRecord(null);
       return;
     }
     setReviewDetailError('');
+    setFocusBindingRecord(null);
     setSelectedReviewDay(day.tasks ? day : buildReviewDayFromWeekDay(day));
   };
 
   const refreshReview = () => setReviewReloadSignal((signal) => signal + 1);
+
+  const handleOpenFocusBinding = (record, day) => {
+    const sessionId = record?.sessionId || record?.id;
+    if (!sessionId) {
+      return;
+    }
+    if (focusBindingRecord?.sessionId === sessionId) {
+      setFocusBindingRecord(null);
+      setFocusBindingError('');
+      return;
+    }
+    const sessionDate = record.sessionDate || day?.date || selectedReviewDay?.date || todayDate;
+    setFocusBindingRecord({
+      sessionId,
+      title: record.title || '番茄专注',
+      sessionDate,
+      startTime: record.startTime || '',
+      endTime: record.endTime || '',
+      durationSeconds: record.durationSeconds || record.focusSeconds || 0,
+    });
+    setFocusBindingForm({
+      todoId: String(record.todoId || 0),
+      sceneId: String(record.sceneId || 0),
+    });
+    setFocusBindingError('');
+  };
+
+  const handleSaveFocusBinding = async (event) => {
+    event.preventDefault();
+    if (!focusBindingRecord) {
+      return;
+    }
+    const nextTodoID = Number(focusBindingForm.todoId);
+    const nextSceneID = Number(focusBindingForm.sceneId);
+    setFocusBindingStatus('saving');
+    setFocusBindingError('');
+    try {
+      await updateFocusSession(focusBindingRecord.sessionId, {
+        todoId: Number.isFinite(nextTodoID) ? nextTodoID : 0,
+        sceneId: Number.isFinite(nextSceneID) ? nextSceneID : 0,
+      });
+      const nextTodo = todos.find((todo) => todo.id === nextTodoID);
+      const nextScene = scenes.find((scene) => scene.id === nextSceneID);
+      setSelectedReviewDay((day) => {
+        if (!day) {
+          return day;
+        }
+        return {
+          ...day,
+          tasks: (day.tasks ?? []).map((task) => (
+            task.sessionId === focusBindingRecord.sessionId
+              ? {
+                  ...task,
+                  todoId: nextTodoID || 0,
+                  sceneId: nextSceneID || 0,
+                  title: nextTodo?.title || task.title,
+                  sceneTitle: nextScene?.title || '',
+                  sceneColor: nextScene?.color || '',
+                }
+              : task
+          )),
+          entries: (day.entries ?? []).map((entry) => (
+            entry.id === focusBindingRecord.sessionId
+              ? {
+                  ...entry,
+                  todoId: nextTodoID || 0,
+                  sceneId: nextSceneID || 0,
+                  title: nextTodo?.title || entry.title,
+                  sceneTitle: nextScene?.title || '',
+                  sceneColor: nextScene?.color || '',
+                }
+              : entry
+          )),
+        };
+      });
+      setFocusBindingStatus('idle');
+      setFocusBindingRecord(null);
+      refreshReview();
+      onReviewChanged?.();
+    } catch (error) {
+      setFocusBindingStatus('error');
+      setFocusBindingError(error instanceof Error ? error.message : '绑定专注记录失败');
+    }
+  };
 
   const handleGoToToday = () => {
     setViewDate(todayDate);
     setViewMonth(getMonthFromDate(todayDate));
     setSelectedReviewDay(null);
     setReviewDetailError('');
+    setFocusBindingRecord(null);
   };
 
   const handleDeleteReviewTask = async (task) => {
@@ -822,7 +914,11 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
           isFocusRecord ? item.id !== task.sessionId : item.todoId !== task.todoId
         )),
       } : day);
+      if (isFocusRecord && focusBindingRecord?.sessionId === task.sessionId) {
+        setFocusBindingRecord(null);
+      }
       refreshReview();
+      onReviewChanged?.();
     } catch (error) {
       setReviewDetailError(error instanceof Error ? error.message : isFocusRecord ? '专注记录删除失败' : '复盘任务删除失败');
     } finally {
@@ -912,6 +1008,7 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
             todayDate={todayDate}
             selectedDay={selectedReviewDay}
             onSelectDay={handleSelectReviewDay}
+            onBindFocusEvent={handleOpenFocusBinding}
             onPreviousWeek={() => setViewDate((date) => addDays(date, -7))}
             onNextWeek={() => setViewDate((date) => addDays(date, 7))}
             showHeader={false}
@@ -923,6 +1020,7 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
           todayDate={todayDate}
           selectedDay={selectedReviewDay}
           onSelectDay={handleSelectReviewDay}
+          onBindFocusEvent={handleOpenFocusBinding}
         />
       )}
 
@@ -951,13 +1049,28 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
                 className={`review-task-row ${task.sceneColor ? 'with-scene-color' : ''}`}
                 style={task.sceneColor ? { '--review-scene-color': task.sceneColor } : undefined}
               >
-                <div className="review-task-main">
-                  <span className={`review-task-badge ${task.sourceType}`}>
-                    {task.sourceType === 'habit' ? '习惯' : task.sourceType === 'scene' ? '场景' : task.sourceType === 'focus' ? '专注' : '任务'}
-                  </span>
-                  <strong>{task.title}</strong>
-                  <small>{getReviewTaskMeta(task)}</small>
-                </div>
+                {task.sourceType === 'focus' && task.sessionId ? (
+                  <button
+                    type="button"
+                    className="review-task-main review-task-bind-button"
+                    aria-label={`绑定专注记录 ${task.title}`}
+                    onClick={() => handleOpenFocusBinding(task, selectedReviewDay)}
+                  >
+                    <span className={`review-task-badge ${task.sourceType}`}>
+                      专注
+                    </span>
+                    <strong>{task.title}</strong>
+                    <small>{getReviewTaskMeta(task)}</small>
+                  </button>
+                ) : (
+                  <div className="review-task-main">
+                    <span className={`review-task-badge ${task.sourceType}`}>
+                      {task.sourceType === 'habit' ? '习惯' : task.sourceType === 'scene' ? '场景' : '任务'}
+                    </span>
+                    <strong>{task.title}</strong>
+                    <small>{getReviewTaskMeta(task)}</small>
+                  </div>
+                )}
                 {((task.sourceType === 'focus' && task.sessionId) || (task.sourceType !== 'scene' && task.todoId)) ? (
                   <button
                     type="button"
@@ -975,6 +1088,20 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
             )}
           </div>
         </section>
+      ) : null}
+
+      {focusBindingRecord ? (
+        <FocusBindingPanel
+          record={focusBindingRecord}
+          form={focusBindingForm}
+          todos={todos}
+          scenes={scenes}
+          status={focusBindingStatus}
+          error={focusBindingError}
+          onChange={setFocusBindingForm}
+          onSubmit={handleSaveFocusBinding}
+          onClose={() => setFocusBindingRecord(null)}
+        />
       ) : null}
 
       {showSummaryCards ? (
@@ -1022,6 +1149,72 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
 
       <p className="autosave-note">数据已自动保存</p>
     </PanelElement>
+  );
+}
+
+function FocusBindingPanel({
+  record,
+  form,
+  todos,
+  scenes,
+  status,
+  error,
+  onChange,
+  onSubmit,
+  onClose,
+}) {
+  const bindableTodos = todos.filter((todo) => (todo.sourceType || 'todo') === 'todo');
+  return (
+    <section className="review-detail-panel review-focus-editor-panel workspace-focus-binding-panel" role="dialog" aria-label={`${record.title} 绑定专注记录`}>
+      <div className="review-detail-header">
+        <div>
+          <p className="review-kicker">Focus Binding</p>
+          <h3>绑定专注记录</h3>
+        </div>
+        <button type="button" className="review-today-button" onClick={onClose}>
+          关闭
+        </button>
+      </div>
+      <p className="review-focus-binding-summary">
+        <strong>{record.title}</strong>
+        <span>{record.sessionDate}{record.startTime ? ` · ${record.startTime}${record.endTime ? `-${record.endTime}` : ''}` : ''}</span>
+      </p>
+      {error ? <p className="review-inline-error" role="alert">{error}</p> : null}
+      <form className="review-focus-editor-form" onSubmit={onSubmit}>
+        <label>
+          <span>绑定任务</span>
+          <select
+            value={form.todoId}
+            onChange={(event) => onChange((current) => ({ ...current, todoId: event.target.value }))}
+          >
+            <option value="0">不绑定任务</option>
+            {bindableTodos.map((todo) => (
+              <option key={todo.id} value={todo.id}>{todo.title}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>绑定场景</span>
+          <select
+            value={form.sceneId}
+            onChange={(event) => onChange((current) => ({ ...current, sceneId: event.target.value }))}
+          >
+            <option value="0">不绑定场景</option>
+            {scenes.map((scene) => (
+              <option key={scene.id} value={scene.id}>{scene.title}</option>
+            ))}
+          </select>
+        </label>
+        <div className="review-focus-editor-actions">
+          <button type="button" className="review-danger-button" onClick={() => onChange({ todoId: '0', sceneId: '0' })}>
+            清空绑定
+          </button>
+          <button type="submit" className="review-save-button" disabled={status === 'saving'}>
+            {status === 'saving' ? '保存中...' : '保存绑定'}
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
 
@@ -1459,7 +1652,7 @@ function getReviewTimelineDays(week, todayDate) {
   ];
 }
 
-function ReviewTwoDayTimeline({ week, todayDate, selectedDay, onSelectDay }) {
+function ReviewTwoDayTimeline({ week, todayDate, selectedDay, onSelectDay, onBindFocusEvent }) {
   const days = getReviewTimelineDays(week, todayDate);
   return (
     <section className="review-two-day-timeline" aria-label="近两日时间线">
@@ -1485,9 +1678,15 @@ function ReviewTwoDayTimeline({ week, todayDate, selectedDay, onSelectDay }) {
                   type="button"
                   key={`${day.date}-${event.id || event.title}-${index}`}
                   className={`review-timeline-item ${event.type || 'event'}`}
-                  aria-label={`查看 ${day.date} 当日复盘`}
+                  aria-label={event.type === 'focus' ? `绑定专注记录 ${event.title}` : `查看 ${day.date} 当日复盘`}
                   style={{ '--event-color': event.color || REVIEW_COLORS[index % REVIEW_COLORS.length] }}
-                  onClick={() => onSelectDay(day)}
+                  onClick={() => {
+                    if (event.type === 'focus') {
+                      onBindFocusEvent?.(event, day);
+                    } else {
+                      onSelectDay(day);
+                    }
+                  }}
                 >
                   <span className="review-timeline-time">{formatWeekEventTime(event)}</span>
                   <strong>{event.title}</strong>
@@ -1511,7 +1710,7 @@ function ReviewTwoDayTimeline({ week, todayDate, selectedDay, onSelectDay }) {
   );
 }
 
-function ReviewWeekCard({ week, todayDate, selectedDay, onSelectDay, onPreviousWeek, onNextWeek, showHeader = true }) {
+function ReviewWeekCard({ week, todayDate, selectedDay, onSelectDay, onBindFocusEvent, onPreviousWeek, onNextWeek, showHeader = true }) {
   const days = week?.days ?? createFallbackWeek(todayDate);
   return (
     <section className="week-card" aria-label="周日程">
@@ -1562,12 +1761,16 @@ function ReviewWeekCard({ week, todayDate, selectedDay, onSelectDay, onPreviousW
                     type="button"
                     key={`${event.id || event.title}-all-day-${eventIndex}`}
                     className={`calendar-all-day-event ${event.type || 'event'}`}
-                    aria-label={`查看 ${day.date} 当日复盘`}
+                    aria-label={event.type === 'focus' ? `绑定专注记录 ${event.title}` : `查看 ${day.date} 当日复盘`}
                     title={event.title}
                     style={{ '--event-color': event.color || REVIEW_COLORS[eventIndex % REVIEW_COLORS.length] }}
                     onClick={(eventClick) => {
                       eventClick.stopPropagation();
-                      onSelectDay(day);
+                      if (event.type === 'focus') {
+                        onBindFocusEvent?.(event, day);
+                      } else {
+                        onSelectDay(day);
+                      }
                     }}
                   >
                     {event.title}
@@ -1585,7 +1788,7 @@ function ReviewWeekCard({ week, todayDate, selectedDay, onSelectDay, onPreviousW
                   type="button"
                   key={`${event.id || event.title}-${eventIndex}`}
                   className={`calendar-event ${event.type || 'event'}`}
-                  aria-label={`查看 ${day.date} 当日复盘`}
+                  aria-label={event.type === 'focus' ? `绑定专注记录 ${event.title}` : `查看 ${day.date} 当日复盘`}
                   title={`${event.title} ${event.startTime || ''}-${event.endTime || ''}`}
                   style={{
                     '--event-color': event.color || REVIEW_COLORS[eventIndex % REVIEW_COLORS.length],
@@ -1593,7 +1796,11 @@ function ReviewWeekCard({ week, todayDate, selectedDay, onSelectDay, onPreviousW
                   }}
                   onClick={(eventClick) => {
                     eventClick.stopPropagation();
-                    onSelectDay(day);
+                    if (event.type === 'focus') {
+                      onBindFocusEvent?.(event, day);
+                    } else {
+                      onSelectDay(day);
+                    }
                   }}
                 >
                   <strong>{event.title}</strong>
@@ -2022,7 +2229,14 @@ export default function HomePage({ user, onLoggedOut }) {
         onFocusTodo={handleFocusTodo}
       />
       {activeSection === 'review' ? (
-        <ReviewPanel todayDate={todayDate} refreshSignal={reviewRefreshSignal} variant="module" />
+        <ReviewPanel
+          todayDate={todayDate}
+          refreshSignal={reviewRefreshSignal}
+          variant="module"
+          todos={todos}
+          scenes={scenes}
+          onReviewChanged={loadReview}
+        />
       ) : isModuleSection ? (
         <WorkspaceModulePanel
           activeSection={activeSection}
@@ -2052,7 +2266,14 @@ export default function HomePage({ user, onLoggedOut }) {
             onSceneChange={setSelectedScene}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
-          <ReviewPanel stats={stats} todayDate={todayDate} refreshSignal={reviewRefreshSignal} />
+          <ReviewPanel
+            stats={stats}
+            todayDate={todayDate}
+            refreshSignal={reviewRefreshSignal}
+            todos={todos}
+            scenes={scenes}
+            onReviewChanged={loadReview}
+          />
         </>
       )}
       {isSettingsOpen ? (

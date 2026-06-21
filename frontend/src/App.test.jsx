@@ -50,6 +50,7 @@ function createReviewCalendarMock(deletedTodoIds = new Set()) {
       { todoId: 102, title: '运动30分钟', sourceType: 'habit', completed: true, focusSeconds: 0, sessionCount: 0, completedAt: '2026-06-10 10:00:00' },
       { todoId: 103, sceneId: 201, sceneTitle: '运动', sceneColor: '#6f9fc7', title: '阅读 Go 后端', sourceType: 'todo', completed: false, focusSeconds: 1500, sessionCount: 1, completedAt: '' },
       { todoId: 0, sceneId: 201, sceneTitle: '运动', sceneColor: '#6f9fc7', title: '运动', sourceType: 'scene', completed: false, focusSeconds: 900, sessionCount: 1, completedAt: '' },
+      { sessionId: 11, todoId: 103, sceneId: 201, sceneTitle: '运动', sceneColor: '#6f9fc7', title: '阅读 Go 后端', sourceType: 'focus', completed: false, focusSeconds: 1500, sessionCount: 1, completedAt: '2026-06-10 09:00-09:25' },
     ].filter((task) => !deletedTodoIds.has(task.todoId)),
   };
 
@@ -507,6 +508,7 @@ describe('App', () => {
     expect(within(reviewPanel).getByText('09:00-09:25')).toBeInTheDocument();
     expect(within(reviewPanel).getByText('暂无安排')).toBeInTheDocument();
     expect(within(reviewPanel).queryByText('00-09')).not.toBeInTheDocument();
+
     fireEvent.click(within(reviewPanel).getAllByRole('button', { name: '查看 2026-06-15 当日复盘' })[0]);
     const weekDayDetail = await within(reviewPanel).findByRole('dialog', { name: '2026-06-15 当日复盘详情' });
     expect(within(weekDayDetail).getAllByText('番茄专注')).toHaveLength(2);
@@ -528,6 +530,28 @@ describe('App', () => {
     ))).toBe(true);
     expect(window.fetch.mock.calls.some(([url]) => String(url).includes('/api/review-calendar') && String(url).includes('view=week'))).toBe(true);
 
+  });
+
+  it('binds an existing home focus record to a task and scene', async () => {
+    await renderAtPath('/');
+
+    const reviewPanel = screen.getByRole('complementary', { name: '日程安排' });
+    expect(await within(reviewPanel).findByRole('region', { name: '近两日时间线' })).toBeInTheDocument();
+
+    fireEvent.click(within(reviewPanel).getAllByRole('button', { name: '绑定专注记录 番茄专注' })[0]);
+    const bindingPanel = await within(reviewPanel).findByRole('dialog', { name: '番茄专注 绑定专注记录' });
+    fireEvent.change(within(bindingPanel).getByLabelText('绑定任务'), { target: { value: '1' } });
+    fireEvent.change(within(bindingPanel).getByLabelText('绑定场景'), { target: { value: '1' } });
+    fireEvent.click(within(bindingPanel).getByRole('button', { name: '保存绑定' }));
+
+    await waitFor(() => {
+      expect(window.fetch.mock.calls.some(([url, options]) => (
+        url === '/api/focus-sessions/1'
+        && options?.method === 'PATCH'
+        && JSON.parse(options.body).todoId === 1
+        && JSON.parse(options.body).sceneId === 1
+      ))).toBe(true);
+    });
   });
 
   it('switches workspace content from the sidebar navigation', async () => {
@@ -1193,6 +1217,7 @@ describe('App', () => {
     expect(patchCall).toBeTruthy();
     expect(JSON.parse(patchCall[1].body)).toEqual({
       title: '晨间复盘',
+      todoId: 0,
       sceneId: 1,
       sessionDate: '2026-06-16',
       startTime: '08:30',

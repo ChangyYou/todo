@@ -2895,6 +2895,28 @@ select {
   gap: 5px;
 }
 
+.review-task-bind-button {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.review-task-bind-button:hover strong,
+.review-task-bind-button:focus-visible strong {
+  color: #2f7b61;
+}
+
+.review-task-bind-button:focus-visible {
+  outline: 2px solid rgba(75, 135, 104, 0.26);
+  outline-offset: 5px;
+  border-radius: 10px;
+}
+
 .review-task-main strong,
 .review-task-main small {
   min-width: 0;
@@ -2929,6 +2951,11 @@ select {
 .review-task-badge.scene {
   color: #335f78;
   background: rgba(111, 166, 190, 0.2);
+}
+
+.review-task-badge.focus {
+  color: #2d624b;
+  background: rgba(75, 135, 104, 0.14);
 }
 
 .review-delete-button {
@@ -3085,6 +3112,37 @@ select {
 
 .review-focus-editor-panel {
   width: min(520px, calc(100vw - 48px));
+}
+
+.workspace-focus-binding-panel {
+  z-index: 10;
+}
+
+.review-focus-binding-summary {
+  margin: 14px 0;
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(43, 70, 61, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.review-focus-binding-summary strong,
+.review-focus-binding-summary span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-focus-binding-summary strong {
+  color: #1f3c33;
+}
+
+.review-focus-binding-summary span {
+  color: rgba(43, 70, 61, 0.58);
+  font-size: 0.8rem;
 }
 
 .review-focus-editor-form {

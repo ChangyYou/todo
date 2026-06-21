@@ -26,6 +26,7 @@ type createFocusSessionRequest struct {
 
 type updateFocusSessionRequest struct {
 	Title       *string `json:"title"`
+	TodoID      *int64  `json:"todoId"`
 	SceneID     *int64  `json:"sceneId"`
 	SessionDate string  `json:"sessionDate"`
 	StartTime   string  `json:"startTime"`
@@ -201,6 +202,7 @@ func (h *FocusHandler) UpdateSession(ctx context.Context, c *app.RequestContext)
 
 	err = h.focus.UpdateSession(user.ID, sessionID, focus.FocusSessionPatch{
 		Title:       request.Title,
+		TodoID:      request.TodoID,
 		SceneID:     request.SceneID,
 		SessionDate: request.SessionDate,
 		StartTime:   request.StartTime,

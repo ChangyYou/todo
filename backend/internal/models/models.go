@@ -175,6 +175,7 @@ type ReviewWeekEvent struct {
 	SessionDate     string `json:"sessionDate,omitempty"`
 	DurationSeconds int64  `json:"durationSeconds,omitempty"`
 	Meta            string `json:"meta,omitempty"`
+	SceneTitle      string `json:"sceneTitle,omitempty"`
 	Color           string `json:"color,omitempty"`
 }
 
@@ -192,6 +193,7 @@ type ReviewCalendarDay struct {
 }
 
 type ReviewCalendarEntry struct {
+	ID         int64  `json:"id,omitempty"`
 	TodoID     int64  `json:"todoId,omitempty"`
 	SceneID    int64  `json:"sceneId,omitempty"`
 	Type       string `json:"type"`
@@ -202,6 +204,7 @@ type ReviewCalendarEntry struct {
 }
 
 type ReviewTaskStat struct {
+	SessionID    int64  `json:"sessionId,omitempty"`
 	TodoID       int64  `json:"todoId"`
 	SceneID      int64  `json:"sceneId,omitempty"`
 	Title        string `json:"title"`

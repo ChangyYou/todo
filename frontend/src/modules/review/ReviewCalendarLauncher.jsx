@@ -3,6 +3,7 @@ import {
   deleteFocusSession,
   deleteReviewTodo,
   getReviewCalendar,
+  listTodos,
   listScenes,
   updateFocusSession,
 } from '../../lib/api';
@@ -203,10 +204,30 @@ function getSceneStyle(color) {
 
 function getReviewTaskMeta(task) {
   const focusMeta = `专注 ${formatDetailDuration(task.focusSeconds)} · ${task.sessionCount} 个番茄`;
+  if (task.sourceType === 'focus') {
+    return `${task.sceneTitle ? `场景 ${task.sceneTitle} · ` : ''}${focusMeta}`;
+  }
   if (task.sourceType === 'scene') {
     return `场景 ${task.sceneTitle || task.title || '默认'} · ${focusMeta}`;
   }
   return `${task.completed ? '已完成' : '未完成'} · 场景 ${task.sceneTitle || '默认'} · ${focusMeta}`;
+}
+
+function getFocusTaskTimes(task, fallbackDate) {
+  const completedAt = task.completedAt || '';
+  const match = completedAt.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})-(\d{2}:\d{2})/);
+  if (match) {
+    return {
+      sessionDate: match[1],
+      startTime: match[2],
+      endTime: match[3],
+    };
+  }
+  return {
+    sessionDate: fallbackDate,
+    startTime: '09:00',
+    endTime: '09:01',
+  };
 }
 
 function DaySummary({ day }) {
@@ -251,12 +272,14 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
   const [selectedWeekEvent, setSelectedWeekEvent] = useState(null);
   const [weekEventForm, setWeekEventForm] = useState({
     title: '',
+    todoId: '0',
     sessionDate: '',
     startTime: '',
     endTime: '',
     sceneId: '0',
   });
   const [scenes, setScenes] = useState([]);
+  const [todos, setTodos] = useState([]);
   const [weekEventStatus, setWeekEventStatus] = useState('idle');
   const [weekEventErrorMessage, setWeekEventErrorMessage] = useState('');
   const launcherRef = useRef(null);
@@ -342,17 +365,16 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
     }
 
     let isDisposed = false;
-    listScenes()
-      .then((nextScenes) => {
+    Promise.all([
+      listScenes().catch(() => []),
+      listTodos({ status: 'all' }).catch(() => []),
+    ])
+      .then(([nextScenes, nextTodos]) => {
         if (!isDisposed) {
           setScenes(nextScenes);
+          setTodos(nextTodos);
         }
       })
-      .catch(() => {
-        if (!isDisposed) {
-          setScenes([]);
-        }
-      });
 
     return () => {
       isDisposed = true;
@@ -385,6 +407,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
     setSelectedWeekEvent({ ...event, sessionDate });
     setWeekEventForm({
       title: event.title || '番茄专注',
+      todoId: event.todoId ? String(event.todoId) : '0',
       sessionDate,
       startTime,
       endTime,
@@ -404,6 +427,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
     try {
       await updateFocusSession(selectedWeekEvent.id, {
         title: weekEventForm.title.trim(),
+        todoId: Number(weekEventForm.todoId),
         sceneId: Number(weekEventForm.sceneId),
         sessionDate: weekEventForm.sessionDate,
         startTime: weekEventForm.startTime,
@@ -418,11 +442,11 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
     }
   };
 
-  const handleDeleteWeekEvent = async () => {
-    if (!selectedWeekEvent) {
+  const handleDeleteWeekEvent = async (event = selectedWeekEvent) => {
+    if (!event) {
       return;
     }
-    const confirmed = window.confirm(`永久删除「${selectedWeekEvent.title}」这条专注记录？这个操作不能撤销。`);
+    const confirmed = window.confirm(`永久删除「${event.title}」这条专注记录？这个操作不能撤销。`);
     if (!confirmed) {
       return;
     }
@@ -430,9 +454,10 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
     setWeekEventStatus('deleting');
     setWeekEventErrorMessage('');
     try {
-      await deleteFocusSession(selectedWeekEvent.id);
+      await deleteFocusSession(event.id);
       setWeekEventStatus('idle');
       setSelectedWeekEvent(null);
+      setSelectedDate('');
       refreshReview();
     } catch (error) {
       setWeekEventStatus('error');
@@ -633,6 +658,18 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                   </label>
                 </div>
                 <label>
+                  <span>任务</span>
+                  <select
+                    value={weekEventForm.todoId}
+                    onChange={(event) => setWeekEventForm((form) => ({ ...form, todoId: event.target.value }))}
+                  >
+                    <option value="0">不绑定任务</option>
+                    {todos.filter((todo) => (todo.sourceType || 'todo') === 'todo').map((todo) => (
+                      <option key={todo.id} value={todo.id}>{todo.title}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
                   <span>场景</span>
                   <select
                     value={weekEventForm.sceneId}
@@ -648,7 +685,7 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                   <button type="submit" className="review-save-button" disabled={weekEventStatus === 'saving' || weekEventStatus === 'deleting'}>
                     {weekEventStatus === 'saving' ? '保存中...' : '保存'}
                   </button>
-                  <button type="button" className="review-danger-button" disabled={weekEventStatus === 'saving' || weekEventStatus === 'deleting'} onClick={handleDeleteWeekEvent}>
+                  <button type="button" className="review-danger-button" disabled={weekEventStatus === 'saving' || weekEventStatus === 'deleting'} onClick={() => handleDeleteWeekEvent()}>
                     {weekEventStatus === 'deleting' ? '删除中...' : '永久删除'}
                   </button>
                 </div>
@@ -677,15 +714,40 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
               <div className="review-task-list">
                 {selectedDay.tasks.length > 0 ? selectedDay.tasks.map((task) => (
                   <article
-                    key={`${task.sourceType}-${task.todoId || task.sceneId}`}
+                    key={`${task.sourceType}-${task.sessionId || task.todoId || task.sceneId}`}
                     className={`review-task-row ${task.sceneColor ? 'with-scene-color' : ''}`}
                     style={getSceneStyle(task.sceneColor)}
                   >
-                    <div className="review-task-main">
-                      <span className={`review-task-badge ${task.sourceType}`}>{task.sourceType === 'habit' ? '习惯' : task.sourceType === 'scene' ? '场景' : '任务'}</span>
-                      <strong>{task.title}</strong>
-                      <small>{getReviewTaskMeta(task)}</small>
-                    </div>
+                    {task.sourceType === 'focus' && task.sessionId ? (
+                      <button
+                        type="button"
+                        className="review-task-main review-task-bind-button"
+                        aria-label={`绑定专注记录 ${task.title}`}
+                        onClick={() => {
+                          const times = getFocusTaskTimes(task, selectedDay.date);
+                          handleOpenWeekEvent({
+                            id: task.sessionId,
+                            type: 'focus',
+                            title: task.title,
+                            todoId: task.todoId,
+                            sceneId: task.sceneId,
+                            color: task.sceneColor,
+                            durationSeconds: task.focusSeconds,
+                            ...times,
+                          }, selectedDay);
+                        }}
+                      >
+                        <span className={`review-task-badge ${task.sourceType}`}>专注</span>
+                        <strong>{task.title}</strong>
+                        <small>{getReviewTaskMeta(task)}</small>
+                      </button>
+                    ) : (
+                      <div className="review-task-main">
+                        <span className={`review-task-badge ${task.sourceType}`}>{task.sourceType === 'habit' ? '习惯' : task.sourceType === 'scene' ? '场景' : '任务'}</span>
+                        <strong>{task.title}</strong>
+                        <small>{getReviewTaskMeta(task)}</small>
+                      </div>
+                    )}
                     {task.sourceType !== 'scene' ? (
                       <button
                         type="button"
@@ -693,7 +755,10 @@ export default function ReviewCalendarLauncher({ refreshSignal = 0 } = {}) {
                         aria-label={`永久删除 ${task.title}`}
                         data-tooltip="永久删除"
                         disabled={deleteStatus === 'deleting'}
-                        onClick={() => handleDeleteTask(task)}
+                        onClick={() => (task.sourceType === 'focus' ? handleDeleteWeekEvent({
+                          id: task.sessionId,
+                          title: task.title,
+                        }) : handleDeleteTask(task))}
                       >
                         <TrashIcon />
                       </button>

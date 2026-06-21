@@ -33,6 +33,7 @@ type Service struct {
 
 type FocusSessionPatch struct {
 	Title       *string
+	TodoID      *int64
 	SceneID     *int64
 	SessionDate string
 	StartTime   string
@@ -102,34 +103,43 @@ func (s *Service) UpdateSession(userID, sessionID int64, patch FocusSessionPatch
 		return ErrInvalidFocusSession
 	}
 
-	sessionDate := strings.TrimSpace(patch.SessionDate)
-	startTime := strings.TrimSpace(patch.StartTime)
-	endTime := strings.TrimSpace(patch.EndTime)
-	if sessionDate == "" || startTime == "" || endTime == "" {
-		return ErrInvalidFocusSession
+	var title sql.NullString
+	var todoID int64
+	var sceneID sql.NullInt64
+	var durationSeconds int
+	var sessionDate string
+	var createdAt string
+	if err := s.db.QueryRow(
+		`SELECT title,
+		        todo_id,
+		        scene_id,
+		        duration_seconds,
+		        session_date,
+		        created_at
+		   FROM focus_sessions
+		  WHERE id = ? AND user_id = ?`,
+		sessionID,
+		userID,
+	).Scan(&title, &todoID, &sceneID, &durationSeconds, &sessionDate, &createdAt); err != nil {
+		return err
 	}
 
-	startAt, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" "+startTime, appTimeLocation)
-	if err != nil {
-		return ErrInvalidFocusSession
-	}
-	endAt, err := time.ParseInLocation("2006-01-02 15:04", sessionDate+" "+endTime, appTimeLocation)
-	if err != nil {
-		return ErrInvalidFocusSession
-	}
-	if !endAt.After(startAt) {
-		endAt = startAt.Add(time.Minute)
+	if patch.Title != nil {
+		titleValue := strings.TrimSpace(*patch.Title)
+		title = sql.NullString{String: titleValue, Valid: titleValue != ""}
 	}
 
-	var sceneID int64
-	if patch.SceneID != nil {
-		sceneID = *patch.SceneID
+	if patch.TodoID != nil {
+		todoID = *patch.TodoID
 	}
-	if sceneID > 0 {
+	if todoID < 0 {
+		return ErrInvalidFocusSession
+	}
+	if todoID > 0 {
 		var exists int
 		err := s.db.QueryRow(
-			"SELECT 1 FROM focus_scenes WHERE id = ? AND user_id = ? AND active = 1",
-			sceneID,
+			"SELECT 1 FROM todos WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+			todoID,
 			userID,
 		).Scan(&exists)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -140,23 +150,67 @@ func (s *Service) UpdateSession(userID, sessionID int64, patch FocusSessionPatch
 		}
 	}
 
-	var title string
-	if patch.Title != nil {
-		title = strings.TrimSpace(*patch.Title)
+	if patch.SceneID != nil {
+		if *patch.SceneID > 0 {
+			sceneID = sql.NullInt64{Int64: *patch.SceneID, Valid: true}
+		} else {
+			sceneID = sql.NullInt64{}
+		}
 	}
+	if sceneID.Valid {
+		var exists int
+		err := s.db.QueryRow(
+			"SELECT 1 FROM focus_scenes WHERE id = ? AND user_id = ? AND active = 1",
+			sceneID.Int64,
+			userID,
+		).Scan(&exists)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrInvalidFocusSession
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	nextSessionDate := strings.TrimSpace(patch.SessionDate)
+	startTime := strings.TrimSpace(patch.StartTime)
+	endTime := strings.TrimSpace(patch.EndTime)
+	hasTimePatch := nextSessionDate != "" || startTime != "" || endTime != ""
+	if hasTimePatch {
+		if nextSessionDate == "" || startTime == "" || endTime == "" {
+			return ErrInvalidFocusSession
+		}
+		startAt, err := time.ParseInLocation("2006-01-02 15:04", nextSessionDate+" "+startTime, appTimeLocation)
+		if err != nil {
+			return ErrInvalidFocusSession
+		}
+		endAt, err := time.ParseInLocation("2006-01-02 15:04", nextSessionDate+" "+endTime, appTimeLocation)
+		if err != nil {
+			return ErrInvalidFocusSession
+		}
+		if !endAt.After(startAt) {
+			endAt = startAt.Add(time.Minute)
+		}
+		durationSeconds = int(endAt.Sub(startAt).Seconds())
+		sessionDate = nextSessionDate
+		createdAt = endAt.Format(time.RFC3339)
+	}
+
 	result, err := s.db.Exec(
 		`UPDATE focus_sessions
 		    SET title = ?,
+		        todo_id = ?,
 		        scene_id = ?,
 		        duration_seconds = ?,
 		        session_date = ?,
 		        created_at = ?
 		  WHERE id = ? AND user_id = ?`,
-		nullableString(title),
-		nullableSceneID(sceneID),
-		int(endAt.Sub(startAt).Seconds()),
+		nullableNullString(title),
+		todoID,
+		nullableNullInt64(sceneID),
+		durationSeconds,
 		sessionDate,
-		endAt.Format(time.RFC3339),
+		createdAt,
 		sessionID,
 		userID,
 	)
@@ -332,6 +386,9 @@ func (s *Service) ReviewCalendar(userID int64, year, month int) (models.ReviewCa
 	if err := s.fillReviewSceneStats(userID, gridStart.Format("2006-01-02"), gridEnd.Format("2006-01-02"), calendar.Days, byDate); err != nil {
 		return models.ReviewCalendar{}, err
 	}
+	if err := s.fillReviewSessionStats(userID, gridStart.Format("2006-01-02"), gridEnd.Format("2006-01-02"), calendar.Days, byDate); err != nil {
+		return models.ReviewCalendar{}, err
+	}
 
 	return calendar, nil
 }
@@ -436,6 +493,7 @@ func (s *Service) fillReviewWeekFocus(userID int64, startDate, endDate string, d
 		          WHEN focus_sessions.scene_id IS NOT NULL THEN COALESCE(focus_scenes.title, '已删除场景')
 		          ELSE '番茄专注'
 		        END AS title,
+		        COALESCE(focus_scenes.title, '') AS scene_title,
 		        COALESCE(focus_scenes.color, '#4b8768') AS color,
 		        focus_sessions.duration_seconds,
 		        focus_sessions.created_at
@@ -460,7 +518,7 @@ func (s *Service) fillReviewWeekFocus(userID int64, startDate, endDate string, d
 		var date string
 		var durationSeconds int64
 		var createdAt string
-		if err := rows.Scan(&event.ID, &date, &event.TodoID, &event.SceneID, &event.Title, &event.Color, &durationSeconds, &createdAt); err != nil {
+		if err := rows.Scan(&event.ID, &date, &event.TodoID, &event.SceneID, &event.Title, &event.SceneTitle, &event.Color, &durationSeconds, &createdAt); err != nil {
 			return err
 		}
 		index, ok := byDate[date]
@@ -767,6 +825,59 @@ func (s *Service) fillReviewSceneStats(userID int64, startDate, endDate string, 
 		}
 		item.SourceType = "scene"
 		item.SceneTitle = item.Title
+		days[index].Tasks = append(days[index].Tasks, item)
+	}
+
+	return rows.Err()
+}
+
+func (s *Service) fillReviewSessionStats(userID int64, startDate, endDate string, days []models.ReviewCalendarDay, byDate map[string]int) error {
+	rows, err := s.db.Query(
+		`SELECT focus_sessions.id,
+		        focus_sessions.session_date,
+		        focus_sessions.todo_id,
+		        COALESCE(focus_sessions.scene_id, 0) AS scene_id,
+		        CASE
+		          WHEN TRIM(COALESCE(focus_sessions.title, '')) != '' THEN focus_sessions.title
+		          WHEN focus_sessions.todo_id > 0 THEN COALESCE(todos.title, '已删除任务')
+		          WHEN focus_sessions.scene_id IS NOT NULL THEN COALESCE(focus_scenes.title, '已删除场景')
+		          ELSE '番茄专注'
+		        END AS title,
+		        COALESCE(focus_scenes.title, '') AS scene_title,
+		        COALESCE(focus_scenes.color, '#4b8768') AS scene_color,
+		        focus_sessions.duration_seconds,
+		        focus_sessions.created_at
+		   FROM focus_sessions
+		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id AND todos.deleted_at IS NULL
+		   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
+		  WHERE focus_sessions.user_id = ?
+		    AND focus_sessions.session_date BETWEEN ? AND ?
+		    AND (focus_sessions.todo_id <= 0 OR todos.id IS NOT NULL)
+		  ORDER BY focus_sessions.session_date ASC, focus_sessions.created_at ASC, focus_sessions.id ASC`,
+		userID,
+		startDate,
+		endDate,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item models.ReviewTaskStat
+		var date string
+		var createdAt string
+		if err := rows.Scan(&item.SessionID, &date, &item.TodoID, &item.SceneID, &item.Title, &item.SceneTitle, &item.SceneColor, &item.FocusSeconds, &createdAt); err != nil {
+			return err
+		}
+		index, ok := byDate[date]
+		if !ok {
+			continue
+		}
+		startTime, endTime := reviewFocusTimeRange(date, createdAt, item.FocusSeconds)
+		item.SourceType = "focus"
+		item.SessionCount = 1
+		item.CompletedAt = strings.TrimSpace(date + " " + startTime + "-" + endTime)
 		days[index].Tasks = append(days[index].Tasks, item)
 	}
 
@@ -1294,6 +1405,20 @@ func nullableString(value string) interface{} {
 		return nil
 	}
 	return value
+}
+
+func nullableNullString(value sql.NullString) interface{} {
+	if !value.Valid {
+		return nil
+	}
+	return value.String
+}
+
+func nullableNullInt64(value sql.NullInt64) interface{} {
+	if !value.Valid {
+		return nil
+	}
+	return value.Int64
 }
 
 func formatReviewFocusMeta(durationSeconds int64, sessionCount int64) string {

@@ -48,6 +48,83 @@ func TestCreateAllowsUnboundFocusSession(t *testing.T) {
 	}
 }
 
+func TestUpdateSessionCanBindTodoAndSceneOnly(t *testing.T) {
+	database, err := db.Open(filepath.Join(t.TempDir(), "todo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+
+	result, err := database.Exec(`INSERT INTO users (username, password_hash) VALUES (?, ?)`, "tester", "hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	userID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err = database.Exec(`INSERT INTO todos (user_id, title, todo_date, priority) VALUES (?, ?, ?, ?)`, userID, "复盘需求", "2026-06-17", "medium")
+	if err != nil {
+		t.Fatal(err)
+	}
+	todoID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err = database.Exec(`INSERT INTO focus_scenes (user_id, title, color) VALUES (?, ?, ?)`, userID, "工作", "#4b8768")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sceneID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err = database.Exec(
+		`INSERT INTO focus_sessions (user_id, todo_id, duration_seconds, session_date, created_at) VALUES (?, ?, ?, ?, ?)`,
+		userID,
+		0,
+		1500,
+		"2026-06-17",
+		"2026-06-17T10:25:00+08:00",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessionID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	service := NewService(database)
+	if err := service.UpdateSession(userID, sessionID, FocusSessionPatch{
+		TodoID:  &todoID,
+		SceneID: &sceneID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var storedTodoID int64
+	var storedSceneID int64
+	var durationSeconds int
+	var sessionDate string
+	var createdAt string
+	if err := database.QueryRow(
+		`SELECT todo_id, scene_id, duration_seconds, session_date, created_at FROM focus_sessions WHERE id = ?`,
+		sessionID,
+	).Scan(&storedTodoID, &storedSceneID, &durationSeconds, &sessionDate, &createdAt); err != nil {
+		t.Fatal(err)
+	}
+	if storedTodoID != todoID || storedSceneID != sceneID {
+		t.Fatalf("expected bound ids %d/%d, got %d/%d", todoID, sceneID, storedTodoID, storedSceneID)
+	}
+	if durationSeconds != 1500 || sessionDate != "2026-06-17" || createdAt != "2026-06-17T10:25:00+08:00" {
+		t.Fatalf("expected original timing to remain, got duration=%d date=%s created=%s", durationSeconds, sessionDate, createdAt)
+	}
+}
+
 func TestReviewCalendarIncludesSceneFocusSessions(t *testing.T) {
 	database, err := db.Open(filepath.Join(t.TempDir(), "todo.db"))
 	if err != nil {
@@ -147,11 +224,15 @@ func TestReviewCalendarIncludesSceneFocusSessions(t *testing.T) {
 		if day.Entries[0].SceneTitle != "运动" || day.Entries[0].SceneColor != "#6f9fc7" {
 			t.Fatalf("expected scene metadata on focus entry, got %+v", day.Entries[0])
 		}
-		if len(day.Tasks) != 2 {
-			t.Fatalf("expected 2 review task rows, got %d", len(day.Tasks))
+		if len(day.Tasks) != 5 {
+			t.Fatalf("expected 5 review task rows, got %d", len(day.Tasks))
 		}
 		var taskFound bool
+		var focusSessionRows int
 		for _, task := range day.Tasks {
+			if task.SourceType == "focus" && task.SessionID > 0 {
+				focusSessionRows++
+			}
 			if task.TodoID != todoID {
 				continue
 			}
@@ -159,6 +240,9 @@ func TestReviewCalendarIncludesSceneFocusSessions(t *testing.T) {
 			if task.SceneTitle != "运动" || task.SceneColor != "#6f9fc7" {
 				t.Fatalf("expected task scene metadata, got %+v", task)
 			}
+		}
+		if focusSessionRows != 3 {
+			t.Fatalf("expected three bindable focus session rows, got %d", focusSessionRows)
 		}
 		if !taskFound {
 			t.Fatal("expected todo task in review detail")
@@ -298,8 +382,11 @@ func TestReviewCalendarDoesNotDuplicateCompletedFocusedTodoEntry(t *testing.T) {
 		if day.Entries[0].TodoID != todoID || day.Entries[0].Title != "是" || day.Entries[0].Meta != "完成" {
 			t.Fatalf("unexpected calendar entry: %+v", day.Entries[0])
 		}
-		if len(day.Tasks) != 1 || day.Tasks[0].FocusSeconds != 60 {
+		if len(day.Tasks) != 2 || day.Tasks[0].FocusSeconds != 60 {
 			t.Fatalf("expected detail task with focus seconds, got %+v", day.Tasks)
+		}
+		if day.Tasks[1].SourceType != "focus" || day.Tasks[1].SessionID == 0 {
+			t.Fatalf("expected bindable focus session row, got %+v", day.Tasks[1])
 		}
 		return
 	}
