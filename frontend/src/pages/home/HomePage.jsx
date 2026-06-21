@@ -257,6 +257,7 @@ function Sidebar({ user, activeSection, onSectionChange, onLogout }) {
   const navItems = [
     { id: 'plan', label: '今日计划', icon: CalendarBlank },
     { id: 'stats', label: '专注统计', icon: ChartBar },
+    { id: 'review', label: '个人复盘', icon: ListBullets },
     { id: 'manage', label: '习惯场景', icon: Target },
   ];
 
@@ -675,11 +676,8 @@ function FocusPanel({
   );
 }
 
-function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
-  const [viewMode, setViewMode] = useState('month');
-  const [viewMonth, setViewMonth] = useState(() => getMonthFromDate(todayDate));
+function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' }) {
   const [viewDate, setViewDate] = useState(todayDate);
-  const [calendar, setCalendar] = useState(null);
   const [week, setWeek] = useState(null);
   const [selectedReviewDay, setSelectedReviewDay] = useState(null);
   const [reviewDetailError, setReviewDetailError] = useState('');
@@ -701,7 +699,6 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
       value: `${segments.value}, ${item.color || REVIEW_COLORS[index % REVIEW_COLORS.length]} ${previous}% ${next}%`,
     };
   }, { total: 0, value: '' }).value.replace(/^, /, '');
-  const monthTitle = `${viewMonth.year}年${viewMonth.month}月`;
 
   useEffect(() => {
     let disposed = false;
@@ -709,16 +706,10 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
     setReviewDetailError('');
     setReviewStatus('loading');
     setReviewError('');
-    getReviewCalendar(viewMode === 'week' ? { view: 'week', date: viewDate } : viewMonth)
+    getReviewCalendar({ view: 'week', date: viewDate })
       .then((nextReview) => {
         if (disposed) return;
-        if (viewMode === 'week') {
-          setWeek(nextReview);
-          setCalendar(null);
-        } else {
-          setCalendar(nextReview);
-          setWeek(null);
-        }
+        setWeek(nextReview);
         setReviewStatus('ready');
       })
       .catch((error) => {
@@ -730,7 +721,7 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
     return () => {
       disposed = true;
     };
-  }, [viewMode, viewMonth, viewDate, refreshSignal]);
+  }, [viewDate, refreshSignal]);
 
   const handleSelectReviewDay = (day) => {
     if (!day?.date) return;
@@ -739,9 +730,8 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
       setReviewDetailError('');
       return;
     }
-    const monthDay = calendar?.days?.find((item) => item.date === day.date);
     setReviewDetailError('');
-    setSelectedReviewDay(monthDay || (day.tasks ? day : buildReviewDayFromWeekDay(day)));
+    setSelectedReviewDay(day.tasks ? day : buildReviewDayFromWeekDay(day));
   };
 
   const handleDeleteReviewTask = async (task) => {
@@ -779,58 +769,26 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
     }
   };
 
+  const PanelElement = variant === 'module' ? 'section' : 'aside';
+
   return (
-    <aside className="review-panel panel-frame" aria-label="个人复盘">
+    <PanelElement className={`review-panel panel-frame ${variant === 'module' ? 'review-panel-module' : ''}`} aria-label="个人复盘">
       <header className="panel-header">
         <h2>个人复盘</h2>
         <button type="button" aria-label="打开日历"><CalendarBlank /></button>
       </header>
 
-      <div className="segmented-tabs review-tabs" role="tablist" aria-label="复盘视图">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={viewMode === 'week'}
-          className={viewMode === 'week' ? 'active' : ''}
-          onClick={() => setViewMode('week')}
-        >
-          周视图
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={viewMode === 'month'}
-          className={viewMode === 'month' ? 'active' : ''}
-          onClick={() => setViewMode('month')}
-        >
-          月视图
-        </button>
-      </div>
-
       {reviewStatus === 'loading' ? <p className="review-inline-state">复盘加载中...</p> : null}
       {reviewError ? <p className="review-inline-error" role="alert">{reviewError}</p> : null}
 
-      {viewMode === 'week' ? (
-        <ReviewWeekCard
-          week={week}
-          todayDate={todayDate}
-          selectedDay={selectedReviewDay}
-          onSelectDay={handleSelectReviewDay}
-          onPreviousWeek={() => setViewDate((date) => addDays(date, -7))}
-          onNextWeek={() => setViewDate((date) => addDays(date, 7))}
-        />
-      ) : (
-        <ReviewMonthCard
-          calendar={calendar}
-          monthTitle={monthTitle}
-          viewMonth={viewMonth}
-          todayDate={todayDate}
-          selectedDay={selectedReviewDay}
-          onSelectDay={handleSelectReviewDay}
-          onPreviousMonth={() => setViewMonth((month) => shiftMonthValue(month, -1))}
-          onNextMonth={() => setViewMonth((month) => shiftMonthValue(month, 1))}
-        />
-      )}
+      <ReviewWeekCard
+        week={week}
+        todayDate={todayDate}
+        selectedDay={selectedReviewDay}
+        onSelectDay={handleSelectReviewDay}
+        onPreviousWeek={() => setViewDate((date) => addDays(date, -7))}
+        onNextWeek={() => setViewDate((date) => addDays(date, 7))}
+      />
 
       {selectedReviewDay ? (
         <section className="review-detail-panel workspace-review-detail" role="dialog" aria-label={`${selectedReviewDay.date} 当日复盘详情`}>
@@ -923,7 +881,7 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0 }) {
       </section>
 
       <p className="autosave-note">数据已自动保存</p>
-    </aside>
+    </PanelElement>
   );
 }
 
@@ -1330,64 +1288,9 @@ function ReviewWeekCard({ week, todayDate, selectedDay, onSelectDay, onPreviousW
   );
 }
 
-function ReviewMonthCard({ calendar, monthTitle, viewMonth, todayDate, selectedDay, onSelectDay, onPreviousMonth, onNextMonth }) {
-  const anchorDate = `${viewMonth.year}-${String(viewMonth.month).padStart(2, '0')}-01`;
-  const monthDays = calendar?.days ?? createMonthGrid(anchorDate, todayDate);
-  return (
-    <section className="week-card month-card" aria-label="月日程">
-      <div className="week-header">
-        <button type="button" aria-label="上一月" onClick={onPreviousMonth}><CaretLeft /></button>
-        <strong>{monthTitle}</strong>
-        <button type="button" aria-label="下一月" onClick={onNextMonth}><CaretRight /></button>
-      </div>
-      <div className="month-weekdays">
-        {['日', '一', '二', '三', '四', '五', '六'].map((label) => <span key={label}>{label}</span>)}
-      </div>
-      <div className="month-grid">
-        {monthDays.map((day) => {
-          const inMonth = day.inCurrentMonth ?? day.inMonth;
-          const dayNumber = day.day ?? new Date(`${day.date}T00:00:00`).getDate();
-          const focusMinutes = Math.floor((day.focusSeconds ?? 0) / 60);
-          const entryCount = day.entries?.length ?? 0;
-          return (
-            <button
-              type="button"
-              key={day.date}
-              className={`${inMonth ? '' : 'muted'} ${day.date === todayDate || day.isToday ? 'today' : ''} ${selectedDay?.date === day.date ? 'selected' : ''}`}
-              aria-label={`查看 ${day.date} 当日复盘`}
-              onClick={() => onSelectDay(day)}
-            >
-              <strong>{dayNumber}</strong>
-              {entryCount > 0 || focusMinutes > 0 ? (
-                <span className="month-day-summary">{focusMinutes > 0 ? `${focusMinutes}m` : `${entryCount}项`}</span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 function formatShortDate(dateValue) {
   const date = new Date(`${dateValue}T00:00:00`);
   return `${date.getMonth() + 1}月${date.getDate()}日`;
-}
-
-function getMonthFromDate(dateValue) {
-  const date = new Date(`${dateValue}T00:00:00`);
-  return {
-    year: date.getFullYear(),
-    month: date.getMonth() + 1,
-  };
-}
-
-function shiftMonthValue(value, offset) {
-  const date = new Date(value.year, value.month - 1 + offset, 1);
-  return {
-    year: date.getFullYear(),
-    month: date.getMonth() + 1,
-  };
 }
 
 function getWeekTimelinePercent(minutes) {
@@ -1430,25 +1333,6 @@ function formatWeekEventTime(event = {}) {
     return event.startTime || event.endTime;
   }
   return `${event.startTime}-${event.endTime}`;
-}
-
-function createMonthGrid(anchorDate, todayDate) {
-  const today = new Date(`${todayDate}T00:00:00`);
-  const anchor = new Date(`${anchorDate}T00:00:00`);
-  const month = anchor.getMonth();
-  const first = new Date(anchor.getFullYear(), month, 1);
-  const gridStart = new Date(first);
-  gridStart.setDate(first.getDate() - first.getDay());
-
-  return Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(gridStart);
-    date.setDate(gridStart.getDate() + index);
-    return {
-      date: getLocalDate(date),
-      inMonth: date.getMonth() === month,
-      isToday: date.toDateString() === today.toDateString(),
-    };
-  });
 }
 
 function createFallbackWeek(todayDate) {
@@ -1790,7 +1674,7 @@ export default function HomePage({ user, onLoggedOut }) {
     remainingSeconds: timerState.remainingSeconds,
     isRunning: timerState.isRunning,
   } : null;
-  const isModuleSection = ['stats', 'manage'].includes(activeSection);
+  const isModuleSection = ['stats', 'review', 'manage'].includes(activeSection);
 
   return (
     <div className={`workspace-shell workspace-section-${activeSection}`}>
@@ -1813,7 +1697,9 @@ export default function HomePage({ user, onLoggedOut }) {
         onDeleteTodo={handleDeleteTodo}
         onFocusTodo={handleFocusTodo}
       />
-      {isModuleSection ? (
+      {activeSection === 'review' ? (
+        <ReviewPanel stats={stats} todayDate={todayDate} refreshSignal={reviewRefreshSignal} variant="module" />
+      ) : isModuleSection ? (
         <WorkspaceModulePanel
           activeSection={activeSection}
           stats={stats}

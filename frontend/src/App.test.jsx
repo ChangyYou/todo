@@ -482,17 +482,12 @@ describe('App', () => {
     expect(screen.getByRole('region', { name: '待办事项' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '沉浸专注' })).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '个人复盘' })).toBeInTheDocument();
-    expect(screen.getByText('个人复盘')).toBeInTheDocument();
+    expect(screen.getAllByText('个人复盘').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('场景分布')).toBeInTheDocument();
 
     const reviewPanel = screen.getByRole('complementary', { name: '个人复盘' });
-    const weekTab = within(reviewPanel).getByRole('tab', { name: '周视图' });
-    const monthTab = within(reviewPanel).getByRole('tab', { name: '月视图' });
-    expect(monthTab).toHaveAttribute('aria-selected', 'true');
-    expect(await within(reviewPanel).findByRole('region', { name: '月日程' })).toBeInTheDocument();
-
-    fireEvent.click(weekTab);
-    expect(weekTab).toHaveAttribute('aria-selected', 'true');
+    expect(within(reviewPanel).queryByRole('tab', { name: '月视图' })).not.toBeInTheDocument();
+    expect(within(reviewPanel).queryByText('月视图')).not.toBeInTheDocument();
     expect(await within(reviewPanel).findByRole('region', { name: '周日程' })).toBeInTheDocument();
     expect(within(reviewPanel).getByText('00-09')).toBeInTheDocument();
     expect(within(reviewPanel).queryByText('03:00')).not.toBeInTheDocument();
@@ -518,9 +513,6 @@ describe('App', () => {
     ))).toBe(true);
     expect(window.fetch.mock.calls.some(([url]) => String(url).includes('/api/review-calendar') && String(url).includes('view=week'))).toBe(true);
 
-    fireEvent.click(monthTab);
-    expect(monthTab).toHaveAttribute('aria-selected', 'true');
-    expect(await within(reviewPanel).findByRole('region', { name: '月日程' })).toBeInTheDocument();
   });
 
   it('switches workspace content from the sidebar navigation', async () => {
@@ -540,6 +532,12 @@ describe('App', () => {
     expect(within(statsPanel).getByText('最近完成率趋势')).toBeInTheDocument();
     expect(within(statsPanel).getByText('最近番茄数趋势')).toBeInTheDocument();
     expect(within(statsPanel).getByText('本周打卡进度')).toBeInTheDocument();
+
+    fireEvent.click(within(navigation).getByRole('button', { name: '个人复盘' }));
+    const reviewModule = await screen.findByRole('region', { name: '个人复盘' });
+    expect(within(reviewModule).getByRole('heading', { name: '个人复盘' })).toBeInTheDocument();
+    expect(await within(reviewModule).findByRole('region', { name: '周日程' })).toBeInTheDocument();
+    expect(within(reviewModule).queryByText('月视图')).not.toBeInTheDocument();
 
     expect(within(navigation).queryByRole('button', { name: '习惯养成' })).not.toBeInTheDocument();
     expect(within(navigation).queryByRole('button', { name: '场景管理' })).not.toBeInTheDocument();

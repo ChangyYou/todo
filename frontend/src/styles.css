@@ -4704,13 +4704,6 @@ body:has(.workspace-shell) {
   box-shadow: 0 12px 22px rgba(45, 82, 68, 0.24);
 }
 
-.review-tabs button.active,
-.review-tabs button[aria-selected="true"] {
-  background: rgba(224, 233, 224, 0.9);
-  color: var(--ink);
-  box-shadow: none;
-}
-
 .task-section-title {
   margin-top: 28px;
   display: flex;
@@ -5486,6 +5479,10 @@ body:has(.workspace-shell) {
   box-shadow: none;
 }
 
+.workspace-shell > .review-panel.review-panel-module {
+  grid-column: span 2;
+}
+
 .workspace-shell > .review-panel .segmented-tabs {
   margin-top: 2px;
 }
@@ -5748,90 +5745,6 @@ body:has(.workspace-shell) {
   font-size: 0.82rem;
 }
 
-.month-card {
-  min-height: 480px;
-}
-
-.month-weekdays {
-  margin-top: 16px;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
-  color: var(--muted);
-  font-size: 0.78rem;
-  text-align: center;
-}
-
-.month-grid {
-  margin-top: 10px;
-  min-height: 380px;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.36);
-}
-
-.month-grid button {
-  min-height: 62px;
-  padding: 8px;
-  display: grid;
-  align-content: start;
-  gap: 3px;
-  border: 0;
-  border-right: 1px solid rgba(27, 64, 54, 0.07);
-  border-bottom: 1px solid rgba(27, 64, 54, 0.07);
-  background: transparent;
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
-}
-
-.month-grid button:hover,
-.month-grid button:focus-visible,
-.month-grid button.selected {
-  background: rgba(224, 233, 224, 0.42);
-  outline: none;
-}
-
-.month-grid button:nth-child(7n) {
-  border-right: 0;
-}
-
-.month-grid button:nth-last-child(-n + 7) {
-  border-bottom: 0;
-}
-
-.month-grid strong {
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  font-size: 0.82rem;
-}
-
-.month-grid .muted {
-  color: color-mix(in srgb, var(--muted) 55%, transparent);
-  background: rgba(255, 255, 255, 0.22);
-}
-
-.month-grid .today strong {
-  background: #194d3e;
-  color: #fff;
-}
-
-.month-grid .selected strong {
-  box-shadow: 0 0 0 2px rgba(25, 77, 62, 0.18);
-}
-
-.month-day-summary {
-  font-size: 0.68rem;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
 .workspace-review-detail {
   top: 116px;
   right: 16px;
@@ -5993,6 +5906,11 @@ body:has(.workspace-shell) {
   .workspace-shell > .review-panel > .autosave-note {
     grid-column: 1 / -1;
   }
+
+  .workspace-shell > .review-panel.review-panel-module {
+    grid-column: 3 / -1;
+    display: flex;
+  }
 }
 
 @media (max-width: 920px) {
@@ -6035,6 +5953,10 @@ body:has(.workspace-shell) {
   }
 
   .workspace-module-panel {
+    grid-column: auto;
+  }
+
+  .workspace-shell > .review-panel.review-panel-module {
     grid-column: auto;
   }
 
