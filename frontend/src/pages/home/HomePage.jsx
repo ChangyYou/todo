@@ -897,22 +897,31 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
       {reviewStatus === 'loading' ? <p className="review-inline-state">复盘加载中...</p> : null}
       {reviewError ? <p className="review-inline-error" role="alert">{reviewError}</p> : null}
 
-      {viewMode === 'month' && isModuleView ? (
-        <ReviewMonthCalendar
-          calendar={calendar}
-          todayDate={todayDate}
-          selectedDay={selectedReviewDay}
-          onSelectDay={handleSelectReviewDay}
-        />
+      {isModuleView ? (
+        viewMode === 'month' ? (
+          <ReviewMonthCalendar
+            calendar={calendar}
+            todayDate={todayDate}
+            selectedDay={selectedReviewDay}
+            onSelectDay={handleSelectReviewDay}
+          />
+        ) : (
+          <ReviewWeekCard
+            week={week}
+            todayDate={todayDate}
+            selectedDay={selectedReviewDay}
+            onSelectDay={handleSelectReviewDay}
+            onPreviousWeek={() => setViewDate((date) => addDays(date, -7))}
+            onNextWeek={() => setViewDate((date) => addDays(date, 7))}
+            showHeader={false}
+          />
+        )
       ) : (
-        <ReviewWeekCard
+        <ReviewTwoDayTimeline
           week={week}
           todayDate={todayDate}
           selectedDay={selectedReviewDay}
           onSelectDay={handleSelectReviewDay}
-          onPreviousWeek={() => setViewDate((date) => addDays(date, -7))}
-          onNextWeek={() => setViewDate((date) => addDays(date, 7))}
-          showHeader={!isModuleView}
         />
       )}
 
@@ -1417,6 +1426,88 @@ function ReviewMonthCalendar({ calendar, todayDate, selectedDay, onSelectDay }) 
 
 function hasWeekEventTime(event = {}) {
   return Boolean(event.startTime || event.endTime);
+}
+
+function getEventStartMinutes(event = {}) {
+  if (!event.startTime) return Number.MAX_SAFE_INTEGER;
+  const [rawHour = 24, rawMinute = 0] = String(event.startTime).split(':').map(Number);
+  const hour = Number.isFinite(rawHour) ? rawHour : 24;
+  const minute = Number.isFinite(rawMinute) ? rawMinute : 0;
+  return (hour * 60) + minute;
+}
+
+function createEmptyTimelineDay(date, label) {
+  return {
+    date,
+    day: new Date(`${date}T00:00:00`).getDate(),
+    label,
+    events: [],
+  };
+}
+
+function getReviewTimelineDays(week, todayDate) {
+  const days = week?.days ?? createFallbackWeek(todayDate);
+  const todayIndex = days.findIndex((day) => day.isToday || day.date === todayDate);
+  const safeTodayIndex = todayIndex >= 0 ? todayIndex : 0;
+  const today = days[safeTodayIndex] ?? createEmptyTimelineDay(todayDate, getChineseWeekday(todayDate));
+  const tomorrowDate = addDays(today.date, 1);
+  const tomorrow = days[safeTodayIndex + 1] ?? createEmptyTimelineDay(tomorrowDate, getChineseWeekday(tomorrowDate));
+  return [
+    { ...today, timelineLabel: '今天' },
+    { ...tomorrow, timelineLabel: '明天' },
+  ];
+}
+
+function ReviewTwoDayTimeline({ week, todayDate, selectedDay, onSelectDay }) {
+  const days = getReviewTimelineDays(week, todayDate);
+  return (
+    <section className="review-two-day-timeline" aria-label="近两日时间线">
+      {days.map((day) => {
+        const events = [...(day.events ?? [])].sort((left, right) => getEventStartMinutes(left) - getEventStartMinutes(right));
+        return (
+          <article
+            key={day.date}
+            className={`review-timeline-day ${selectedDay?.date === day.date ? 'selected' : ''}`}
+          >
+            <button
+              type="button"
+              className="review-timeline-date"
+              aria-label={`查看 ${day.date} 当日复盘`}
+              onClick={() => onSelectDay(day)}
+            >
+              <strong>{day.day}</strong>
+              <span>{day.timelineLabel}</span>
+            </button>
+            <div className="review-timeline-list">
+              {events.length > 0 ? events.slice(0, 5).map((event, index) => (
+                <button
+                  type="button"
+                  key={`${day.date}-${event.id || event.title}-${index}`}
+                  className={`review-timeline-item ${event.type || 'event'}`}
+                  aria-label={`查看 ${day.date} 当日复盘`}
+                  style={{ '--event-color': event.color || REVIEW_COLORS[index % REVIEW_COLORS.length] }}
+                  onClick={() => onSelectDay(day)}
+                >
+                  <span className="review-timeline-time">{formatWeekEventTime(event)}</span>
+                  <strong>{event.title}</strong>
+                  {event.meta ? <small>{event.meta}</small> : null}
+                </button>
+              )) : (
+                <button
+                  type="button"
+                  className="review-timeline-empty"
+                  aria-label={`查看 ${day.date} 当日复盘`}
+                  onClick={() => onSelectDay(day)}
+                >
+                  暂无安排
+                </button>
+              )}
+            </div>
+          </article>
+        );
+      })}
+    </section>
+  );
 }
 
 function ReviewWeekCard({ week, todayDate, selectedDay, onSelectDay, onPreviousWeek, onNextWeek, showHeader = true }) {

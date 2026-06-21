@@ -5540,6 +5540,139 @@ body:has(.workspace-shell) {
   box-shadow: none;
 }
 
+.review-two-day-timeline {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.review-timeline-day {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.review-timeline-date {
+  min-width: 0;
+  min-height: 64px;
+  border: 0;
+  border-radius: 16px;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: rgba(228, 238, 229, 0.54);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.review-timeline-day.selected .review-timeline-date,
+.review-timeline-date:hover,
+.review-timeline-date:focus-visible {
+  background: rgba(198, 222, 205, 0.72);
+  outline: none;
+}
+
+.review-timeline-date strong {
+  font-family: "Outfit", sans-serif;
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.review-timeline-date span {
+  color: rgba(43, 70, 61, 0.62);
+  font-size: 0.78rem;
+}
+
+.review-timeline-list {
+  min-width: 0;
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding-left: 14px;
+}
+
+.review-timeline-list::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 3px;
+  width: 1px;
+  background: rgba(43, 70, 61, 0.12);
+}
+
+.review-timeline-item,
+.review-timeline-empty {
+  min-width: 0;
+  min-height: 56px;
+  border: 1px solid color-mix(in srgb, var(--event-color, #8ca39a) 18%, rgba(255, 255, 255, 0.72));
+  border-left: 4px solid var(--event-color, #8ca39a);
+  border-radius: 13px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  padding: 8px 10px 8px 12px;
+  background: color-mix(in srgb, var(--event-color, #8ca39a) 10%, rgba(255, 255, 255, 0.74));
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  box-shadow: 0 10px 22px rgba(44, 74, 62, 0.06);
+}
+
+.review-timeline-item::before,
+.review-timeline-empty::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -17px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #fffdfa;
+  border: 2px solid var(--event-color, #9da4a0);
+  transform: translateY(-50%);
+}
+
+.review-timeline-item {
+  position: relative;
+}
+
+.review-timeline-empty {
+  position: relative;
+  border-left-color: #9da4a0;
+  color: rgba(43, 70, 61, 0.52);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.review-timeline-time,
+.review-timeline-item strong,
+.review-timeline-item small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-timeline-time {
+  color: color-mix(in srgb, var(--event-color, #4b8768) 78%, #173d34);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.review-timeline-item strong {
+  color: rgba(31, 60, 51, 0.9);
+  font-size: 0.88rem;
+}
+
+.review-timeline-item small {
+  color: rgba(43, 70, 61, 0.58);
+  font-size: 0.74rem;
+}
+
 .review-calendar-shell {
   min-width: 0;
 }
@@ -5830,10 +5963,11 @@ body:has(.workspace-shell) {
 }
 
 .review-panel-module .calendar-event {
-  top: min(var(--event-top), calc(100% - 58px));
-  height: max(var(--event-height), 42px);
-  min-height: 42px;
-  padding: 6px 7px;
+  top: min(var(--event-top), calc(100% - 72px));
+  height: max(var(--event-height), 60px);
+  min-height: 60px;
+  padding: 8px 9px;
+  gap: 2px;
 }
 
 .review-panel-module .calendar-event strong {
