@@ -5486,6 +5486,7 @@ body:has(.workspace-shell) {
   right: auto;
   bottom: auto;
   width: auto;
+  --calendar-timeline-height: 940px;
   max-height: none;
   display: flex;
   flex-direction: column;
@@ -5498,7 +5499,7 @@ body:has(.workspace-shell) {
 
 .workspace-shell > .review-panel.review-panel-module {
   grid-column: span 2;
-  --calendar-timeline-height: 820px;
+  --calendar-timeline-height: 1080px;
   gap: 18px;
 }
 
@@ -5767,13 +5768,13 @@ body:has(.workspace-shell) {
   z-index: 4;
   left: 7px;
   right: 7px;
-  top: min(var(--event-top), calc(100% - 48px));
-  height: var(--event-height);
-  min-height: 24px;
+  top: min(var(--event-top), calc(100% - 58px));
+  height: max(var(--event-height), 42px);
+  min-height: 42px;
   display: grid;
   align-content: center;
   gap: 1px;
-  padding: 5px 6px;
+  padding: 6px 7px;
   border: 1px solid color-mix(in srgb, var(--event-color) 34%, rgba(255, 255, 255, 0.8));
   border-left: 4px solid var(--event-color);
   border-radius: 7px;
@@ -5805,15 +5806,15 @@ body:has(.workspace-shell) {
 }
 
 .calendar-event strong {
-  font-size: 0.68rem;
-  line-height: 1.15;
+  font-size: 0.72rem;
+  line-height: 1.18;
 }
 
 .calendar-event span,
 .calendar-event small {
-  font-size: 0.58rem;
+  font-size: 0.62rem;
   color: rgba(45, 74, 65, 0.72);
-  line-height: 1.15;
+  line-height: 1.18;
 }
 
 .workspace-review-detail {
