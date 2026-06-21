@@ -574,16 +574,25 @@ function TaskGroup({ todos, focusTimerStatus, todayDate, onToggleTodo, onDeleteT
             >
               {todo.completed ? <CheckSquare weight="fill" /> : <Square />}
             </button>
-            <button type="button" className="task-content" aria-label={`开始专注 ${todo.title}`} onClick={() => onFocusTodo(todo)}>
+            <div className="task-content">
               <span className="task-title-line">
                 <span className="task-color-dot" style={{ '--task-color': priority.color }} />
                 <strong>{todo.title}</strong>
               </span>
-            </button>
+            </div>
             <div className="task-meta-line" aria-label="任务信息">
               <span>{todo.sourceType === 'habit' ? '习惯' : priority.label}</span>
               <span>{formatTodoTime(todo, todayDate)}</span>
             </div>
+            <button
+              type="button"
+              className={`task-focus-button ${isFocusTodo ? 'active' : ''}`}
+              aria-label={`开始专注 ${todo.title}`}
+              aria-pressed={isFocusTodo}
+              onClick={() => onFocusTodo(todo)}
+            >
+              <Timer />
+            </button>
             <button
               type="button"
               className="task-delete-button"

@@ -4973,7 +4973,7 @@ body:has(.workspace-shell) {
 .task-row {
   min-height: 78px;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) minmax(112px, auto) 34px auto;
+  grid-template-columns: 34px minmax(0, 1fr) minmax(112px, auto) 34px 34px auto;
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
@@ -4990,12 +4990,14 @@ body:has(.workspace-shell) {
 
 .task-checkbox,
 .task-content,
+.task-focus-button,
 .task-delete-button {
   border: 0;
   background: transparent;
 }
 
 .task-checkbox,
+.task-focus-button,
 .task-delete-button {
   width: 28px;
   height: 28px;
@@ -5010,6 +5012,26 @@ body:has(.workspace-shell) {
 .task-delete-button {
   border-radius: 10px;
   color: rgba(31, 60, 52, 0.46);
+}
+
+.task-focus-button {
+  border-radius: 10px;
+  color: rgba(31, 60, 52, 0.58);
+  cursor: pointer;
+}
+
+.task-focus-button:hover,
+.task-focus-button:focus-visible,
+.task-focus-button.active {
+  background: rgba(75, 135, 104, 0.12);
+  color: #2e6f56;
+  outline: none;
+}
+
+.task-focus-button svg,
+.task-delete-button svg {
+  width: 17px;
+  height: 17px;
 }
 
 .task-delete-button:hover {
