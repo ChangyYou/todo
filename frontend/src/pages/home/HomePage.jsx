@@ -711,7 +711,7 @@ function FocusPanel({
   );
 }
 
-function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' }) {
+function ReviewPanel({ todayDate, refreshSignal = 0, variant = 'aside' }) {
   const isModuleView = variant === 'module';
   const [viewMode, setViewMode] = useState(() => (isModuleView ? 'month' : 'week'));
   const [viewMonth, setViewMonth] = useState(() => getMonthFromDate(todayDate));
@@ -724,22 +724,6 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
   const [reviewStatus, setReviewStatus] = useState('idle');
   const [reviewError, setReviewError] = useState('');
   const [reviewReloadSignal, setReviewReloadSignal] = useState(0);
-  const todayStats = stats?.overview ?? {};
-  const sceneItems = stats?.scenePeriods?.find((period) => period.startDate === todayDate)?.scenes
-    ?? stats?.scenePeriods?.at(-1)?.scenes
-    ?? [];
-  const normalizedScenes = sceneItems.length > 0
-    ? sceneItems
-    : [{ title: '默认', durationSeconds: 0, percentage: 0, color: '#9da4a0', sessionCount: 0 }];
-  const donut = normalizedScenes.reduce((segments, item, index) => {
-    const previous = segments.total;
-    const next = previous + Math.max(0, item.percentage || 0);
-    return {
-      total: next,
-      value: `${segments.value}, ${item.color || REVIEW_COLORS[index % REVIEW_COLORS.length]} ${previous}% ${next}%`,
-    };
-  }, { total: 0, value: '' }).value.replace(/^, /, '');
-
   useEffect(() => {
     let disposed = false;
     setSelectedReviewDay(null);
@@ -965,45 +949,6 @@ function ReviewPanel({ stats, todayDate, refreshSignal = 0, variant = 'aside' })
           </div>
         </section>
       ) : null}
-
-      <section className="review-card today-focus-card">
-        <div className="review-card-title">
-          <strong>今日专注</strong>
-          <button type="button">详情</button>
-        </div>
-        <div className="today-focus-metrics">
-          <div>
-            <span className="metric-icon green"><Timer weight="fill" /></span>
-            <small>专注时长</small>
-            <strong>{formatDuration(todayStats.todayFocusSeconds || 0)}</strong>
-          </div>
-          <div>
-            <span className="metric-icon tomato"><img src="/favicon.svg" alt="" /></span>
-            <small>番茄数量</small>
-            <strong>{todayStats.todayPomodoros || 0}</strong>
-          </div>
-        </div>
-      </section>
-
-      <section className="review-card scene-breakdown">
-        <div className="review-card-title">
-          <strong>场景分布</strong>
-          <button type="button">更多统计</button>
-        </div>
-        <div className="scene-chart-row">
-          <div className="donut-chart" style={{ '--donut': donut || '#9da4a0 0% 100%' }} />
-          <div className="scene-legend">
-            {normalizedScenes.slice(0, 5).map((scene, index) => (
-              <div key={`${scene.sceneId || scene.title}-${index}`}>
-                <span className="legend-dot" style={{ '--legend-color': scene.color || REVIEW_COLORS[index % REVIEW_COLORS.length] }} />
-                <span>{scene.title}</span>
-                <span>{scene.percentage || 0}%</span>
-                <span>{formatDuration(scene.durationSeconds || 0)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       <p className="autosave-note">数据已自动保存</p>
     </PanelElement>
@@ -1925,7 +1870,7 @@ export default function HomePage({ user, onLoggedOut }) {
         onFocusTodo={handleFocusTodo}
       />
       {activeSection === 'review' ? (
-        <ReviewPanel stats={stats} todayDate={todayDate} refreshSignal={reviewRefreshSignal} variant="module" />
+        <ReviewPanel todayDate={todayDate} refreshSignal={reviewRefreshSignal} variant="module" />
       ) : isModuleSection ? (
         <WorkspaceModulePanel
           activeSection={activeSection}
@@ -1955,7 +1900,7 @@ export default function HomePage({ user, onLoggedOut }) {
             onSceneChange={setSelectedScene}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
-          <ReviewPanel stats={stats} todayDate={todayDate} refreshSignal={reviewRefreshSignal} />
+          <ReviewPanel todayDate={todayDate} refreshSignal={reviewRefreshSignal} />
         </>
       )}
       {isSettingsOpen ? (
