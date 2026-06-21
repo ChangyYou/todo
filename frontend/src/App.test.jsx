@@ -495,8 +495,8 @@ describe('App', () => {
     expect(screen.getAllByText('个人复盘').length).toBeGreaterThanOrEqual(2);
 
     const reviewPanel = screen.getByRole('complementary', { name: '个人复盘' });
-    expect(within(reviewPanel).queryByText('今日专注')).not.toBeInTheDocument();
-    expect(within(reviewPanel).queryByText('场景分布')).not.toBeInTheDocument();
+    expect(within(reviewPanel).getByText('今日专注')).toBeInTheDocument();
+    expect(within(reviewPanel).getByText('场景分布')).toBeInTheDocument();
     expect(within(reviewPanel).queryByRole('tab', { name: '月视图' })).not.toBeInTheDocument();
     expect(within(reviewPanel).queryByText('月视图')).not.toBeInTheDocument();
     expect(await within(reviewPanel).findByRole('region', { name: '周日程' })).toBeInTheDocument();
@@ -547,6 +547,8 @@ describe('App', () => {
     fireEvent.click(within(navigation).getByRole('button', { name: '个人复盘' }));
     const reviewModule = await screen.findByRole('region', { name: '个人复盘' });
     expect(within(reviewModule).getByRole('heading', { name: '个人复盘' })).toBeInTheDocument();
+    expect(within(reviewModule).queryByText('今日专注')).not.toBeInTheDocument();
+    expect(within(reviewModule).queryByText('场景分布')).not.toBeInTheDocument();
     expect(await within(reviewModule).findByRole('region', { name: '月复盘' })).toBeInTheDocument();
     expect(within(reviewModule).getByRole('tab', { name: '月视图', selected: true })).toBeInTheDocument();
     expect(within(reviewModule).getByText('2026年6月')).toBeInTheDocument();
