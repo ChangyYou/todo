@@ -658,7 +658,8 @@ describe('App', () => {
     expect(firstTaskRow.querySelectorAll('.task-color-dot')).toHaveLength(1);
     expect(firstTaskRow.querySelector('.task-title-line .task-color-dot + strong')).toHaveTextContent('整理今天最重要的三件事');
     expect(within(firstTaskRow).queryByText('学习')).not.toBeInTheDocument();
-    expect(within(firstTaskRow).getByText('高优先级')).toBeInTheDocument();
+    expect(within(firstTaskRow).queryByText('高优先级')).not.toBeInTheDocument();
+    expect(within(firstTaskRow).getByRole('img', { name: '高优先级' })).toBeInTheDocument();
     expect(within(todoPanel).getByRole('tab', { name: '全部 1' })).toHaveAttribute('aria-selected', 'true');
     expect(within(todoPanel).getByRole('tab', { name: '已完成 1' })).toBeInTheDocument();
 

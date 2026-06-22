@@ -9,6 +9,7 @@ import {
   CheckSquare,
   CircleNotch,
   DotsThree,
+  Flag,
   Leaf,
   ListBullets,
   Pause,
@@ -591,7 +592,19 @@ function TaskGroup({ todos, focusTimerStatus, todayDate, onToggleTodo, onDeleteT
               </span>
             </div>
             <div className="task-meta-line" aria-label="任务信息">
-              <span>{todo.sourceType === 'habit' ? '习惯' : priority.label}</span>
+              {todo.sourceType === 'habit' ? (
+                <span className="task-kind-chip">习惯</span>
+              ) : (
+                <span
+                  className="task-priority-flag"
+                  role="img"
+                  aria-label={priority.label}
+                  title={priority.label}
+                  style={{ '--priority-color': priority.color }}
+                >
+                  <Flag weight="fill" aria-hidden="true" />
+                </span>
+              )}
               <span>{formatTodoTime(todo, todayDate)}</span>
             </div>
             <button
