@@ -604,9 +604,11 @@ func (s *Service) fillReviewFocus(userID int64, startDate, endDate string, days 
 		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS duration_seconds,
 		        COUNT(*) AS session_count
 		   FROM focus_sessions
-		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id
+		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id AND todos.deleted_at IS NULL
 		   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
-		  WHERE focus_sessions.user_id = ? AND focus_sessions.session_date BETWEEN ? AND ?
+		  WHERE focus_sessions.user_id = ?
+		    AND focus_sessions.session_date BETWEEN ? AND ?
+		    AND (focus_sessions.todo_id <= 0 OR todos.id IS NOT NULL)
 		  GROUP BY focus_sessions.session_date,
 		           focus_sessions.todo_id,
 		           scene_id,
@@ -1146,8 +1148,11 @@ func (s *Service) listTaskStats(userID int64, startDate, endDate string) ([]mode
 		        COALESCE(SUM(focus_sessions.duration_seconds), 0) AS duration_seconds,
 		        COUNT(*) AS session_count
 		   FROM focus_sessions
-		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id
-		  WHERE focus_sessions.user_id = ? AND focus_sessions.session_date BETWEEN ? AND ? AND focus_sessions.todo_id > 0
+		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id AND todos.deleted_at IS NULL
+		  WHERE focus_sessions.user_id = ?
+		    AND focus_sessions.session_date BETWEEN ? AND ?
+		    AND focus_sessions.todo_id > 0
+		    AND todos.id IS NOT NULL
 		  GROUP BY focus_sessions.todo_id, COALESCE(todos.title, '已删除任务')
 		  ORDER BY duration_seconds DESC, session_count DESC, focus_sessions.todo_id DESC
 		  LIMIT 8`,
@@ -1185,9 +1190,11 @@ func (s *Service) listRecentStats(userID int64, startDate, endDate string) ([]mo
 		        focus_sessions.session_date,
 		        focus_sessions.created_at
 		   FROM focus_sessions
-		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id
+		   LEFT JOIN todos ON todos.id = focus_sessions.todo_id AND todos.user_id = focus_sessions.user_id AND todos.deleted_at IS NULL
 		   LEFT JOIN focus_scenes ON focus_scenes.id = focus_sessions.scene_id AND focus_scenes.user_id = focus_sessions.user_id
-		  WHERE focus_sessions.user_id = ? AND focus_sessions.session_date BETWEEN ? AND ?
+		  WHERE focus_sessions.user_id = ?
+		    AND focus_sessions.session_date BETWEEN ? AND ?
+		    AND (focus_sessions.todo_id <= 0 OR todos.id IS NOT NULL)
 		  ORDER BY focus_sessions.created_at DESC, focus_sessions.id DESC
 		  LIMIT 6`,
 		userID,
